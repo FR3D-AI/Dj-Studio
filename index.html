@@ -726,7 +726,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   const logoTex = new THREE.CanvasTexture(logoCv);
   const logoMat = new THREE.MeshLambertMaterial({map: logoTex});
   const front = new THREE.Mesh(new THREE.PlaneGeometry(0.35,0.22), lapMats[0]); front.rotation.y = Math.PI/2; front.position.set(0.008,0.125,0); lap.add(front);
-  const backGeo = new THREE.PlaneGeometry(0.35,0.22); const buv = backGeo.attributes.uv; for (let i=0;i<buv.count;i++) buv.setX(i, 1 - buv.getX(i));
+  const backGeo = new THREE.PlaneGeometry(0.35,0.22); // la tapa mira al público: el logo se lee al derecho
   const back = new THREE.Mesh(backGeo, logoMat); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lap.add(back);
   // parlantes
   const cones = [];
