@@ -127,6 +127,49 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
   padding:7px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .adv summary{cursor:pointer;color:var(--muted);font:600 13px var(--body)}
 .adv[open] summary{margin-bottom:8px}
+.chat{position:absolute;left:12px;bottom:14px;z-index:4;width:min(340px,calc(100% - 24px));display:flex;flex-direction:column;gap:6px}
+.chat.closed{display:none}
+.chatlog{max-height:min(34vh,260px);overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:10px;
+  background:rgba(15,13,21,.62);border:1px solid rgba(58,50,80,.7);font-size:14px;line-height:1.3;overflow-wrap:anywhere;scrollbar-width:thin}
+.chatlog:empty{display:none}
+.msg b{font-weight:700}
+.msg.user b{color:var(--accent)}
+.msg.me b{color:#ffd9a0}
+.msg.bot{color:#bff5dd}
+.msg.bot b{color:var(--live)}
+.msg.system{color:var(--muted);font-style:italic;font-size:13px}
+.chatform{display:flex;gap:6px}
+.chatform input{flex:1;min-width:0;background:rgba(23,20,31,.85);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:600 14px var(--body)}
+.chatform input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chatbtn{position:absolute;right:12px;top:66px;z-index:5;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);
+  background:rgba(23,20,31,.8);color:var(--fg);display:none;place-items:center;cursor:pointer}
+.chatbtn svg{width:22px;height:22px}
+.chatbtn i{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:#e5484d;color:#fff;font:700 11px/18px var(--body);font-style:normal;text-align:center;padding:0 4px}
+.djbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+  max-width:calc(100% - 720px);min-width:300px;background:rgba(23,20,31,.88);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.djbar .opt{padding:4px 10px;font-size:13px}
+.agenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.agenda li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
+.agenda li span{color:var(--muted);flex:1;min-width:120px;font-variant-numeric:tabular-nums}
+.agenda li.nowon{border-color:var(--live)}
+.agenda li.nowon span{color:var(--live)}
+.agenda li.empty{color:var(--muted)}
+.agenda .btn{padding:3px 10px;font-size:13px}
+.slotform{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.slotform select,.slotform input{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:600 14px var(--body);min-width:0}
+.slotrow{flex-wrap:nowrap}
+.slotrow input[type=date]{flex:1.4}
+.slotrow input[type=time]{flex:1}
+.dash{color:var(--muted)}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--fg);line-height:1.4}
+@media (max-width:1100px){ .djbar{max-width:calc(100% - 24px);bottom:auto;top:66px} }
+@media (max-width:640px){
+  .chatbtn{display:grid}
+  .chat{top:120px;bottom:auto;left:12px;right:12px;width:auto}
+  .chatlog{max-height:30vh}
+  .djbar{top:120px}
+  .chat:not(.closed) ~ .djbar{display:none}
+}
 .items .opt[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(166,156,184,.6)}
 .grid{grid-template-columns:1fr}
 </style>
@@ -145,10 +188,36 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <p class="note">Así te verán los demás. Lo puedes cambiar después en la configuración (engranaje arriba a la derecha).</p>
   </form>
 </div>
+<div class="gate" id="djTurn" hidden role="dialog" aria-modal="true" aria-labelledby="djTurnTitle">
+  <div class="gatebox">
+    <h1 id="djTurnTitle">¡Es tu momento de ser DJ!</h1>
+    <p><b>Abre tu software de DJ y compártenos el sonido de tu pantalla.</b></p>
+    <ol class="steps">
+      <li>Abre tu software de DJ (Rekordbox, Serato, Traktor…) y deja lista tu primera pista.</li>
+      <li>Toca <b>Compartir sonido</b> aquí abajo.</li>
+      <li>En la ventana del navegador elige <b>Pantalla completa</b> y selecciona tu pantalla.</li>
+      <li>Activa el interruptor <b>Compartir audio del sistema</b> y toca <b>Compartir</b>.</li>
+      <li>Dale play. Todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
+    </ol>
+    <p class="note" id="djTurnNote"></p>
+    <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
+    <button class="btn" id="djTurnLater" type="button">Ahora no</button>
+  </div>
+</div>
 <div class="app">
   <div class="stage" id="stage">
     <div class="hud"><b id="hudName">—</b><span id="hudPos">x 0.0 m · z 0.0 m</span><span id="hudMusic" class="hm" hidden></span></div>
     <div class="livebanner" id="liveBanner" hidden></div>
+    <button class="chatbtn" id="chatBtn" type="button" aria-label="Chat" aria-expanded="true" aria-controls="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><i id="chatBadge" hidden></i></button>
+    <div class="chat" id="chat">
+      <div class="chatlog" id="chatLog" aria-live="polite"></div>
+      <form class="chatform" id="chatForm"><input id="chatIn" maxlength="200" placeholder="Escribe al chat…" autocomplete="off" aria-label="Mensaje"><button class="btn primary" type="submit">Enviar</button></form>
+    </div>
+    <div class="djbar" id="djBar" hidden>
+      <span class="lbl">Luces</span>
+      <div class="row" id="lightRow" role="group" aria-label="Escenas de luces"></div>
+      <button class="btn live" id="djBarStop" type="button">Terminar</button>
+    </div>
     <div class="drop" id="drop" hidden>Suelta tus pistas para ponerlas en la sala</div>
     <div class="hint" id="hint"></div>
     <button class="gear" id="gearBtn" type="button" aria-label="Abrir configuración" aria-expanded="false" aria-controls="panel">
@@ -167,10 +236,40 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
         <button class="btn primary" id="castBtn" type="button" disabled>Transmitir a la sala</button>
         <button class="btn" id="hearBtn" type="button" hidden>Escuchar al DJ</button>
       </div>
-      <p class="note" id="castNote">Abre Rekordbox y toca Transmitir: el navegador te pedirá compartir el audio del computador. Quien entre a la página te verá en la cabina, escuchará tu mezcla y bailará contigo.</p>
+      <p class="note" id="castNote">Solo los DJs autorizados por el administrador pueden transmitir.</p>
+      <div class="vol"><label class="lbl" for="vol">Volumen</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"></div>
     </section>
 
-    <section class="music" aria-labelledby="musicLbl">
+    <section class="online" aria-labelledby="agLbl">
+      <div class="mtop"><span class="lbl" id="agLbl">Agenda de DJs</span></div>
+      <ul class="agenda" id="agendaList"></ul>
+      <div id="adminBox" hidden>
+        <form class="slotform" id="slotForm" novalidate>
+          <label class="lbl" for="slotWho">Programar DJ</label>
+          <select id="slotWho" aria-label="Persona"></select>
+          <div class="row slotrow">
+            <input type="date" id="slotDay" aria-label="Fecha">
+            <input type="time" id="slotFrom" aria-label="Desde">
+            <span class="dash">a</span>
+            <input type="time" id="slotTo" aria-label="Hasta">
+          </div>
+          <button class="btn primary" type="submit">Agregar turno</button>
+          <p class="note" id="slotNote">La persona debe haber entrado a la sala al menos una vez. Durante su turno nadie más puede transmitir.</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="online" aria-labelledby="adLbl">
+      <div class="mtop"><span class="lbl" id="adLbl">Administrador</span><span class="badge" id="adminState">Inactivo</span></div>
+      <div id="adminLoginBox" class="row">
+        <input type="password" id="adminKey" class="name" placeholder="Clave de administrador" autocomplete="off" aria-label="Clave de administrador">
+        <button class="btn" id="adminLogin" type="button">Activar</button>
+      </div>
+      <button class="btn" id="adminLogout" type="button" hidden>Salir del modo admin</button>
+      <p class="note" id="adminNote">Solo para quien organiza la sala.</p>
+    </section>
+
+    <section class="music" id="musicSec" aria-labelledby="musicLbl" hidden>
       <div class="mtop"><span class="lbl" id="musicLbl">Música</span><span class="bpm" id="bpm">— BPM</span></div>
       <div class="now" id="now">Carga tus pistas para que la sala baile</div>
       <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
@@ -179,7 +278,6 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
         <button class="btn" id="play" type="button" disabled>Reproducir</button>
         <button class="btn" id="next" type="button" disabled>Siguiente</button>
       </div>
-      <div class="vol"><label class="lbl" for="vol">Volumen</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"></div>
       <ol class="plist" id="plist"></ol>
       <p class="note">Elige los archivos de tus pistas (MP3, WAV, M4A) o arrástralos a la sala. Suenan solo en tu navegador, no se suben a ningún lado.</p>
       <div class="livebox">
@@ -221,7 +319,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function(){
-const HALF = 5, WALL_H = 3, R = 0.3;
+const HX = 10, HZ = 5, HALF = 5, WALL_H = 3, R = 0.3; // sala de 20 m (x) por 10 m (z)
 
 const SKINS = ['#f3cfae','#e2b089','#c98d5f','#a46a40','#7c4b2a','#4e2e1b'];
 const HAIRC = ['#17110d','#4a2c17','#8a5a2b','#dcb56c','#b2342b','#e8e3d8','#3a62c9','#6a3fa0'];
@@ -283,14 +381,15 @@ stage.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#0f0d15');
-scene.fog = new THREE.Fog('#0f0d15', 16, 30);
+scene.fog = new THREE.Fog('#0f0d15', 24, 46);
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 
 const hemi = new THREE.HemisphereLight('#ffe8c8', '#3a2c48', 0.7); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffd9a8', 0.7);
 sun.position.set(-4, 9, -6); sun.castShadow = true;
 sun.shadow.mapSize.set(1024,1024);
-Object.assign(sun.shadow.camera, {left:-7,right:7,top:7,bottom:-7,near:1,far:25});
+Object.assign(sun.shadow.camera, {left:-12,right:12,top:12,bottom:-12,near:1,far:40});
+sun.shadow.mapSize.set(2048,2048);
 scene.add(sun);
 
 const M = c => new THREE.MeshLambertMaterial({color:c});
@@ -302,13 +401,15 @@ function mesh(geo, mat, x, y, z, parent){ const m = new THREE.Mesh(geo, mat); m.
 
 // suelo: linóleo a cuadros de 0,5 m
 (function(){
-  const cv = document.createElement('canvas'); cv.width = cv.height = 640;
-  const x = cv.getContext('2d'); const n = 20, s = 640/n;
-  for (let i=0;i<n;i++) for (let j=0;j<n;j++){ x.fillStyle = (i+j)%2 ? '#d9cfb8' : '#3d7a74'; x.fillRect(i*s,j*s,s,s); }
+  const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 640;
+  const x = cv.getContext('2d'); const nx = 40, nz = 20, s = 32;
+  for (let i=0;i<nx;i++) for (let j=0;j<nz;j++){ x.fillStyle = (i+j)%2 ? '#d9cfb8' : '#3d7a74'; x.fillRect(i*s,j*s,s,s); }
   x.strokeStyle='rgba(0,0,0,.12)'; x.lineWidth=1;
-  for (let i=0;i<=n;i++){ x.beginPath(); x.moveTo(i*s,0); x.lineTo(i*s,640); x.stroke(); x.beginPath(); x.moveTo(0,i*s); x.lineTo(640,i*s); x.stroke(); }
+  for (let i=0;i<=nx;i++){ x.beginPath(); x.moveTo(i*s,0); x.lineTo(i*s,640); x.stroke(); }
+  for (let j=0;j<=nz;j++){ x.beginPath(); x.moveTo(0,j*s); x.lineTo(1280,j*s); x.stroke(); }
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(10,10), new THREE.MeshLambertMaterial({map:tex}));
+  // malla con subdivisiones para que la luz de los focos se note en el piso
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,10,60,30), new THREE.MeshLambertMaterial({map:tex}));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
 })();
 
@@ -323,15 +424,16 @@ function wall(w, x, z, rotY, n, color){
   g.userData = {n, mats:[mat, base.material]}; base.material.transparent = true;
   scene.add(g); walls.push(g); return g;
 }
-const wN = wall(10.24, 0, -HALF-0.06, 0, new THREE.Vector3(0,0,1), '#c9a24a');
-const wS = wall(10.24, 0,  HALF+0.06, 0, new THREE.Vector3(0,0,-1), '#c9a24a');
-const wW = wall(10.24, -HALF-0.06, 0, Math.PI/2, new THREE.Vector3(1,0,0), '#a8573f');
-const wE = wall(10.24,  HALF+0.06, 0, Math.PI/2, new THREE.Vector3(-1,0,0), '#a8573f');
+const wN = wall(20.24, 0, -HZ-0.06, 0, new THREE.Vector3(0,0,1), '#c9a24a');
+const wS = wall(20.24, 0,  HZ+0.06, 0, new THREE.Vector3(0,0,-1), '#c9a24a');
+const wW = wall(10.24, -HX-0.06, 0, Math.PI/2, new THREE.Vector3(1,0,0), '#a8573f');
+const wE = wall(10.24,  HX+0.06, 0, Math.PI/2, new THREE.Vector3(-1,0,0), '#a8573f');
 
 /* ---------- pantallas de video: visuales al ritmo ---------- */
 // Un solo visual se dibuja en una textura pequeña (512×160) y se reutiliza en las 4 pantallas: cuesta casi nada.
-const VIS_W = 512, VIS_H = 160;
+const VIS_W = 512, VIS_H = 128;
 const visRT = new THREE.WebGLRenderTarget(VIS_W, VIS_H, {depthBuffer:false, stencilBuffer:false});
+visRT.texture.wrapS = THREE.MirroredRepeatWrapping;
 const specData = new Uint8Array(32*4);
 const specTex = new THREE.DataTexture(specData, 32, 1, THREE.RGBAFormat);
 specTex.magFilter = THREE.LinearFilter; specTex.needsUpdate = true;
@@ -383,6 +485,62 @@ vec3 waves(vec2 uv){
   }
   return c*0.6;
 }
+vec2 hash2(vec2 p){ p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
+vec3 warp(vec2 p){
+  vec3 c = vec3(0.0);
+  for (int i=0;i<3;i++){
+    float fi = float(i); vec2 q = p*(1.2+fi*0.6);
+    float a = atan(q.y,q.x), r = length(q);
+    float lane = floor(a*12.0 + fi*3.0);
+    float sp = fract(hash2(vec2(lane, fi)).x + uTime*(0.35+fi*0.15) + uPhase*0.02);
+    float st = smoothstep(0.08, 0.0, abs(r - sp*2.2)) * step(0.5, hash2(vec2(lane, fi+7.0)).y);
+    c += hsv(uHue + fi*0.15, 0.4, 1.0) * st * (0.7 + uBass);
+  }
+  return c + hsv(uHue, 0.8, 0.04/max(length(p),0.08)) * (0.5 + uPulse);
+}
+vec3 synth(vec2 uv){
+  float hz = 0.42; vec3 c;
+  if (uv.y > hz){
+    vec2 sp = (uv - vec2(0.5, hz + 0.1))*vec2(3.2,1.0);
+    float d = length(sp);
+    float stripes = step(0.0, sin((uv.y-hz)*70.0 - uTime*2.0) + (uv.y-hz)*12.0 - 0.6);
+    float sun = smoothstep(0.30, 0.28, d) * stripes;
+    c = mix(hsv(uHue+0.8, 0.7, 0.08 + (uv.y-hz)*0.4), hsv(uHue+0.08-(uv.y-hz)*0.6, 0.85, 1.0), sun) * (0.8 + uPulse*0.4);
+  } else {
+    float y = hz - uv.y, z = 1.0/(y + 0.03), x = (uv.x - 0.5)*z*1.3;
+    float gz = fract(z*0.35 + uTime*1.2 + uPhase*0.04), gx = fract(x*1.5);
+    float line = max(smoothstep(0.08, 0.0, min(gz, 1.0-gz)), smoothstep(0.06, 0.0, min(gx, 1.0-gx)));
+    c = hsv(uHue+0.8, 0.8, 1.0) * line * smoothstep(0.0, 0.15, y) * (0.6 + uBass);
+  }
+  return c;
+}
+vec3 rings(vec2 p){
+  float r = length(p);
+  float w = fract(r*1.6 - uPhase/3.1416*0.5);
+  float band = smoothstep(0.12, 0.0, abs(w - 0.5) - 0.3);
+  return hsv(uHue + r*0.2, 0.8, band*(0.3 + spec(clamp(r*0.45,0.0,1.0))*1.3));
+}
+vec3 cells(vec2 p){
+  p *= 1.8; vec2 i = floor(p), f = fract(p); float md = 8.0; vec2 mid = vec2(0.0);
+  for (int y=-1;y<=1;y++) for (int x=-1;x<=1;x++){
+    vec2 g = vec2(float(x), float(y)); vec2 o = hash2(i+g);
+    o = 0.5 + 0.45*sin(uTime*0.8 + 6.2831*o + uBass*2.0);
+    vec2 r = g + o - f; float d = dot(r,r);
+    if (d < md){ md = d; mid = i + g; }
+  }
+  float h = fract(dot(mid, vec2(0.13,0.71)));
+  return hsv(uHue + h*0.4, 0.85, (1.0 - sqrt(md))*(0.45 + uPulse*0.6) + 0.04);
+}
+vec3 blobs(vec2 p){
+  float v = 0.0;
+  for (int i=0;i<6;i++){
+    float fi = float(i);
+    vec2 c = vec2(sin(uTime*(0.35+fi*0.13)+fi*2.0)*1.9, cos(uTime*(0.45+fi*0.11)+fi)*0.55);
+    v += (0.06 + uBass*0.05)/max(dot(p-c,p-c), 0.01);
+  }
+  float m = smoothstep(0.9, 1.1, v);
+  return hsv(uHue + v*0.04, 0.85, m*(0.7 + uPulse*0.5)) + hsv(uHue+0.5, 0.6, 0.04);
+}
 void main(){
   vec2 uv = vUv;
   vec2 p = (uv-0.5)*vec2(3.2,1.0)*1.4;
@@ -391,24 +549,32 @@ void main(){
   else if (uMode < 1.5) c = plasma(p);
   else if (uMode < 2.5) c = bars(uv);
   else if (uMode < 3.5) c = kaleido(p);
-  else c = waves(uv);
+  else if (uMode < 4.5) c = waves(uv);
+  else if (uMode < 5.5) c = warp(p);
+  else if (uMode < 6.5) c = synth(uv);
+  else if (uMode < 7.5) c = rings(p);
+  else if (uMode < 8.5) c = cells(p);
+  else c = blobs(p);
   c += uDrop*0.12*hsv(uHue+0.33,0.4,1.0)*uPulse;
   vec3 idle = hsv(0.72 + 0.04*sin(uTime*0.2), 0.55, 0.06 + 0.03*sin(uv.x*5.0 + uTime*0.4));
   gl_FragColor = vec4(mix(idle, c, uOn), 1.0);
 }`
 })));
 const visScreens = [];
-function screenOn(wallG, sign){
+function screenOn(wallG, sign, w){
   const mat = new THREE.MeshBasicMaterial({map: visRT.texture, transparent:true});
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 2.2), mat);
+  const geo = new THREE.PlaneGeometry(w, 2.2);
+  if (w > 10){ const uv = geo.attributes.uv; for (let i=0;i<uv.count;i++) uv.setX(i, uv.getX(i)*2); } // pantallas largas: el visual se repite en espejo
+  const scr = new THREE.Mesh(geo, mat);
   scr.position.set(0, 1.65, sign*0.075); scr.rotation.y = sign > 0 ? 0 : Math.PI;
-  const frm = new THREE.Mesh(new THREE.PlaneGeometry(7.7, 2.4), new THREE.MeshBasicMaterial({color:'#0b0a10', transparent:true}));
+  const frm = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.2, 2.4), new THREE.MeshBasicMaterial({color:'#0b0a10', transparent:true}));
   frm.position.set(0, 1.65, sign*0.07); frm.rotation.y = scr.rotation.y;
   wallG.add(frm); wallG.add(scr);
   wallG.userData.mats.push(mat, frm.material);
   visScreens.push(scr, frm);
 }
-screenOn(wN, 1); screenOn(wW, 1); screenOn(wS, -1); screenOn(wE, -1);
+screenOn(wN, 1, 15); screenOn(wS, -1, 15); screenOn(wW, 1, 7.5); screenOn(wE, -1, 7.5);
+const VIS_MODES = 10;
 const vis = {mode:0, lastSwitch:0, on:0};
 function fillSpectrum(){
   if (!freq || !music.real){ for (let i=0;i<32;i++) specData[i*4] = Math.max(0, specData[i*4]*0.9|0); specTex.needsUpdate = true; return; }
@@ -424,17 +590,22 @@ function updateVisuals(t, dt, hue){
   if (!room.items.pantallas) return;
   vis.on += ((music.sounding ? 1 : 0) - vis.on) * Math.min(1, dt*1.5);
   // cambia de visual cada 32 golpes o cuando entra el drop
-  if (music.sounding && (music.beats - vis.lastSwitch >= 32 || music.dropStart)){ vis.mode = (vis.mode + 1) % 5; vis.lastSwitch = music.beats; }
+  // cada visual dura 64 golpes (o hasta un drop, si ya pasaron 32)
+  const since = music.beats - vis.lastSwitch;
+  if (music.sounding && (since >= 64 || since < 0 || (music.dropStart && since >= 32))){
+    let n; do { n = Math.floor(Math.random()*VIS_MODES); } while (n === vis.mode);
+    vis.mode = n; vis.lastSwitch = music.beats;
+  }
   fillSpectrum();
   const u = visUniforms;
   u.uTime.value = t; u.uPhase.value = music.phase; u.uPulse.value = music.pulse * vis.on;
   u.uBass.value = music.bass; u.uMid.value = music.mids; u.uHigh.value = music.highs;
-  u.uHue.value = hue; u.uMode.value = vis.mode; u.uOn.value = vis.on; u.uDrop.value = music.drop ? 1 : 0;
+  u.uHue.value = presetHue(t, hue); u.uMode.value = vis.mode; u.uOn.value = vis.on; u.uDrop.value = music.drop ? 1 : 0;
   renderer.setRenderTarget(visRT); renderer.render(visScene, visCam); renderer.setRenderTarget(null);
 }
 
 /* ---------- fusión de piezas: muchas cajas => una sola malla (menos llamadas de dibujo) ---------- */
-function bake(parent, keep){
+function bake(parent, keep, mat){
   const meshes = parent.children.filter(o => o.isMesh && o.children.length === 0 && o.material && o.material.type === 'MeshLambertMaterial'
     && !o.material.map && !o.material.transparent && !o.material.vertexColors && !(keep && keep.has(o)));
   if (meshes.length < 2) return null;
@@ -457,19 +628,21 @@ function bake(parent, keep){
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.computeBoundingSphere();
-  const mesh = new THREE.Mesh(geo, BAKED_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
+  const mesh = new THREE.Mesh(geo, mat || BAKED_MAT); mesh.castShadow = true; mesh.receiveShadow = true;
   for (const m of meshes){ parent.remove(m); m.geometry.dispose(); m.material.dispose(); }
   parent.add(mesh); return mesh;
 }
 const BAKED_MAT = new THREE.MeshLambertMaterial({vertexColors:true});
+const CHAR_MAT = new THREE.MeshPhongMaterial({vertexColors:true, shininess:10, specular:0x1a1a1a});
 function bakeTree(root, keep){ const groups = []; root.traverse(o => { if (o.isGroup || o === root) groups.push(o); }); groups.forEach(g => bake(g, keep)); }
 
 /* ---------- objetos de la sala (se pueden poner y quitar) ---------- */
 const colliders = [];
 const ITEMS = [];
-function item(id, label, on, build){
+function item(id, label, on, build, dx){
   const g = new THREE.Group(); const cols = [];
   const api = build(g, (a,b,c,d) => cols.push({minX:a,maxX:b,minZ:c,maxZ:d})) || {};
+  if (dx){ g.position.x = dx; cols.forEach(c => { c.minX += dx; c.maxX += dx; }); }
   const keep = new Set(); const add = v => { if (!v) return; if (Array.isArray(v)) v.forEach(add); else if (v.isObject3D) keep.add(v); else if (typeof v === 'object' && !v.isMaterial) Object.values(v).forEach(add); };
   add(api); bakeTree(g, keep);
   scene.add(g); ITEMS.push({id, label, on, g, cols, api});
@@ -481,18 +654,18 @@ function applyItems(){
   const dj = ITEMS.find(i => i.id === 'dj'); if (dj && dj.api.rig) dj.api.rig.position.y = room.items.tarima ? STAGE_H : 0;
   if (typeof visScreens !== 'undefined') visScreens.forEach(m => m.visible = !!room.items.pantallas);
 }
-// tarima: x 2.7–5.0, escalón x 2.4–2.7, z −2.5–2.5
-const STAGE_H = 0.4;
+// tarima al fondo de la sala: x 7.7–10, escalón x 7.4–7.7, z −2.5–2.5
+const STAGE_H = 0.4, STAGE_DX = 5;
 function floorY(x, z){
   if (!room.items.tarima || Math.abs(z) > 2.5) return 0;
-  return x >= 2.7 ? STAGE_H + 0.02 : x >= 2.4 ? STAGE_H/2 + 0.01 : 0;
+  return x >= 7.7 ? STAGE_H + 0.02 : x >= 7.4 ? STAGE_H/2 + 0.01 : 0;
 }
 
 item('sofa','Sofá',true,(g,solid)=>{
   box(2.4,0.45,0.9,'#7a2f3a',0,0.225,-4.4,g); box(2.4,0.55,0.22,'#6a2632',0,0.7,-4.82,g);
   box(0.22,0.65,0.9,'#6a2632',-1.21,0.325,-4.4,g); box(0.22,0.65,0.9,'#6a2632',1.21,0.325,-4.4,g);
   solid(-1.35,1.35,-4.95,-3.9);
-});
+}, -5);
 item('tarima','Tarima DJ',true,(g)=>{
   box(2.3,STAGE_H,5.0,'#2a2438',3.85,STAGE_H/2,0,g);
   box(2.28,0.02,4.98,'#3a3250',3.85,STAGE_H+0.01,0,g);
@@ -501,7 +674,7 @@ item('tarima','Tarima DJ',true,(g)=>{
   const e1 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e1.position.set(2.69,STAGE_H-0.01,0); g.add(e1);
   const e2 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e2.position.set(2.39,STAGE_H/2-0.01,0); g.add(e2);
   return {edge:em};
-});
+}, STAGE_DX);
 item('dj','Cabina DJ',true,(g0,solid)=>{
   const g = new THREE.Group(); g0.add(g);
   // mesa de la cabina, el frente mira hacia la sala (oeste)
@@ -534,59 +707,64 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   }
   solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
   return {led:led.material, discs, cones, knobs, rig:g};
-});
+}, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
   const tc = '#55506a';
-  for (const s of [-1,1]) box(0.1,2.85,0.1,tc,2.75,1.425,s*2.45,g);
-  box(0.12,0.12,5.0,tc,2.75,2.86,0,g);
+  for (const s of [-1,1]) box(0.1,2.85,0.1,tc,7.75,1.425,s*2.45,g);
+  box(0.12,0.12,5.0,tc,7.75,2.86,0,g);
   const heads = [];
   [-1.6,0,1.6].forEach((zz,k) => {
-    const pivot = new THREE.Group(); pivot.position.set(2.75,2.7,zz); g.add(pivot);
+    const pivot = new THREE.Group(); pivot.position.set(7.75,2.7,zz); g.add(pivot);
     box(0.2,0.22,0.24,'#1b1a20',0,0,0,pivot);
     const geo = new THREE.ConeGeometry(0.6,3.8,20,1,true); geo.translate(0,-1.9,0); geo.rotateX(-Math.PI/2);
     const bm = new THREE.MeshBasicMaterial({color:'#ff4fa0', transparent:true, opacity:0.14, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
     const beam = new THREE.Mesh(geo, bm); pivot.add(beam);
     const spot = new THREE.Mesh(new THREE.CircleGeometry(0.85, 28), new THREE.MeshBasicMaterial({color:'#ff4fa0', transparent:true, opacity:0.25, blending:THREE.AdditiveBlending, depthWrite:false}));
     spot.rotation.x = -Math.PI/2; spot.renderOrder = 2; g.add(spot);
-    heads.push({pivot, bm, spot, zz, k});
+    // foco real: ilumina a los personajes que pasan por debajo
+    const sp = new THREE.SpotLight('#ff4fa0', 0, 16, 0.36, 0.45, 1); sp.position.copy(pivot.position);
+    const tgt = new THREE.Object3D(); g.add(tgt); sp.target = tgt; g.add(sp);
+    heads.push({pivot, bm, spot, sp, tgt, zz, k});
   });
   // tiras LED arriba y en el zócalo de las paredes del fondo
   const strip = new THREE.MeshBasicMaterial({color:'#4fc3ff'});
-  [[10,0.05,0.04,0,2.88,-4.92],[0.04,0.05,10,-4.92,2.88,0],[10,0.04,0.03,0,0.17,-4.91],[0.03,0.04,10,-4.91,0.17,0]].forEach(([w,h,d,x,y,z]) => {
+  [[20,0.05,0.04,0,2.88,-4.92],[20,0.05,0.04,0,2.88,4.92],[0.04,0.05,10,-9.92,2.88,0],[20,0.04,0.03,0,0.17,-4.91],[20,0.04,0.03,0,0.17,4.91],[0.03,0.04,10,-9.91,0.17,0]].forEach(([w,h,d,x,y,z]) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), strip); m.position.set(x,y,z); g.add(m);
   });
   // luz de color bañando las paredes
-  const wash = [new THREE.PointLight('#7a3cff',0.9,9,2)];
-  wash[0].position.set(-3.8,2.4,-3.2); wash.forEach(l => g.add(l));
+  const wash = [new THREE.PointLight('#7a3cff',0,11,1.5), new THREE.PointLight('#ff3c8a',0,11,1.5)];
+  wash[0].position.set(-6,2.5,-2.5); wash[1].position.set(-6,2.5,2.5); wash.forEach(l => g.add(l));
   return {heads, strip, wash};
 });
 item('bola','Bola disco',true,(g)=>{
-  box(0.02,0.4,0.02,'#888',0,2.82,-0.5,g);
+  box(0.02,0.4,0.02,'#888',2,2.82,0,g);
   const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24,1), new THREE.MeshPhongMaterial({color:'#d9d9e0', shininess:120, specular:'#ffffff', flatShading:true}));
-  ball.position.set(0,2.5,-0.5); g.add(ball);
+  ball.position.set(2,2.5,0); g.add(ball);
   const lights = ['#ff4fa0','#4fc3ff'].map(c => { const l = new THREE.PointLight(c, 0.9, 7, 2); g.add(l); return l; });
   return {ball, lights};
 });
-item('planta','Planta',true,(g,solid)=>{
-  mesh(new THREE.CylinderGeometry(0.22,0.17,0.4,10), M('#a8573f'), -4.4,0.2,-4.4, g);
-  mesh(new THREE.IcosahedronGeometry(0.45,0), M('#3f7a3a'), -4.4,0.85,-4.4, g);
-  solid(-5,-3.95,-5,-3.95);
+item('planta','Macetas',true,(g,solid)=>{
+  for (const zs of [-1, 1]){ // una a cada lado
+    mesh(new THREE.CylinderGeometry(0.22,0.17,0.4,10), M('#a8573f'), -9.4,0.2,zs*4.4, g);
+    mesh(new THREE.IcosahedronGeometry(0.45,0), M('#3f7a3a'), -9.4,0.85,zs*4.4, g);
+    solid(-10,-8.95,zs > 0 ? 3.95 : -5, zs > 0 ? 5 : -3.95);
+  }
 });
 item('alfombra','Alfombra',true,(g)=>{
-  const a = new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.2), M('#5b3a7a')); a.rotation.x = -Math.PI/2; a.position.set(0,0.005,-1.6); a.receiveShadow = true; g.add(a);
-  const b = new THREE.Mesh(new THREE.PlaneGeometry(2.8,1.8), M('#7a4f9a')); b.rotation.x = -Math.PI/2; b.position.set(0,0.008,-1.6); b.receiveShadow = true; g.add(b);
+  const a = new THREE.Mesh(new THREE.PlaneGeometry(4.6,3.4,10,8), M('#5b3a7a')); a.rotation.x = -Math.PI/2; a.position.set(-5,0.005,0); a.receiveShadow = true; g.add(a);
+  const b = new THREE.Mesh(new THREE.PlaneGeometry(4.2,3.0,10,8), M('#7a4f9a')); b.rotation.x = -Math.PI/2; b.position.set(-5,0.008,0); b.receiveShadow = true; g.add(b);
 });
 item('pantallas','Pantallas de video',true,() => ({}));
 item('cama','Cama',false,(g,solid)=>{
   box(1.6,0.4,2.2,'#4a3a2c',3.95,0.2,3.75,g); box(1.5,0.14,2.1,'#e9e3d6',3.95,0.47,3.75,g);
   box(1.5,0.08,1.3,'#2c5aa8',3.95,0.56,4.1,g); box(0.6,0.14,0.35,'#f2ece0',3.95,0.6,2.9,g); box(1.6,0.8,0.1,'#4a3a2c',3.95,0.4,2.6,g);
   solid(3.1,5,2.55,4.9);
-});
+}, -11);
 applyItems();
 const DJ = ITEMS.find(i => i.id === 'dj'), BALL = ITEMS.find(i => i.id === 'bola');
 const LIGHTS = ITEMS.find(i => i.id === 'luces'), STAGE = ITEMS.find(i => i.id === 'tarima');
-const inDJZone = c => room.items.dj && c.x > 4.0 && Math.abs(c.z) < 1.02;
+const inDJZone = c => room.items.dj && c.x > 9.0 && Math.abs(c.z) < 1.02;
 
 /* ---------- personajes ---------- */
 function shade_(c, f){ return '#' + new THREE.Color(c).multiplyScalar(f).getHexString(); }
@@ -632,7 +810,7 @@ function buildCharacter(d){
   if (d.hair==='trenzas'){ cap(); for (const s of [-1,1]){ H(0.07,0.42,0.07,hc,s*0.1,1.66,-0.16); H(0.08,0.04,0.08,'#e8a32b',s*0.1,1.44,-0.16); } }
   if (d.hair==='cresta'){ H(0.08,0.15,0.3,hc,0,2.0,-0.01); }
   if (d.hair==='gorra'){ H(0.33,0.11,0.33,hc,0,1.97,0); H(0.3,0.025,0.17,hc,0,1.93,0.23); H(0.06,0.03,0.06,shade_(hc,1.5),0,2.035,0); }
-  legs.forEach(l => bake(l)); arms.forEach(a => bake(a)); bake(head); bake(body);
+  legs.forEach(l => bake(l, null, CHAR_MAT)); arms.forEach(a => bake(a, null, CHAR_MAT)); bake(head, null, CHAR_MAT); bake(body, null, CHAR_MAT);
   g.userData = {legs, arms, head, body};
   return g;
 }
@@ -643,8 +821,8 @@ ring.rotation.x = -Math.PI/2; ring.position.y = 0.015;
 function freeSpot(cx, cz, rad){
   for (let k=0;k<40;k++){
     let x, z;
-    if (rad){ const a = Math.random()*6.283, r = Math.sqrt(Math.random())*rad; x = cx + Math.cos(a)*r; z = cz + Math.sin(a)*r; if (Math.abs(x) > HALF-0.6 || Math.abs(z) > HALF-0.6) continue; }
-    else { x = (Math.random()*2-1)*(HALF-0.6); z = (Math.random()*2-1)*(HALF-0.6); }
+    if (rad){ const a = Math.random()*6.283, r = Math.sqrt(Math.random())*rad; x = cx + Math.cos(a)*r; z = cz + Math.sin(a)*r; if (Math.abs(x) > HX-0.6 || Math.abs(z) > HZ-0.6) continue; }
+    else { x = (Math.random()*2-1)*(HX-0.6); z = (Math.random()*2-1)*(HZ-0.6); }
     if (floorY(x, z) > 0) continue;
     if (colliders.some(b => x > b.minX-0.4 && x < b.maxX+0.4 && z > b.minZ-0.4 && z < b.maxZ+0.4)) continue;
     if (chars && chars.some(c => c.on && Math.hypot(c.x-x, c.z-z) < 0.8)) continue;
@@ -655,7 +833,7 @@ function freeSpot(cx, cz, rad){
 
 let chars = null;
 let sel = room.active[0];
-chars = defs.map((d,i) => ({i, x:0, z:0, rot:Math.random()*6.28, phase:0, move:0, group:null, target:null, wait:Math.random()*3, stuck:0, on:false, dj:0, dance:0, y:0}));
+chars = defs.map((d,i) => ({i, x:0, z:0, rot:Math.random()*6.28, phase:0, move:0, group:null, target:null, wait:Math.random()*3, stuck:0, on:false, dj:0, dance:0, y:0, like:0.5}));
 function mount(c){
   if (c.group) scene.remove(c.group);
   c.group = buildCharacter(defs[c.i]);
@@ -671,7 +849,7 @@ function setOn(c, v){
 }
 chars.forEach(mount);
 room.active.forEach(i => setOn(chars[i], true));
-chars[sel].x = 0.5; chars[sel].z = 1.2; chars[sel].rot = 2.3;
+chars[sel].x = 2.5; chars[sel].z = 1.5; chars[sel].rot = 2.3;
 
 /* ---------- cámara ---------- */
 let yaw = -0.6, pitch = 0.72, dist = 7.5;
@@ -691,7 +869,7 @@ function placeCamera(){
 
 /* ---------- entrada ---------- */
 const keys = {};
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !gate.hidden) return; keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || !gate.hidden) return; keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
@@ -731,7 +909,7 @@ canvas.addEventListener('pointermove', e => {
     pitch = Math.min(1.3, Math.max(0.3, pitch + (e.clientY - p.y) * 0.004));
   }
   p.x = e.clientX; p.y = e.clientY;
-  if (ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if (pinch0) dist = Math.min(12, Math.max(3.5, dist0 * pinch0 / d)); }
+  if (ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if (pinch0) dist = Math.min(16, Math.max(3.5, dist0 * pinch0 / d)); }
 });
 const ray = new THREE.Raycaster();
 function endPtr(e){
@@ -744,12 +922,12 @@ function endPtr(e){
   ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; downAt = null;
 }
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', e => { e.preventDefault(); dist = Math.min(12, Math.max(3.5, dist + e.deltaY * 0.005)); }, {passive:false});
+canvas.addEventListener('wheel', e => { e.preventDefault(); dist = Math.min(16, Math.max(3.5, dist + e.deltaY * 0.005)); }, {passive:false});
 
 /* ---------- física simple ---------- */
 function resolve(c){
-  c.x = Math.min(HALF-R, Math.max(-HALF+R, c.x));
-  c.z = Math.min(HALF-R, Math.max(-HALF+R, c.z));
+  c.x = Math.min(HX-R, Math.max(-HX+R, c.x));
+  c.z = Math.min(HZ-R, Math.max(-HZ+R, c.z));
   for (const b of colliders){
     const px = Math.max(b.minX, Math.min(c.x, b.maxX)), pz = Math.max(b.minZ, Math.min(c.z, b.maxZ));
     const dx = c.x - px, dz = c.z - pz, d = Math.hypot(dx, dz);
@@ -918,6 +1096,29 @@ function dancePose(name, P, pulse, off, o){
 const POSE_KEYS = ['a0','a1','z0','z1','l0','l1','twist','roll','lean','head','bounce'];
 const tmpPose = {};
 
+/* ---------- escenas de luces (las elige el DJ) ---------- */
+const LIGHT_PRESETS = [['rojo','Full rojo'],['dos','Dos colores'],['arcoiris','Arcoíris'],['estrobo','Estrobo'],['oceano','Océano']];
+let lightPreset = 'arcoiris';
+function presetColor(k, t, out){
+  const b = music.beats;
+  switch (lightPreset){
+    case 'rojo': out.setHSL(0.0, 1, 0.5); return 1;
+    case 'dos': out.set(((b + k) % 2) ? '#ff2fb0' : '#2fd5ff'); return 1;
+    case 'estrobo': out.set('#ffffff'); return 0.08 + Math.pow(music.pulse, 3) * 2.6;
+    case 'oceano': out.setHSL(0.52 + 0.1*Math.sin(t*0.3 + k*1.7), 0.9, 0.5); return 0.85;
+    default: out.set(PALETTE[(((b + k*2) % PALETTE.length) + PALETTE.length) % PALETTE.length]); return 1;
+  }
+}
+function presetHue(t, hueBase){
+  switch (lightPreset){
+    case 'rojo': return 0.98;
+    case 'dos': return (Math.floor(music.beats/16) % 2) ? 0.88 : 0.52;
+    case 'oceano': return 0.55 + 0.06*Math.sin(t*0.2);
+    default: return hueBase;
+  }
+}
+const lc = new THREE.Color();
+
 /* ---------- bucle ---------- */
 const clock = new THREE.Clock(); clock.start();
 const hudName = document.getElementById('hudName'), hudPos = document.getElementById('hudPos'), hudMusic = document.getElementById('hudMusic');
@@ -942,6 +1143,7 @@ function tick(){
   const djActive = live.some(c => c.dj > 0.5) || remotes.some(c => c.dj > 0.5) || !!net.djPeer || net.casting;
   analyse(t, dt);
   const groove = music.sounding ? 1 : 0; // solo se baila cuando de verdad suena música
+  botsUpdate(dt, live.filter(c => c !== me));
   party += ((music.sounding ? 1 : 0) - party) * Math.min(1, dt*1.2);
   const pulse = music.pulse;
   let ix = (keys.KeyD||keys.ArrowRight?1:0) - (keys.KeyA||keys.ArrowLeft?1:0) + joyVec.x;
@@ -961,7 +1163,7 @@ function tick(){
     } else {
       if (c.wait > 0) c.wait -= dt;
       else {
-        if (!c.target) c.target = groove > 0 ? freeSpot(0.2, 0, 2.6) : freeSpot();
+        if (!c.target) c.target = groove > 0 ? (c.like < 0.35 ? freeSpot(-5, 0, 2.8) : freeSpot(3.5, 0, 3.4)) : freeSpot(); // si no les gusta, se alejan de la pista
         const dx = c.target.x - c.x, dz = c.target.z - c.z, d = Math.hypot(dx, dz);
         if (d < 0.2 || c.stuck > 2.5){ c.target = null; c.wait = groove > 0 ? 6 + Math.random()*10 : 1 + Math.random()*4; c.stuck = 0; }
         else { vx = dx/d; vz = dz/d; speed = 1.1; }
@@ -977,7 +1179,7 @@ function tick(){
     const djNow = speed === 0 && inDJZone(c);
     c.dj += ((djNow ? 1 : 0) - c.dj) * Math.min(1, dt*6);
     if (djNow) wantRot = -Math.PI/2;
-    else if (speed === 0 && groove > 0 && c !== me && room.items.dj) wantRot = Math.atan2(3.6 - c.x, 0 - c.z); // miran a la cabina
+    else if (speed === 0 && groove > 0 && c !== me && room.items.dj) wantRot = Math.atan2(8.6 - c.x, 0 - c.z); // miran a la cabina
     if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0?12:3)); }
     c.move += ((speed > 0 ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
     c.phase += dt * (3 + moved*2.6);
@@ -992,12 +1194,13 @@ function tick(){
   const P = music.phase;
   for (const c of live.concat(remotes)){
     const g = c.group, {legs, arms, head, body} = g.userData;
-    const want = groove * (c.move < 0.25 && c.dj < 0.5 ? 1 : 0);
+    const bot = !c.id && c !== me;
+    const want = groove * (c.move < 0.25 && c.dj < 0.5 ? 1 : 0) * (bot ? (c.like > 0.3 ? 1 : 0.3) : 1);
     c.dance += (want - c.dance) * Math.min(1, dt*4);
     const dn = c.dance, d = c.dj, off = c.i * 0.7;
     const def = c.def || defs[c.i] || {};
     // en el drop cambian al segundo baile; en partes tranquilas, balanceo suave
-    const move = music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
+    const move = (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
     if (!c.pose){ c.pose = {}; POSE_KEYS.forEach(k => c.pose[k] = 0); c.spinA = 0; }
     if (dn > 0.01){
       dancePose(move, P, pulse, off, tmpPose);
@@ -1023,37 +1226,42 @@ function tick(){
   // objetos que reaccionan a la música
   const lvl = music.sounding ? Math.min(1, music.bass*1.3) : 0;
   const hueBase = (t*0.05 + music.beats*0.03) % 1;
-  if (room.items.luces){ hemi.intensity = 0.7 - 0.34*party; sun.intensity = 0.7 - 0.38*party; } else { hemi.intensity = 0.7; sun.intensity = 0.7; }
+  // con música la sala se oscurece: lo que se ve lo iluminan los focos
+  if (room.items.luces){ hemi.intensity = 0.7 - 0.56*party; sun.intensity = 0.7 - 0.6*party; } else { hemi.intensity = 0.7; sun.intensity = 0.7; }
   if (room.items.dj){
     const api = DJ.api, spin = groove ? 3.4 : 0.6;
     api.discs.forEach((dd,k) => dd.rotation.y += dt * spin * (k ? 1 : 1.03));
-    ledCol.setHSL(groove ? hueBase : 0.92, 0.85, 0.3 + party*0.15 + lvl*0.2); api.led.color.copy(ledCol);
+    if (groove){ presetColor(0, t, ledCol); ledCol.multiplyScalar(0.6 + lvl*0.4); } else ledCol.setHSL(0.92, 0.85, 0.3);
+    api.led.color.copy(ledCol);
     const pump = 1 + pulse * (groove ? 0.2 : 0.04);
     api.cones.forEach(co => co.scale.set(pump, 1, pump));
     api.knobs.forEach((k,i) => k.position.y = 1.07 + (groove ? Math.max(0, Math.sin(t*5+i))*0.015 : 0));
   }
-  if (room.items.tarima) STAGE.api.edge.color.setHSL(party > 0.5 ? (hueBase+0.5)%1 : 0.1, 0.9, 0.45 + pulse*0.2*party);
+  if (room.items.tarima){ if (party > 0.5) presetColor(1, t, STAGE.api.edge.color); else STAGE.api.edge.color.setHSL(0.1, 0.9, 0.45); }
   if (room.items.bola){
     const api = BALL.api; api.ball.rotation.y += dt * (0.6 + lvl*1.5);
     api.lights.forEach((l,k) => {
       const a = t*(0.5+lvl*0.8) + k*2.09;
-      l.position.set(Math.cos(a)*3, 0.6 + Math.sin(t*1.3+k)*0.3, -0.5 + Math.sin(a)*3);
-      l.intensity = (0.45 + pulse*0.9) * party;
+      l.position.set(2 + Math.cos(a)*3.5, 0.8 + Math.sin(t*1.3+k)*0.3, Math.sin(a)*3);
+      const m = presetColor(k + 3, t, l.color); l.intensity = (0.6 + pulse*1.0) * party * m;
     });
   }
   if (room.items.luces){
     const api = LIGHTS.api, speedL = 0.5 + lvl*0.6;
     for (const h of api.heads){
       const ang = t*speedL + h.k*2.1;
-      tmpV.set(0.3 + Math.sin(ang*1.3)*2.4, 0, h.zz*1.4 + Math.cos(ang)*2.2);
+      tmpV.set(3.5 + Math.sin(ang*1.3)*3.6, 0, h.zz*1.5 + Math.cos(ang)*2.4);
       h.pivot.lookAt(tmpV); h.spot.position.set(tmpV.x, 0.025, tmpV.z);
-      const col = PALETTE[(music.beats + h.k*2) % PALETTE.length];
-      h.bm.color.set(col); h.spot.material.color.set(col);
-      h.bm.opacity = (0.15 + pulse*0.12) * party; h.bm.visible = party > 0.02;
-      h.spot.material.opacity = (0.22 + pulse*0.35) * party; h.spot.visible = party > 0.02;
+      const m = presetColor(h.k, t, lc);
+      h.bm.color.copy(lc); h.spot.material.color.copy(lc); h.sp.color.copy(lc);
+      h.tgt.position.copy(tmpV);
+      h.sp.intensity = (2.4 + pulse*1.6) * party * m;
+      h.bm.opacity = Math.min(0.5, (0.15 + pulse*0.12) * party * m); h.bm.visible = party > 0.02;
+      h.spot.material.opacity = Math.min(0.6, (0.12 + pulse*0.25) * party * m); h.spot.visible = party > 0.02;
     }
-    ledCol.setHSL(party > 0.5 ? (hueBase + 0.33) % 1 : 0.6, 0.9, 0.18 + party*(0.17 + lvl*0.3)); api.strip.color.copy(ledCol);
-    api.wash.forEach((w,k) => { w.color.setHSL((hueBase + k*0.4) % 1, 0.9, 0.5); w.intensity = (0.5 + music.mids*1.2 + pulse*0.3) * party; });
+    if (party > 0.5){ presetColor(2, t, ledCol); ledCol.multiplyScalar(0.5 + lvl*0.5); } else ledCol.setHSL(0.6, 0.9, 0.18);
+    api.strip.color.copy(ledCol);
+    api.wash.forEach((w,k) => { const m = presetColor(k + 5, t, w.color); w.intensity = (0.7 + music.mids*1.4 + pulse*0.4) * party * m; });
   }
 
   camTarget.lerp(tmpV.set(me.x, 1 + me.y, me.z), Math.min(1, dt*6));
@@ -1342,18 +1550,100 @@ listInputs();
 
 /* ---------- sala en línea (conexión directa entre navegadores) ---------- */
 // Cada persona que abre la página entra a la misma sala. Se comparten:
-//  · pose: posición del personaje que controlas (10 veces por segundo)
-//  · look: cómo se ve tu personaje y su nombre
-//  · dj:   quién está transmitiendo en vivo y qué suena
-// El audio del DJ viaja directo a cada oyente, y cada computador detecta el ritmo de lo que escucha.
+//  · pose / look: tu personaje, su nombre y tu identidad (una llave pública que crea tu navegador)
+//  · sched: la agenda de DJs, firmada por el administrador (nadie más puede cambiarla)
+//  · dj:    quién transmite; cada oyente comprueba la firma y que esa persona tenga el turno
+//  · chat:  mensajes del chat público
 const APP_ID = 'fr3d-ai-dj-studio-v1', ROOM_ID = 'sala-principal';
-const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null,
+const ADMIN_PUB = {"kty":"EC","crv":"P-256","x":"8Aw3iZhKvA31h_dY9UD385pduBy5Z_8IrgQxEX7w5Cg","y":"Z36uKz-fFRIxZf5lNopu0MuVw2ri95II6Gmq1iutves"};
+const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null, pending:new Map(),
   casting:false, castSince:0, castDest:null, remoteAudio:null, remoteNode:null, remoteStream:null, actions:{}};
 const netEl = {
   state: document.getElementById('netState'), djNow: document.getElementById('djNow'), people: document.getElementById('people'),
   cast: document.getElementById('castBtn'), hear: document.getElementById('hearBtn'), note: document.getElementById('castNote'),
   banner: document.getElementById('liveBanner')
 };
+
+/* --- firmas (WebCrypto, ECDSA P-256) --- */
+const enc = new TextEncoder();
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const ub64u = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+const ALG = {name:'ECDSA', namedCurve:'P-256'}, SIG = {name:'ECDSA', hash:'SHA-256'};
+const pubCache = new Map();
+function pubKeyOf(jwk){ return jwk.x + '.' + jwk.y; }
+function jwkOf(pubKey){ const [x, y] = String(pubKey).split('.'); return {kty:'EC', crv:'P-256', x, y, ext:true}; }
+async function importPub(pubKey){
+  if (!pubCache.has(pubKey)) pubCache.set(pubKey, crypto.subtle.importKey('jwk', jwkOf(pubKey), ALG, false, ['verify']));
+  return pubCache.get(pubKey);
+}
+async function signStr(key, str){ return b64u(await crypto.subtle.sign(SIG, key, enc.encode(str))); }
+async function verifyStr(pubKey, str, sig){
+  try { return await crypto.subtle.verify(SIG, await importPub(pubKey), ub64u(String(sig)), enc.encode(str)); } catch(e){ return false; }
+}
+const ADMIN_KEY_ID = pubKeyOf(ADMIN_PUB);
+
+/* --- tu identidad: un par de llaves que vive solo en este navegador --- */
+const ident = {pub:null, priv:null};
+async function loadIdentity(){
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('dj-identidad')); } catch(e){}
+  try {
+    if (saved && saved.d){ ident.priv = await crypto.subtle.importKey('jwk', {...saved, ext:true}, ALG, false, ['sign']); ident.pub = pubKeyOf(saved); return; }
+  } catch(e){}
+  const kp = await crypto.subtle.generateKey(ALG, true, ['sign','verify']);
+  const jwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
+  try { localStorage.setItem('dj-identidad', JSON.stringify({kty:jwk.kty, crv:jwk.crv, x:jwk.x, y:jwk.y, d:jwk.d})); } catch(e){}
+  ident.priv = kp.privateKey; ident.pub = pubKeyOf(jwk);
+}
+
+/* --- administrador --- */
+const admin = {key:null};
+async function activateAdmin(code, quiet){
+  try {
+    const jwk = JSON.parse(new TextDecoder().decode(ub64u(String(code).trim().replace(/^DJADMIN-/, ''))));
+    if (pubKeyOf(jwk) !== ADMIN_KEY_ID) throw new Error('otra clave');
+    admin.key = await crypto.subtle.importKey('jwk', {kty:'EC', crv:'P-256', x:jwk.x, y:jwk.y, d:jwk.d, ext:true}, ALG, false, ['sign']);
+    try { localStorage.setItem('dj-admin', String(code).trim()); } catch(e){}
+    renderRole(); return true;
+  } catch(e){ if (!quiet) adminEl.note.textContent = 'Esa clave no es la del administrador. Revisa que la copiaste completa.'; return false; }
+}
+function isAdmin(){ return !!admin.key; }
+
+/* --- agenda de DJs (firmada por el admin) --- */
+let sched = {v:0, slots:[]}, schedSigned = null;
+function activeSlot(now = Date.now()){ return sched.slots.find(s => now >= s.start && now < s.end) || null; }
+function nextSlot(now = Date.now()){ return sched.slots.filter(s => s.start > now).sort((a,b) => a.start - b.start)[0] || null; }
+async function adoptSchedule(signed, fromNet){
+  if (!signed || typeof signed.data !== 'string' || signed.data.length > 20000) return false;
+  if (!(await verifyStr(ADMIN_KEY_ID, signed.data, signed.sig))) return false;
+  let d; try { d = JSON.parse(signed.data); } catch(e){ return false; }
+  if (!d || !Array.isArray(d.slots) || !(d.v > sched.v)) return false;
+  sched = {v: d.v, slots: d.slots.filter(s => s && typeof s.pub === 'string' && s.end > s.start).map(s => ({id: String(s.id), name: String(s.name).slice(0,14), pub: s.pub, start: +s.start, end: +s.end}))};
+  schedSigned = signed;
+  try { localStorage.setItem('dj-agenda', JSON.stringify(signed)); } catch(e){}
+  renderAgenda(); renderNet(); return true;
+}
+async function publishSchedule(){
+  if (!isAdmin()) return;
+  const data = JSON.stringify({v: Date.now(), slots: sched.slots.filter(s => s.end > Date.now() - 3600e3)});
+  const signed = {data, sig: await signStr(admin.key, data)};
+  sched.v = 0; await adoptSchedule(signed);
+  if (net.actions.sched) net.actions.sched.send(signed);
+}
+
+/* --- quién puede transmitir --- */
+// Con un turno activo, solo la persona de ese turno. Sin turno, solo el administrador.
+function canCast(){ const a = activeSlot(); return a ? a.pub === ident.pub : isAdmin(); }
+function castPubFor(){ const a = activeSlot(); return a ? ident.pub : (isAdmin() ? 'admin' : null); }
+async function djAuthorized(peerId, d){
+  if (!d || typeof d.sig !== 'string') return false;
+  const a = activeSlot(), msg = 'dj|' + peerId + '|' + d.since;
+  if (d.pub === 'admin') return !a && verifyStr(ADMIN_KEY_ID, msg, d.sig);
+  return !!a && d.pub === a.pub && verifyStr(d.pub, msg, d.sig);
+}
+
+/* --- personas conectadas --- */
+const known = (() => { try { return JSON.parse(localStorage.getItem('dj-conocidos')) || {}; } catch(e){ return {}; } })();
+function remember(pub, name){ if (!pub || !name) return; known[pub] = {name, at: Date.now()}; try { localStorage.setItem('dj-conocidos', JSON.stringify(known)); } catch(e){} }
 function hashStyle(id){ let h = 0; for (const ch of id) h = (h*31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
 function nameTag(text){
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
@@ -1370,7 +1660,7 @@ function myDef(){ return {...defs[sel], name: defs[sel].name || 'Invitado'}; }
 function ensurePeer(id){
   let r = net.peers.get(id);
   if (!r){
-    r = {id, i: hashStyle(id), x:0, z:2, y:0, rot:0, tx:0, tz:2, trot:0, phase:0, move:0, dj:0, dance:0, group:null, def:null, tag:null, seen:false};
+    r = {id, i: hashStyle(id), x:0, z:2, y:0, rot:0, tx:0, tz:2, trot:0, phase:0, move:0, dj:0, dance:0, group:null, def:null, tag:null, seen:false, pub:null, chatAt:0};
     net.peers.set(id, r);
   }
   return r;
@@ -1384,7 +1674,7 @@ function buildRemote(r){
 function removePeer(id){
   const r = net.peers.get(id); if (!r) return;
   if (r.group) scene.remove(r.group);
-  net.peers.delete(id);
+  net.peers.delete(id); net.pending.delete(id);
   if (net.djPeer === id) endRemoteDJ();
   renderNet();
 }
@@ -1394,7 +1684,7 @@ function updateRemotes(dt){
   for (const r of net.peers.values()){
     if (!r.group || !r.seen) continue;
     const ox = r.x, oz = r.z;
-    if (Math.hypot(r.tx - r.x, r.tz - r.z) > 3){ r.x = r.tx; r.z = r.tz; } // salto grande: teletransporta
+    if (Math.hypot(r.tx - r.x, r.tz - r.z) > 3){ r.x = r.tx; r.z = r.tz; }
     else { r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k; }
     r.rot += Math.atan2(Math.sin(r.trot - r.rot), Math.cos(r.trot - r.rot)) * k;
     const sp = Math.hypot(r.x - ox, r.z - oz) / dt || 0;
@@ -1406,47 +1696,60 @@ function updateRemotes(dt){
 }
 function setNetState(text, on){ netEl.state.textContent = text; netEl.state.classList.toggle('on', !!on); }
 function djName(){ if (net.casting) return myDef().name; const r = net.djPeer && net.peers.get(net.djPeer); return r && r.def ? r.def.name : (net.dj && net.dj.name) || 'Alguien'; }
+const fmtTime = ms => new Date(ms).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
+const fmtDay = ms => new Date(ms).toLocaleDateString('es-CL', {weekday:'short', day:'numeric', month:'short'});
 function renderNet(){
   const n = net.peers.size + 1;
   if (net.online) setNetState(n === 1 ? 'Solo tú' : n + ' conectados', true);
   netEl.people.innerHTML = '';
   const add = (name, me, isDj) => { const s = document.createElement('span'); s.className = 'person' + (me ? ' me' : '') + (isDj ? ' dj' : ''); s.textContent = (isDj ? '🎧 ' : '') + name + (me ? ' (tú)' : ''); netEl.people.append(s); };
   if (net.online){
-    add(myDef().name, true, net.casting);
+    add(myDef().name + (isAdmin() ? ' · admin' : ''), true, net.casting);
     for (const r of net.peers.values()) add(r.def ? r.def.name : 'Conectando…', false, r.id === net.djPeer);
   }
-  const someoneLive = net.casting || !!net.djPeer;
-  if (net.casting) netEl.djNow.textContent = 'Estás transmitiendo en vivo' + (castTrack() ? ': ' + castTrack() : '');
-  else if (net.djPeer) netEl.djNow.textContent = djName() + ' está tocando en vivo' + (net.dj && net.dj.track ? ': ' + net.dj.track : '');
-  else netEl.djNow.textContent = 'Nadie está tocando en vivo';
+  const live = net.casting || !!net.djPeer, a = activeSlot(), nx = nextSlot();
+  if (net.casting) netEl.djNow.textContent = 'Estás transmitiendo en vivo';
+  else if (net.djPeer) netEl.djNow.textContent = djName() + ' está tocando en vivo';
+  else if (a) netEl.djNow.textContent = 'Turno de ' + a.name + ' (hasta ' + fmtTime(a.end) + '), aún no empieza a transmitir';
+  else netEl.djNow.textContent = 'Nadie está tocando en vivo' + (nx ? ' · Próximo: ' + nx.name + ', ' + fmtDay(nx.start) + ' ' + fmtTime(nx.start) : '');
+  const allowed = canCast();
+  netEl.cast.hidden = !allowed && !net.casting;
   netEl.cast.disabled = !net.online || (!!net.djPeer && !net.casting);
-  netEl.cast.textContent = net.casting ? 'Terminar transmisión' : 'Transmitir a la sala';
+  netEl.cast.textContent = net.casting ? 'Terminar transmisión' : 'Compartir sonido con la sala';
   netEl.cast.classList.toggle('live', net.casting);
-  netEl.banner.hidden = !someoneLive;
-  if (someoneLive) netEl.banner.textContent = 'EN VIVO · ' + djName() + (net.casting ? ' (tú)' : '') + (net.dj && net.dj.track && !net.casting ? ' · ' + net.dj.track : net.casting && castTrack() ? ' · ' + castTrack() : '');
+  if (!allowed && !net.casting) netEl.note.textContent = a ? 'Ahora toca ' + a.name + '. Solo el DJ con turno puede transmitir.' : 'Solo los DJs autorizados por el administrador pueden transmitir. Mira la agenda más abajo.';
+  else if (!net.casting) netEl.note.textContent = a ? 'Es tu turno hasta las ' + fmtTime(a.end) + '. Abre tu software de DJ y comparte el sonido.' : 'Como administrador puedes transmitir cuando no hay un turno programado.';
+  netEl.banner.hidden = !live;
+  if (live) netEl.banner.textContent = 'EN VIVO · ' + djName() + (net.casting ? ' (tú)' : '');
+  musicSec.hidden = !(allowed || net.casting);
+  djBar.hidden = !net.casting;
 }
-function castTrack(){ return music.source === 'live' ? 'Rekordbox en vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
-function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince}; }
+function castTrack(){ return music.source === 'live' ? 'En vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
+let castSig = null, castPub = null;
+function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince, lp: lightPreset, pub: castPub, sig: castSig}; }
 
 // transmitir
-function startCast(){
-  if (!net.room) return;
+async function startCast(){
+  if (!net.room || !canCast()) return;
   ensureAudio(); if (!actx) return;
   if (actx.state === 'suspended') actx.resume();
   if (!(music.source === 'live' || (cur >= 0 && !audioEl.paused))){
-    netEl.note.textContent = 'Elige la pantalla y activa “Compartir audio del sistema” para transmitir lo que suena en Rekordbox.';
-    captureSystemAudio().then(ok => { if (ok) startCast(); else netEl.note.textContent = sysNote.textContent; });
-    return;
+    netEl.note.textContent = 'Elige la pantalla y activa “Compartir audio del sistema” para transmitir lo que suena en tu software de DJ.';
+    const ok = await captureSystemAudio();
+    if (!ok){ netEl.note.textContent = sysNote.textContent; djTurnNote.textContent = sysNote.textContent; return; }
   }
   if (!net.castDest){ net.castDest = actx.createMediaStreamDestination(); analyser.connect(net.castDest); }
-  net.casting = true; net.castSince = Date.now();
+  net.castSince = Date.now(); castPub = castPubFor();
+  castSig = await signStr(castPub === 'admin' ? admin.key : ident.priv, 'dj|' + net.selfId + '|' + net.castSince);
+  net.casting = true;
   net.room.addStream(net.castDest.stream);
   net.actions.dj.send(djPayload());
-  // tu personaje sube a la cabina
   const me = chars[sel];
-  if (room.items.dj){ me.x = 4.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
+  if (room.items.dj){ me.x = 9.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
   netEl.note.textContent = 'Estás en vivo. Todos los conectados escuchan tu música y bailan contigo.';
+  addChat({kind:'system', text: '🎧 ' + myDef().name + ' está en vivo'});
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch(e){}
+  djTurn.hidden = true;
   renderNet();
 }
 function stopCast(silent){
@@ -1457,7 +1760,7 @@ function stopCast(silent){
   netEl.note.textContent = 'Transmisión terminada.';
   renderNet();
 }
-// escuchar al DJ remoto
+// escuchar al DJ
 function playRemote(stream){
   ensureAudio(); if (!actx) return;
   if (net.casting) stopCast();
@@ -1467,7 +1770,7 @@ function playRemote(stream){
   if (!net.remoteAudio){ net.remoteAudio = new Audio(); net.remoteAudio.autoplay = true; }
   net.remoteAudio.srcObject = stream; net.remoteAudio.volume = +volIn.value;
   net.remoteNode = actx.createMediaStreamSource(stream);
-  net.remoteNode.connect(analyser); outGain.gain.value = 0; // suena por el elemento de audio, no doble
+  net.remoteNode.connect(analyser); outGain.gain.value = 0;
   music.source = 'remote'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9;
   const tryPlay = () => net.remoteAudio.play().then(() => { netEl.hear.hidden = true; if (actx.state === 'suspended') actx.resume(); }).catch(() => { netEl.hear.hidden = false; });
   tryPlay();
@@ -1493,7 +1796,8 @@ function sendPose(){
   lastPose = key; lastPoseAt = now; net.actions.pose.send(p);
 }
 let lookTimer = 0;
-function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { if (net.room) net.actions.look.send(myDef()); renderNet(); }, 150); }
+function lookPayload(){ return {...myDef(), pub: ident.pub}; }
+function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { if (net.room) net.actions.look.send(lookPayload()); remember(ident.pub, myDef().name); renderNet(); renderAgenda(); }, 150); }
 
 async function connect(){
   setNetState('Conectando…', false);
@@ -1503,10 +1807,13 @@ async function connect(){
   const roomObj = mod.joinRoom({appId: APP_ID}, ROOM_ID);
   net.room = roomObj; net.selfId = mod.selfId; net.online = true;
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
-  net.actions = {pose, look, dj};
+  const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat');
+  net.actions = {pose, look, dj, sched: schedA, chat};
+  remember(ident.pub, myDef().name);
   roomObj.onPeerJoin = id => {
     ensurePeer(id);
-    look.send(myDef(), {target: id});
+    look.send(lookPayload(), {target: id});
+    if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
     if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castDest.stream, {target: id}); }
     renderNet();
@@ -1518,36 +1825,216 @@ async function connect(){
     const clean = {...DEFAULTS[0]};
     for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
-    r.def = clean; buildRemote(r); renderNet();
+    if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
+    const isNew = !r.def;
+    r.def = clean; buildRemote(r); renderNet(); renderAgenda();
+    if (isNew) addChat({kind:'system', text: clean.name + ' entró a la sala'});
   };
   pose.onMessage = (p, meta) => {
     const id = meta && meta.peerId || meta; if (!Array.isArray(p)) return;
     const r = ensurePeer(id);
-    r.tx = Math.max(-HALF, Math.min(HALF, +p[0] || 0)); r.tz = Math.max(-HALF, Math.min(HALF, +p[1] || 0)); r.trot = +p[2] || 0;
+    r.tx = Math.max(-HX, Math.min(HX, +p[0] || 0)); r.tz = Math.max(-HZ, Math.min(HZ, +p[1] || 0)); r.trot = +p[2] || 0;
     if (!r.seen){ r.seen = true; r.x = r.tx; r.z = r.tz; r.rot = r.trot; if (r.group) scene.add(r.group); }
   };
-  dj.onMessage = (d, meta) => {
+  schedA.onMessage = d => { adoptSchedule(d, true); };
+  chat.onMessage = (d, meta) => {
+    const id = meta && meta.peerId || meta; if (!d || typeof d.text !== 'string') return;
+    const r = ensurePeer(id), now = performance.now();
+    if (now - r.chatAt < 600) return; r.chatAt = now; // anti-spam
+    const text = d.text.replace(/\s+/g, ' ').trim().slice(0, 200); if (!text) return;
+    addChat({kind:'user', who: r.def ? r.def.name : String(d.name || 'Invitado').slice(0,14), text});
+  };
+  const djChecks = new Map();
+  dj.onMessage = async (d, meta) => {
     const id = meta && meta.peerId || meta; if (!d || typeof d !== 'object') return;
     if (d.on){
-      // si dos transmiten a la vez, gana quien empezó primero
-      if (net.casting && (net.castSince < d.since || (net.castSince === d.since && net.selfId < id))) return;
-      if (net.casting){ stopCast(true); netEl.note.textContent = (d.name || 'Otra persona') + ' empezó a transmitir antes que tú.'; }
-      net.djPeer = id; net.dj = {name: String(d.name || '').slice(0,14), track: String(d.track || '').slice(0,60), since: +d.since || 0};
-      if (net.remoteStream && music.source !== 'remote') playRemote(net.remoteStream);
+      const key = id + '|' + d.since + '|' + d.sig + '|' + (activeSlot() || {}).id;
+      if (!djChecks.has(key)) djChecks.set(key, djAuthorized(id, d));
+      if (!(await djChecks.get(key))) return; // no autorizado: se ignora
+      if (net.casting) stopCast(true);
+      const wasDj = net.djPeer === id;
+      net.djPeer = id; net.dj = {name: String(d.name || '').slice(0,14), since: +d.since || 0, msg: d};
+      if (LIGHT_PRESETS.some(p => p[0] === d.lp)) lightPreset = d.lp;
+      const st = net.pending.get(id);
+      if (st && net.remoteStream !== st) playRemote(st);
+      if (!wasDj) addChat({kind:'system', text: '🎧 ' + djName() + ' está en vivo'});
     } else if (net.djPeer === id) endRemoteDJ();
-    renderNet();
+    renderNet(); renderLightRow();
   };
   roomObj.onPeerStream = (stream, id) => {
-    net.djPeer = net.djPeer || id;
-    if (id === net.djPeer) playRemote(stream); else net.remoteStream = stream;
+    net.pending.set(id, stream);
+    if (id === net.djPeer) playRemote(stream);
     renderNet();
   };
   setInterval(sendPose, 100);
-  setInterval(() => { if (net.casting) dj.send(djPayload()); renderNet(); }, 3000);
+  setInterval(() => {
+    if (net.casting){ if (!canCast()){ stopCast(); addChat({kind:'system', text:'Tu turno terminó. ¡Gracias por tocar!'}); } else dj.send(djPayload()); }
+    // si el turno del DJ que suena terminó, se deja de escuchar
+    if (net.djPeer && net.dj && net.dj.msg){ djAuthorized(net.djPeer, net.dj.msg).then(ok => { if (!ok) endRemoteDJ(); }); }
+    checkMyTurn(); renderNet(); renderAgenda();
+  }, 3000);
   renderNet();
 }
 
+/* ---------- aviso: es tu turno ---------- */
+const djTurn = document.getElementById('djTurn'), djTurnNote = document.getElementById('djTurnNote');
+const shownTurns = new Set();
+let lastSlotAnnounced = null;
+function checkMyTurn(){
+  const a = activeSlot();
+  if (a && a.id !== lastSlotAnnounced){ lastSlotAnnounced = a.id; addChat({kind:'system', text: 'Ahora toca: ' + a.name + ' hasta las ' + fmtTime(a.end)}); }
+  if (a && a.pub === ident.pub && !net.casting && !shownTurns.has(a.id) && gate.hidden){
+    shownTurns.add(a.id);
+    djTurnNote.textContent = 'Tu turno: ' + fmtTime(a.start) + ' – ' + fmtTime(a.end) + '. Usa Chrome o Edge (en Mac, Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
+    djTurn.hidden = false;
+  }
+}
+document.getElementById('djTurnGo').addEventListener('click', () => startCast());
+document.getElementById('djTurnLater').addEventListener('click', () => { djTurn.hidden = true; });
+
+/* ---------- barra del DJ: escenas de luces ---------- */
+const djBar = document.getElementById('djBar'), lightRow = document.getElementById('lightRow'), musicSec = document.getElementById('musicSec');
+function renderLightRow(){
+  lightRow.innerHTML = '';
+  LIGHT_PRESETS.forEach(([id, label], k) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'opt';
+    b.textContent = (k + 1) + ' · ' + label; b.setAttribute('aria-pressed', lightPreset === id);
+    b.addEventListener('click', () => { lightPreset = id; renderLightRow(); if (net.casting) net.actions.dj.send(djPayload()); });
+    lightRow.append(b);
+  });
+}
+document.getElementById('djBarStop').addEventListener('click', () => stopCast());
+
+/* ---------- agenda y admin: interfaz ---------- */
+const agendaEl = document.getElementById('agendaList'), adminEl = {
+  box: document.getElementById('adminBox'), form: document.getElementById('slotForm'), who: document.getElementById('slotWho'),
+  day: document.getElementById('slotDay'), from: document.getElementById('slotFrom'), to: document.getElementById('slotTo'),
+  note: document.getElementById('adminNote'), state: document.getElementById('adminState'), key: document.getElementById('adminKey'),
+  login: document.getElementById('adminLogin'), logout: document.getElementById('adminLogout'), loginBox: document.getElementById('adminLoginBox'),
+  slotNote: document.getElementById('slotNote')
+};
+function renderAgenda(){
+  const now = Date.now();
+  const list = sched.slots.filter(s => s.end > now).sort((a,b) => a.start - b.start);
+  agendaEl.innerHTML = '';
+  if (!list.length){ const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'No hay DJs programados.'; agendaEl.append(li); }
+  for (const s of list){
+    const li = document.createElement('li'); if (now >= s.start) li.className = 'nowon';
+    const t = document.createElement('span'); t.textContent = (now >= s.start ? 'Ahora · ' : fmtDay(s.start) + ' · ') + fmtTime(s.start) + '–' + fmtTime(s.end);
+    const n = document.createElement('b'); n.textContent = s.name + (s.pub === ident.pub ? ' (tú)' : '');
+    li.append(n, t);
+    if (isAdmin()){
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'btn'; x.textContent = 'Quitar';
+      x.setAttribute('aria-label', 'Quitar turno de ' + s.name);
+      x.addEventListener('click', () => { sched.slots = sched.slots.filter(o => o.id !== s.id); publishSchedule(); });
+      li.append(x);
+    }
+    agendaEl.append(li);
+  }
+  if (isAdmin()){
+    const prev = adminEl.who.value;
+    const online = new Set([ident.pub, ...[...net.peers.values()].map(r => r.pub).filter(Boolean)]);
+    const entries = Object.entries(known).sort((a,b) => (online.has(b[0]) - online.has(a[0])) || a[1].name.localeCompare(b[1].name));
+    adminEl.who.innerHTML = '';
+    for (const [pub, k] of entries){ const o = document.createElement('option'); o.value = pub; o.textContent = k.name + (pub === ident.pub ? ' (tú)' : '') + (online.has(pub) ? ' · en línea' : ''); adminEl.who.append(o); }
+    if (prev && known[prev]) adminEl.who.value = prev;
+  }
+}
+function renderRole(){
+  const on = isAdmin();
+  adminEl.box.hidden = !on; adminEl.loginBox.hidden = on; adminEl.logout.hidden = !on;
+  adminEl.state.textContent = on ? 'Activo' : 'Inactivo'; adminEl.state.classList.toggle('on', on);
+  renderAgenda(); renderNet();
+}
+adminEl.login.addEventListener('click', async () => {
+  const ok = await activateAdmin(adminEl.key.value);
+  if (ok){ adminEl.key.value = ''; adminEl.note.textContent = 'Modo administrador activo en este navegador.'; }
+});
+adminEl.logout.addEventListener('click', () => { admin.key = null; try { localStorage.removeItem('dj-admin'); } catch(e){} adminEl.note.textContent = 'Saliste del modo administrador.'; if (net.casting && !canCast()) stopCast(); renderRole(); });
+(function(){ const d = new Date(); adminEl.day.value = d.toISOString().slice(0,10); const h = (d.getHours()+1) % 24; adminEl.from.value = String(h).padStart(2,'0') + ':00'; adminEl.to.value = String((h+1)%24).padStart(2,'0') + ':00'; })();
+adminEl.form.addEventListener('submit', e => {
+  e.preventDefault();
+  const pub = adminEl.who.value;
+  if (!pub || !known[pub]){ adminEl.slotNote.textContent = 'Elige a la persona. Aparece en la lista cuando ha entrado a la sala al menos una vez.'; return; }
+  const [Y, Mo, D] = adminEl.day.value.split('-').map(Number), [h1, m1] = adminEl.from.value.split(':').map(Number), [h2, m2] = adminEl.to.value.split(':').map(Number);
+  if (!Y || isNaN(h1) || isNaN(h2)){ adminEl.slotNote.textContent = 'Completa la fecha y las horas.'; return; }
+  const start = new Date(Y, Mo-1, D, h1, m1).getTime(); let end = new Date(Y, Mo-1, D, h2, m2).getTime();
+  if (end <= start) end += 24*3600e3; // termina pasada la medianoche
+  if (end <= Date.now()){ adminEl.slotNote.textContent = 'Ese horario ya pasó.'; return; }
+  const clash = sched.slots.find(s => start < s.end && end > s.start);
+  if (clash){ adminEl.slotNote.textContent = 'Se cruza con el turno de ' + clash.name + ' (' + fmtTime(clash.start) + '–' + fmtTime(clash.end) + ').'; return; }
+  sched.slots.push({id: Math.random().toString(36).slice(2,10), name: known[pub].name, pub, start, end});
+  adminEl.slotNote.textContent = 'Turno agregado: ' + known[pub].name + ', ' + fmtDay(start) + ' ' + fmtTime(start) + '–' + fmtTime(end) + '.';
+  publishSchedule();
+});
+
+/* ---------- chat público ---------- */
+const chatLog = document.getElementById('chatLog'), chatForm = document.getElementById('chatForm'), chatIn = document.getElementById('chatIn');
+const chatBox = document.getElementById('chat'), chatBtn = document.getElementById('chatBtn'), chatBadge = document.getElementById('chatBadge');
+let unread = 0, lastSend = 0;
+function addChat({kind, who, text}){
+  const row = document.createElement('div'); row.className = 'msg ' + kind;
+  if (who){ const n = document.createElement('b'); n.textContent = who; row.append(n, ' '); }
+  row.append(text);
+  chatLog.append(row);
+  while (chatLog.children.length > 80) chatLog.firstChild.remove();
+  chatLog.scrollTop = chatLog.scrollHeight;
+  if (chatBox.classList.contains('closed') && kind !== 'bot'){ unread++; chatBadge.textContent = unread; chatBadge.hidden = false; }
+}
+chatForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const text = chatIn.value.replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (!text) return;
+  const now = performance.now(); if (now - lastSend < 700) return; lastSend = now;
+  addChat({kind:'me', who: myDef().name, text});
+  if (net.actions.chat) net.actions.chat.send({text, name: myDef().name});
+  chatIn.value = '';
+});
+chatBtn.addEventListener('click', () => {
+  const closed = chatBox.classList.toggle('closed');
+  chatBtn.setAttribute('aria-expanded', !closed);
+  if (!closed){ unread = 0; chatBadge.hidden = true; chatIn.focus(); chatLog.scrollTop = chatLog.scrollHeight; }
+});
+if (matchMedia('(max-width: 640px)').matches){ chatBox.classList.add('closed'); chatBtn.setAttribute('aria-expanded', 'false'); }
+
+/* ---------- los bots: gusto musical y reacciones ---------- */
+const LOVE = ['🔥','🙌','💃','🕺','😍','🎉','⚡'], OK = ['🙂','👍','🎶','😎'], MEH = ['😐','🥱','👎','🙉','😬'];
+const pick = a => a[Math.floor(Math.random()*a.length)];
+function tasteOf(i){ const lo = 96 + (i*13) % 36; return {lo, hi: lo + 18 + (i*7) % 16, bass: (i % 3)/2, react: 4 + Math.random()*26}; }
+let tasteT = 0;
+function botsUpdate(dt, bots){
+  if (!music.sounding){ for (const c of bots) c.like += (0.5 - c.like) * Math.min(1, dt*0.2); return; }
+  tasteT += dt;
+  const bpm = music.bpm || 122;
+  for (const c of bots){
+    if (!c.taste) c.taste = tasteOf(c.i);
+    const t = c.taste;
+    if (tasteT > 3){
+      const dist = bpm < t.lo ? t.lo - bpm : bpm > t.hi ? bpm - t.hi : 0;
+      let target = 0.55 + (dist === 0 ? 0.25 : -Math.min(0.45, dist/25)) + (music.fast - 0.3) * (t.bass - 0.4) + (music.drop ? 0.15 : 0) + (Math.random() - 0.5) * 0.12;
+      c.likeTarget = Math.max(0, Math.min(1, target));
+    }
+    c.like += ((c.likeTarget ?? 0.5) - c.like) * Math.min(1, dt*0.4);
+    t.react -= dt;
+    const dropHype = music.dropStart && c.like > 0.6 && Math.random() < 0.45 && t.react < 20;
+    if (t.react <= 0 || dropHype){
+      const set = c.like > 0.68 ? LOVE : c.like > 0.42 ? OK : MEH;
+      addChat({kind:'bot', who: defs[c.i].name, text: pick(set) + (Math.random() < 0.3 ? pick(set) : '')});
+      t.react = 20 + Math.random()*35;
+    }
+  }
+  if (tasteT > 3) tasteT = 0;
+}
+
 window.__netReady = true;
+const identityReady = (async () => {
+  try { await loadIdentity(); } catch(e){ ident.pub = 'sin-llave-' + Math.random().toString(36).slice(2); }
+  let code = null; try { code = localStorage.getItem('dj-admin'); } catch(e){}
+  if (code) await activateAdmin(code, true);
+  let saved = null; try { saved = JSON.parse(localStorage.getItem('dj-agenda')); } catch(e){}
+  if (saved) await adoptSchedule(saved);
+  renderRole(); renderLightRow();
+})();
 
 /* ---------- entrada: nombre obligatorio ---------- */
 const gate = document.getElementById('gate'), gateForm = document.getElementById('gateForm'), gateName = document.getElementById('gateName'), gateErr = document.getElementById('gateErr');
@@ -1563,7 +2050,7 @@ gateForm.addEventListener('submit', e => {
   gate.hidden = true;
   // el clic de "Entrar" desbloquea el audio: así se escucha al DJ sin tocar nada más
   ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
-  connect();
+  identityReady.then(() => { connect(); checkMyTurn(); });
   setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = '0'; }, 12000);
 });
 
