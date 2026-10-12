@@ -26,7 +26,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
   background:rgba(23,20,31,.72);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
 .hud b{font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.02em;color:var(--accent)}
 .hud span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.hint{position:absolute;right:68px;top:12px;transition:opacity .6s;max-width:min(300px,45%);font-size:12px;line-height:1.35;color:var(--muted);
+.hint{position:absolute;left:50%;transform:translateX(-50%);top:12px;max-width:min(440px,46%)!important;transition:opacity .6s;max-width:min(300px,45%);font-size:12px;line-height:1.35;color:var(--muted);
   background:rgba(23,20,31,.72);border:1px solid var(--line);border-radius:8px;padding:7px 10px;pointer-events:none}
 .joy{position:absolute;left:18px;bottom:18px;width:110px;height:110px;border-radius:50%;
   background:rgba(242,236,224,.08);border:2px solid rgba(242,236,224,.25);touch-action:none}
@@ -46,6 +46,10 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .gear{position:absolute;right:12px;top:12px;z-index:5;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);
   background:rgba(23,20,31,.8);color:var(--fg);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .gear:hover{border-color:var(--accent)}
+.viewbtn{position:absolute;right:68px;top:12px;z-index:5;height:46px;padding:0 12px;border-radius:12px;border:1px solid var(--line);
+  background:rgba(23,20,31,.8);color:var(--fg);font:700 14px var(--body);cursor:pointer;white-space:nowrap}
+.viewbtn:hover,.viewbtn[aria-pressed="true"]{border-color:var(--accent)}
+.viewbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .gear svg{width:24px;height:24px}
 .gear:focus-visible,.close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;
@@ -148,6 +152,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .djbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
   max-width:calc(100% - 720px);min-width:300px;background:rgba(23,20,31,.88);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .djbar .opt{padding:4px 10px;font-size:13px}
+.logobox{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px}
+#logoPrev{width:56px;height:40px;object-fit:contain;background:#a3a3ae;border-radius:6px;padding:3px}
 .bpmtag{font:400 14px var(--display);color:var(--live);font-variant-numeric:tabular-nums;white-space:nowrap}
 .agenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .agenda li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
@@ -222,6 +228,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     </div>
     <div class="drop" id="drop" hidden>Suelta tus pistas para ponerlas en la sala</div>
     <div class="hint" id="hint"></div>
+ <button class="viewbtn" id="viewBtn" type="button" aria-pressed="false" title="Cambiar cámara (tecla V)">3ª persona</button>
     <button class="gear" id="gearBtn" type="button" aria-label="Abrir configuración" aria-expanded="false" aria-controls="panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -272,6 +279,15 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     </section>
 
     <section class="music" id="musicSec" aria-labelledby="musicLbl" hidden>
+      <div class="logobox">
+        <div class="mtop"><span class="lbl">Tu logo de DJ</span></div>
+        <div class="row">
+          <img id="logoPrev" alt="Vista previa de tu logo" hidden>
+          <label class="btn file">Subir logo<input type="file" id="logoIn" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label>
+          <button class="btn" id="logoDel" type="button" hidden>Quitar</button>
+        </div>
+        <p class="note" id="logoNote">Opcional. Se estampa en la tapa del computador de la cabina mientras tocas.</p>
+      </div>
       <div class="mtop"><span class="lbl" id="musicLbl">Música</span><span class="bpm" id="bpm">— BPM</span></div>
       <div class="now" id="now">Carga tus pistas para que la sala baile</div>
       <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
@@ -704,10 +720,14 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   box(0.52,0.02,0.36,'#9a9aa6',3.86,1.14,0,g);
   const lap = new THREE.Group(); lap.position.set(3.62,1.15,0); lap.rotation.z = 0.22; lap.scale.setScalar(1.4); g.add(lap);
   box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lap);
-  const lapMats = [new THREE.MeshBasicMaterial({color:'#141224'}), new THREE.MeshBasicMaterial({color:'#141224'})];
+  const lapMats = [new THREE.MeshBasicMaterial({color:'#141224'})];
+  // tapa trasera: color aluminio con el logo del DJ estampado
+  const logoCv = document.createElement('canvas'); logoCv.width = 384; logoCv.height = 240;
+  const logoTex = new THREE.CanvasTexture(logoCv);
+  const logoMat = new THREE.MeshLambertMaterial({map: logoTex});
   const front = new THREE.Mesh(new THREE.PlaneGeometry(0.35,0.22), lapMats[0]); front.rotation.y = Math.PI/2; front.position.set(0.008,0.125,0); lap.add(front);
   const backGeo = new THREE.PlaneGeometry(0.35,0.22); const buv = backGeo.attributes.uv; for (let i=0;i<buv.count;i++) buv.setX(i, 1 - buv.getX(i));
-  const back = new THREE.Mesh(backGeo, lapMats[1]); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lap.add(back);
+  const back = new THREE.Mesh(backGeo, logoMat); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lap.add(back);
   // parlantes
   const cones = [];
   for (const s of [-1,1]){
@@ -717,17 +737,24 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     cones.push(woof, tw);
   }
   solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
-  return {led:led.material, discs, cones, knobs, rig:g, lapScreens:[front, back], lapMats};
+  return {led:led.material, discs, cones, knobs, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
   const tc = '#55506a';
   const heads = [];
-  [-1.6,0,1.6].forEach((zz,k) => {
-    const pivot = new THREE.Group(); pivot.position.set(7.75,2.7,zz); g.add(pivot);
+  // 3 sobre la tarima + 1 en cada esquina de la sala; cada uno barre su propia zona
+  const RIG = [
+    {x:7.75, z:-1.6, cx:3.5, cz:-2.4, rx:3.6, rz:2.4}, {x:7.75, z:0, cx:3.5, cz:0, rx:3.6, rz:2.4}, {x:7.75, z:1.6, cx:3.5, cz:2.4, rx:3.6, rz:2.4},
+    {x:-9.3, z:-4.3, cx:-5, cz:-1.5, rx:3.5, rz:2.2}, {x:-9.3, z:4.3, cx:-5, cz:1.5, rx:3.5, rz:2.2},
+    {x:9.3, z:-4.3, cx:2, cz:-2, rx:3.5, rz:2.2}, {x:9.3, z:4.3, cx:2, cz:2, rx:3.5, rz:2.2}
+  ];
+  RIG.forEach((L, k) => {
+    const zz = L.z;
+    const pivot = new THREE.Group(); pivot.position.set(L.x,2.7,zz); g.add(pivot);
     box(0.2,0.22,0.24,'#1b1a20',0,0,0,pivot);
-    box(0.025,0.3,0.025,'#777',7.75,2.87,zz,g);   // colgado del techo, como la bola disco
-    box(0.14,0.03,0.14,'#333',7.75,3.0,zz,g);
+    box(0.025,0.3,0.025,'#777',L.x,2.87,zz,g);   // colgado del techo, como la bola disco
+    box(0.14,0.03,0.14,'#333',L.x,3.0,zz,g);
     const geo = new THREE.ConeGeometry(0.6,3.8,20,1,true); geo.translate(0,-1.9,0); geo.rotateX(-Math.PI/2);
     const bm = new THREE.MeshBasicMaterial({color:'#ff4fa0', transparent:true, opacity:0.14, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
     const beam = new THREE.Mesh(geo, bm); pivot.add(beam);
@@ -736,7 +763,7 @@ item('luces','Luces de ambiente',true,(g)=>{
     // foco real: ilumina a los personajes que pasan por debajo
     const sp = new THREE.SpotLight('#ff4fa0', 0, 16, 0.36, 0.45, 1); sp.position.copy(pivot.position);
     const tgt = new THREE.Object3D(); g.add(tgt); sp.target = tgt; g.add(sp);
-    heads.push({pivot, bm, spot, sp, tgt, zz, k});
+    heads.push({pivot, bm, spot, sp, tgt, zz, k, ...L});
   });
   // tiras LED arriba y en el zócalo de las paredes del fondo
   const strip = new THREE.MeshBasicMaterial({color:'#4fc3ff'});
@@ -744,8 +771,8 @@ item('luces','Luces de ambiente',true,(g)=>{
     const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), strip); m.position.set(x,y,z); g.add(m);
   });
   // luz de color bañando las paredes
-  const wash = [new THREE.PointLight('#7a3cff',0,11,1.5), new THREE.PointLight('#ff3c8a',0,11,1.5)];
-  wash[0].position.set(-6,2.5,-2.5); wash[1].position.set(-6,2.5,2.5); wash.forEach(l => g.add(l));
+  const wash = [new THREE.PointLight('#7a3cff',0,14,1.5)];
+  wash[0].position.set(-6,2.5,0); wash.forEach(l => g.add(l));
   return {heads, strip, wash};
 });
 item('planta','Macetas',true,(g,solid)=>{
@@ -857,8 +884,19 @@ chars[sel].x = 2.5; chars[sel].z = 1.5; chars[sel].rot = 2.3;
 
 /* ---------- cámara ---------- */
 let yaw = -0.6, pitch = 0.72, dist = 7.5;
+let firstPerson = false, fpPitch = 0; try { firstPerson = localStorage.getItem('dj-camara') === '1'; } catch(e){}
+const fpDir = new THREE.Vector3();
 const camTarget = new THREE.Vector3(chars[sel].x, 1, chars[sel].z);
 function placeCamera(){
+  if (firstPerson){
+    // primera persona: los ojos del personaje
+    const me = chars[sel];
+    camera.position.set(me.x - Math.sin(yaw)*0.12, me.y + 1.66, me.z - Math.cos(yaw)*0.12);
+    fpDir.set(-Math.sin(yaw)*Math.cos(fpPitch), Math.sin(fpPitch), -Math.cos(yaw)*Math.cos(fpPitch));
+    camera.lookAt(camera.position.x + fpDir.x, camera.position.y + fpDir.y, camera.position.z + fpDir.z);
+    for (const w of walls) for (const m of w.userData.mats){ m.opacity += (1 - m.opacity) * 0.2; m.depthWrite = m.opacity > 0.9; }
+    return;
+  }
   camera.position.set(
     camTarget.x + Math.sin(yaw)*Math.cos(pitch)*dist,
     camTarget.y + Math.sin(pitch)*dist,
@@ -909,8 +947,9 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
   if (ptrs.size === 1){
-    yaw -= (e.clientX - p.x) * 0.006;
-    pitch = Math.min(1.3, Math.max(0.3, pitch + (e.clientY - p.y) * 0.004));
+    yaw -= (e.clientX - p.x) * (firstPerson ? 0.005 : 0.006);
+    if (firstPerson) fpPitch = Math.min(0.9, Math.max(-0.7, fpPitch - (e.clientY - p.y) * 0.004));
+    else pitch = Math.min(1.3, Math.max(0.3, pitch + (e.clientY - p.y) * 0.004));
   }
   p.x = e.clientX; p.y = e.clientY;
   if (ptrs.size === 2){ const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); if (pinch0) dist = Math.min(16, Math.max(3.5, dist0 * pinch0 / d)); }
@@ -926,7 +965,7 @@ function endPtr(e){
   ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; downAt = null;
 }
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', e => { e.preventDefault(); dist = Math.min(16, Math.max(3.5, dist + e.deltaY * 0.005)); }, {passive:false});
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (firstPerson) return; dist = Math.min(16, Math.max(3.5, dist + e.deltaY * 0.005)); }, {passive:false});
 
 /* ---------- física simple ---------- */
 function resolve(c){
@@ -1097,6 +1136,40 @@ function setLaptopVideo(track){
   mats.forEach(m => { m.map = lapTex; m.color.set('#ffffff'); m.needsUpdate = true; });
 }
 
+/* ---------- logo del DJ en la tapa del computador ---------- */
+let logoImgSrc = null;
+function drawLaptopLogo(src){
+  const {logoCv, logoTex} = DJ.api, x = logoCv.getContext('2d');
+  const paint = img => {
+    x.fillStyle = '#a3a3ae'; x.fillRect(0, 0, logoCv.width, logoCv.height);
+    if (img){
+      const sc = Math.min((logoCv.width*0.7)/img.width, (logoCv.height*0.7)/img.height);
+      const w = img.width*sc, h = img.height*sc;
+      x.drawImage(img, (logoCv.width - w)/2, (logoCv.height - h)/2, w, h);
+    }
+    logoTex.needsUpdate = true;
+  };
+  logoImgSrc = src || null;
+  if (!src) return paint(null);
+  const img = new Image(); img.onload = () => { if (logoImgSrc === src) paint(img); }; img.onerror = () => paint(null); img.src = src;
+}
+// achica la imagen subida (máx. 256 px) para enviarla liviana a la sala
+function shrinkLogo(file){
+  return new Promise((ok, bad) => {
+    const fr = new FileReader();
+    fr.onload = () => { const img = new Image(); img.onload = () => {
+      const sc = Math.min(1, 256 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.width*sc)); cv.height = Math.max(1, Math.round(img.height*sc));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      let url = cv.toDataURL('image/webp', 0.85); if (!url.startsWith('data:image/webp')) url = cv.toDataURL('image/png');
+      if (url.length > 90000) url = cv.toDataURL('image/jpeg', 0.8);
+      ok(url);
+    }; img.onerror = bad; img.src = fr.result; };
+    fr.onerror = bad; fr.readAsDataURL(file);
+  });
+}
+let myLogo = null; try { myLogo = localStorage.getItem('dj-logo'); } catch(e){}
+
 /* ---------- BPM en vivo: se mide cada 10 segundos ---------- */
 // Se toma la energía de los graves 100 veces por segundo y cada 10 s se busca el tempo que mejor
 // explica los golpes de los últimos 12 s. Con eso se arma una "cuadrícula" de golpes estable para luces y bailes.
@@ -1254,7 +1327,8 @@ function tick(){
     c.dj += ((djNow ? 1 : 0) - c.dj) * Math.min(1, dt*6);
     if (djNow) wantRot = -Math.PI/2;
     else if (speed === 0 && groove > 0 && c !== me && room.items.dj) wantRot = Math.atan2(8.6 - c.x, 0 - c.z); // miran a la cabina
-    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0?12:3)); }
+    if (c === me && firstPerson && !djNow) wantRot = yaw + Math.PI; // en primera persona el cuerpo mira hacia donde miras
+    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||(c===me&&firstPerson)?12:3)); }
     c.move += ((speed > 0 ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
     c.phase += dt * (3 + moved*2.6);
     c.y += (floorY(c.x, c.z) - c.y) * Math.min(1, dt*14);
@@ -1316,7 +1390,7 @@ function tick(){
     const api = LIGHTS.api, speedL = 0.5 + lvl*0.6;
     for (const h of api.heads){
       const ang = t*speedL + h.k*2.1;
-      tmpV.set(3.5 + Math.sin(ang*1.3)*3.6, 0, h.zz*1.5 + Math.cos(ang)*2.4);
+      tmpV.set(h.cx + Math.sin(ang*1.3)*h.rx, 0, h.cz + Math.cos(ang)*h.rz);
       h.pivot.lookAt(tmpV); h.spot.position.set(tmpV.x, 0.025, tmpV.z);
       const m = presetColor(h.k, t, lc);
       h.bm.color.copy(lc); h.spot.material.color.copy(lc); h.sp.color.copy(lc);
@@ -1331,6 +1405,7 @@ function tick(){
   }
 
   camTarget.lerp(tmpV.set(me.x, 1 + me.y, me.z), Math.min(1, dt*6));
+  me.group.visible = !firstPerson; // tu propio cuerpo no tapa la vista
   placeCamera();
   ring.position.y = 0.015;
   ring.material.opacity = 0.6 + Math.sin(t*4)*0.3;
@@ -1624,7 +1699,7 @@ listInputs();
 //  · chat:  mensajes del chat público
 const APP_ID = 'fr3d-ai-dj-studio-v1', ROOM_ID = 'sala-principal';
 const ADMIN_PUB = {"kty":"EC","crv":"P-256","x":"8Aw3iZhKvA31h_dY9UD385pduBy5Z_8IrgQxEX7w5Cg","y":"Z36uKz-fFRIxZf5lNopu0MuVw2ri95II6Gmq1iutves"};
-const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null, pending:new Map(),
+const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null, pending:new Map(), logos:new Map(),
   casting:false, castSince:0, castDest:null, remoteAudio:null, remoteNode:null, remoteStream:null, actions:{}};
 const netEl = {
   state: document.getElementById('netState'), djNow: document.getElementById('djNow'), people: document.getElementById('people'),
@@ -1815,6 +1890,7 @@ async function startCast(){
   net.room.addStream(net.castStream);
   setTimeout(limitVideo, 1500);
   net.actions.dj.send(djPayload());
+  net.actions.logo.send({data: myLogo || ''}); drawLaptopLogo(myLogo);
   const me = chars[sel];
   if (room.items.dj){ me.x = 9.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
   netEl.note.textContent = 'Estás en vivo. Todos los conectados escuchan tu música y bailan contigo.';
@@ -1828,6 +1904,7 @@ function stopCast(silent){
   net.casting = false;
   try { net.room && net.castStream && net.room.removeStream(net.castStream); } catch(e){}
   if (!silent && net.actions.dj) net.actions.dj.send(djPayload());
+  drawLaptopLogo(null);
   netEl.note.textContent = 'Transmisión terminada.';
   renderNet();
 }
@@ -1867,7 +1944,7 @@ function endRemoteDJ(){
   net.djPeer = null; net.dj = null;
   if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
   if (net.remoteAudio){ net.remoteAudio.pause(); net.remoteAudio.srcObject = null; }
-  net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null);
+  net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null); drawLaptopLogo(null);
   if (music.source === 'remote'){ music.source = null; if (outGain) outGain.gain.value = 1; }
   renderNet();
 }
@@ -1894,15 +1971,21 @@ async function connect(){
   const roomObj = mod.joinRoom({appId: APP_ID}, ROOM_ID);
   net.room = roomObj; net.selfId = mod.selfId; net.online = true;
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
-  const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat');
-  net.actions = {pose, look, dj, sched: schedA, chat};
+  const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat'), logoA = roomObj.makeAction('logo');
+  net.actions = {pose, look, dj, sched: schedA, chat, logo: logoA};
+  logoA.onMessage = (d, meta) => {
+    const id = meta && meta.peerId || meta;
+    const data = d && typeof d.data === 'string' && d.data.startsWith('data:image/') && d.data.length < 120000 ? d.data : null;
+    net.logos.set(id, data);
+    if (id === net.djPeer) drawLaptopLogo(data);
+  };
   remember(ident.pub, myDef().name);
   roomObj.onPeerJoin = id => {
     ensurePeer(id);
     look.send(lookPayload(), {target: id});
     if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
-    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); }
+    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); logoA.send({data: myLogo || ''}, {target: id}); }
     renderNet();
   };
   roomObj.onPeerLeave = id => removePeer(id);
@@ -1944,7 +2027,7 @@ async function connect(){
       if (LIGHT_PRESETS.some(p => p[0] === d.lp)) lightPreset = d.lp;
       const st = net.pending.get(id);
       if (st && net.remoteStream !== st) playRemote(st);
-      if (!wasDj) addChat({kind:'system', text: '🎧 ' + djName() + ' está en vivo'});
+      if (!wasDj){ addChat({kind:'system', text: '🎧 ' + djName() + ' está en vivo'}); drawLaptopLogo(net.logos.get(id) || null); }
     } else if (net.djPeer === id) endRemoteDJ();
     renderNet(); renderLightRow();
   };
@@ -2114,6 +2197,40 @@ function botsUpdate(dt, bots){
 }
 
 window.__netReady = true;
+
+/* ---------- logo del DJ: interfaz ---------- */
+const logoIn = document.getElementById('logoIn'), logoPrev = document.getElementById('logoPrev'), logoDel = document.getElementById('logoDel'), logoNote = document.getElementById('logoNote');
+function renderLogoUi(){ logoPrev.hidden = !myLogo; logoDel.hidden = !myLogo; if (myLogo) logoPrev.src = myLogo; }
+logoIn.addEventListener('change', async () => {
+  const f = logoIn.files[0]; logoIn.value = ''; if (!f) return;
+  if (!f.type.startsWith('image/')){ logoNote.textContent = 'Ese archivo no es una imagen. Usa PNG, JPG, WEBP o SVG.'; return; }
+  try {
+    myLogo = await shrinkLogo(f);
+    try { localStorage.setItem('dj-logo', myLogo); } catch(e){}
+    logoNote.textContent = 'Logo listo. Se verá en la tapa del computador mientras tocas.';
+    if (net.casting){ drawLaptopLogo(myLogo); net.actions.logo.send({data: myLogo}); }
+  } catch(e){ logoNote.textContent = 'No se pudo leer esa imagen. Prueba con otra.'; }
+  renderLogoUi();
+});
+logoDel.addEventListener('click', () => {
+  myLogo = null; try { localStorage.removeItem('dj-logo'); } catch(e){}
+  if (net.casting){ drawLaptopLogo(null); net.actions.logo.send({data: ''}); }
+  logoNote.textContent = 'Logo quitado.'; renderLogoUi();
+});
+renderLogoUi(); drawLaptopLogo(null);
+
+/* ---------- cámara: primera o tercera persona ---------- */
+const viewBtn = document.getElementById('viewBtn');
+function renderView(){ camera.fov = firstPerson ? 72 : 50; camera.updateProjectionMatrix(); viewBtn.textContent = firstPerson ? '1ª persona' : '3ª persona'; viewBtn.setAttribute('aria-pressed', firstPerson); viewBtn.setAttribute('aria-label', 'Cámara en ' + (firstPerson ? 'primera' : 'tercera') + ' persona. Toca para cambiar'); }
+function toggleView(){
+  firstPerson = !firstPerson; fpPitch = 0;
+  if (firstPerson) yaw = chars[sel].rot - Math.PI; // mira hacia donde mira tu personaje
+  try { localStorage.setItem('dj-camara', firstPerson ? '1' : '0'); } catch(e){}
+  renderView();
+}
+viewBtn.addEventListener('click', toggleView);
+addEventListener('keydown', e => { if (e.code === 'KeyV' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && gate.hidden) toggleView(); });
+renderView();
 const identityReady = (async () => {
   try { await loadIdentity(); } catch(e){ ident.pub = 'sin-llave-' + Math.random().toString(36).slice(2); }
   let code = null; try { code = localStorage.getItem('dj-admin'); } catch(e){}
