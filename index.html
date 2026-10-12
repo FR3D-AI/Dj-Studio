@@ -154,6 +154,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .djbar .opt{padding:4px 10px;font-size:13px}
 .logobox{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px}
 #logoPrev{width:56px;height:40px;object-fit:contain;background:#a3a3ae;border-radius:6px;padding:3px}
+.credits a{color:var(--accent)}
 .bpmtag{font:400 14px var(--display);color:var(--live);font-variant-numeric:tabular-nums;white-space:nowrap}
 .agenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .agenda li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
@@ -380,10 +381,13 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <h2>Objetos de la sala</h2>
     <p class="note">Toca un objeto para ponerlo o quitarlo. Ponte detrás de la cabina para pinchar.</p>
     <div class="row items" id="items" role="group" aria-label="Objetos de la sala"></div>
+    <p class="note credits">Créditos: el modelo de Nika está basado en <a href="https://sketchfab.com/3d-models/teal-haired-anime-girl-png-to-stl-supavoxel-aec3ed6d87d24586b17ce3d1b9b9c82b" target="_blank" rel="noopener">«Teal-Haired Anime Girl»</a> de Zara Petrov, con licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Cambios: pelo recoloreado, malla reducida, textura rehecha y esqueleto nuevo.</p>
   </aside>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/SkeletonUtils.js"></script>
 <script>
 (function(){
 const HX = 10, HZ = 5, HALF = 5, WALL_H = 3, R = 0.3; // sala de 20 m (x) por 10 m (z)
@@ -426,6 +430,9 @@ const DEFAULTS = [
   // personaje exclusivo, hecho a partir de la ficha de Fred Fuentes
   {name:'Fred', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno', signature:true, tag:'Personaje exclusivo', bio:'Gorra roja, trenzas rojas largas con argollas plateadas, barba, expansiones, polera oversize y cargo.'}
 ];
+DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hairColor:'#8a3a1a', top:'tirantes', topColor:'#f2efe8', pants:'short', pantsColor:'#2c3fa8', shoes:'#1d1c21', danceA:'balanceo', danceB:'manos',
+  model:'models/nika.glb', modelScale:0.93, modelLift:0.952, signature:true, tag:'Modelo 3D',
+  bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
 const NCH = DEFAULTS.length;
 
@@ -857,6 +864,54 @@ const inDJZone = c => room.items.dj && c.x > 9.0 && Math.abs(c.z) < 1.02;
 
 /* ---------- personajes ---------- */
 function shade_(c, f){ return '#' + new THREE.Color(c).multiplyScalar(f).getHexString(); }
+/* ---------- personajes con modelo 3D (glTF con esqueleto) ---------- */
+// El juego anima "articulaciones de control" (las mismas que usan los personajes hechos por código)
+// y en cada cuadro las traduce a los huesos reales del modelo.
+const MODEL_CACHE = {}, MODEL_DATA = {};
+function loadModel(url){
+  if (!MODEL_CACHE[url]) MODEL_CACHE[url] = new Promise((ok, bad) => new THREE.GLTFLoader().load(url, gl => { MODEL_DATA[url] = gl; ok(gl); }, undefined, bad));
+  return MODEL_CACHE[url];
+}
+const MODELS_READY = Promise.all(DEFAULTS.filter(d => d.model).map(d => loadModel(d.model).catch(() => null)));
+function buildModelCharacter(d){
+  const g = new THREE.Group();
+  const P = () => new THREE.Object3D();
+  const legs = [P(), P()], arms = [P(), P()], knees = [P(), P()], elbows = [P(), P()], head = P(), body = P();
+  const map = [['thighR', legs[0]], ['thighL', legs[1]], ['upperarmR', arms[0]], ['upperarmL', arms[1]], ['shinR', knees[0]], ['shinL', knees[1]],
+               ['forearmR', elbows[0]], ['forearmL', elbows[1]], ['spine', body], ['head', head]];
+  const rig = {bones: null};
+  const e = new THREE.Euler(), dq = new THREE.Quaternion();
+  g.userData = {legs, arms, knees, elbows, head, body, model: true, sync(){
+    if (!rig.bones) return;
+    for (const [name, o] of map){
+      const k = rig.bones[name]; if (!k) continue;
+      e.set(o.rotation.x, o.rotation.y, o.rotation.z, 'XYZ'); dq.setFromEuler(e);
+      k.b.quaternion.copy(k.P0i).multiply(dq).multiply(k.P0).multiply(k.L0);
+    }
+  }};
+  const attach = gltf => {
+    const inst = THREE.SkeletonUtils.clone(gltf.scene);
+    const sc = d.modelScale || 1; inst.scale.setScalar(sc); inst.position.y = (d.modelLift || 0) * sc;
+    inst.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.userData.shared = true;
+      if (o.material){ o.material.side = THREE.DoubleSide; o.material.roughness = 0.72; o.material.metalness = 0; } } });
+    g.add(inst); inst.updateMatrixWorld(true);
+    const rq = new THREE.Quaternion(); inst.getWorldQuaternion(rq); rq.invert();
+    rig.bones = {};
+    inst.traverse(o => { if (o.isBone){
+      const pw = new THREE.Quaternion(); o.parent.getWorldQuaternion(pw); pw.premultiply(rq);
+      rig.bones[o.name] = {b:o, L0:o.quaternion.clone(), P0:pw, P0i:pw.clone().invert()};
+    }});
+    inst.traverse(o => { o.userData.ci = g.userData.ci; });
+  };
+  // si el modelo ya está cargado se arma al instante (así la selección puede sacarle retrato)
+  if (MODEL_DATA[d.model]) attach(MODEL_DATA[d.model]);
+  else loadModel(d.model).then(attach).catch(() => {
+    // si el modelo no carga, se usa el cuerpo hecho por código
+    const fb = buildCharacter({...d, model: null}); g.add(fb);
+  });
+  return g;
+}
+
 /* ---------- personajes: cuerpo con articulaciones ---------- */
 // Jerarquía: caderas → (columna → cuello → cabeza; hombros → codos → manos) y (muslos → rodillas → pies).
 // Cada articulación se fusiona en una sola malla para que siga siendo liviano.
@@ -895,6 +950,7 @@ function tubeAlong(points, r, color, parent, beads){
   }
 }
 function buildCharacter(d){
+  if (d.model) return buildModelCharacter(d);
   const B = {delgado:0.9, normal:1.06, fornido:1.2}[d.build] || 1.06;
   const skin = d.skin, top = d.topColor, pc = d.pantsColor, hc = d.hairColor;
   const ov = d.top === 'oversize', longSleeve = d.top === 'chaqueta' || d.top === 'sudadera', tw = ov ? 1.12 : 1;
@@ -1609,6 +1665,7 @@ function tick(){
     body.rotation.y = (q.twist + c.spinA) * dn;
     body.rotation.z = q.roll * dn;
     body.rotation.x = q.lean * dn;
+    if (g.userData.sync) g.userData.sync();
   }
   // objetos que reaccionan a la música
   const lvl = music.sounding ? Math.min(1, music.bass*1.3) : 0;
@@ -1726,7 +1783,10 @@ function renderItems(){
 function renderCustom(){
   const d = defs[sel]; custom.innerHTML = '';
   nameInput.value = d.name;
+  const isModel = !!DEFAULTS[sel].model;
+  if (isModel){ const nt = document.createElement('p'); nt.className = 'note'; nt.textContent = 'Este personaje es un modelo 3D: puedes cambiarle el nombre y los bailes.'; custom.append(nt); }
   for (const f of FIELDS){
+    if (isModel && !/^dance/.test(f.k)) continue;
     const g = document.createElement('div'); g.className = 'group';
     const lab = document.createElement('span'); lab.className = 'lbl'; lab.textContent = f.label; g.append(lab);
     const row = document.createElement('div'); row.className = 'row'; row.setAttribute('role','group'); row.setAttribute('aria-label', f.label);
@@ -2239,6 +2299,8 @@ async function connect(){
     const clean = {...DEFAULTS[0]};
     for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
+    const md = DEFAULTS.find(x => x.model && x.model === d.model); // solo modelos de la propia página
+    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift});
     if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
     const isNew = !r.def;
     r.def = clean; buildRemote(r); renderNet(); renderAgenda();
@@ -2534,8 +2596,9 @@ function cselSetup(){
   const glow = new THREE.Mesh(new THREE.RingGeometry(0.88, 0.97, 64), new THREE.MeshBasicMaterial({color:'#ffb347'})); glow.rotation.x = -Math.PI/2; glow.position.y = 0.005; csel.scene.add(glow);
   csel.cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
 }
-function disposeTree(o){ o.traverse(m => { if (m.isMesh){ m.geometry.dispose(); if (m.material !== CHAR_MAT && m.material !== BAKED_MAT && m.material.dispose){ if (m.material.map) m.material.map.dispose(); m.material.dispose(); } } }); }
-function makePortraits(){
+function disposeTree(o){ o.traverse(m => { if (m.isMesh && !m.userData.shared){ m.geometry.dispose(); if (m.material !== CHAR_MAT && m.material !== BAKED_MAT && m.material.dispose){ if (m.material.map) m.material.map.dispose(); m.material.dispose(); } } }); }
+async function makePortraits(){
+  await MODELS_READY;
   const r = csel.r, cam = csel.cam, size = 192;
   r.setSize(size, size, false); cam.aspect = 1; cam.fov = 26; cam.updateProjectionMatrix();
   cam.position.set(0.3, 1.66, 1.2); cam.lookAt(0, 1.57, 0);
@@ -2593,6 +2656,7 @@ function cselLoop(now){
     const {knees, elbows} = g.userData;
     if (knees){ knees[0].rotation.x = cselPose.k0 * k; knees[1].rotation.x = cselPose.k1 * k; }
     if (elbows){ elbows[0].rotation.x = cselPose.e0 * k; elbows[1].rotation.x = cselPose.e1 * k; }
+    if (g.userData.sync) g.userData.sync();
   }
   csel.r.render(csel.scene, csel.cam);
   csel.raf = requestAnimationFrame(cselLoop);
@@ -2601,7 +2665,9 @@ function openCharSelect(first){
   csel.first = !!first;
   document.getElementById('cselStep').textContent = first ? 'Paso 2 de 2' : 'Cambiar personaje';
   cselEl.hidden = false;
-  cselSetup(); makePortraits(); renderCselGrid(); cselResize(); cselPick(sel);
+  cselSetup(); cselGrid.innerHTML = '<p class="note">Cargando personajes…</p>';
+  makePortraits().then(() => { renderCselGrid(); cselResize(); cselPick(csel.pick ?? sel); });
+  csel.pick = sel;
   setTimeout(() => cselGrid.querySelector('[aria-selected="true"]')?.focus(), 50);
   if (!csel.raf){ csel.last = 0; csel.raf = requestAnimationFrame(cselLoop); }
 }
