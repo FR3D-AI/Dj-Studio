@@ -371,7 +371,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 
     <h2>Personalizar</h2>
     <button class="btn" id="openCsel" type="button">Cambiar de personaje</button>
-    <div class="group"><label for="nameInput">Nombre</label><input class="name" id="nameInput" maxlength="14"></div>
+    <div class="group"><label for="nameInput">Tu nombre</label><input class="name" id="nameInput" maxlength="14"></div>
     <div class="grid" id="custom"></div>
     <div class="actions">
       <button class="btn primary" id="rnd" type="button">Estilo aleatorio</button>
@@ -452,6 +452,9 @@ defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || ![4,6].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
+// el nombre del jugador va aparte: los personajes conservan el suyo (antes se escribía encima y quedaban repetidos)
+let playerName = ''; try { playerName = localStorage.getItem('dj-studio-nombre') || ''; } catch(e){}
+defs.forEach((d, i) => { if (playerName && d.name === playerName && DEFAULTS[i].name !== playerName) d.name = DEFAULTS[i].name; });
 if (fredQuitado) room.active = room.active.filter(v => v !== 10).map(v => v > 10 ? v - 1 : v);
 room.active = room.active.filter((v,i,a) => v>=0 && v<NCH && a.indexOf(v)===i).slice(0, room.count);
 for (let i=0; room.active.length < room.count && i<NCH; i++) if (!room.active.includes(i)) room.active.push(i);
@@ -1950,9 +1953,9 @@ function renderItems(){
 }
 function renderCustom(){
   const d = defs[sel]; custom.innerHTML = '';
-  nameInput.value = d.name;
+  nameInput.value = playerName;
   const isModel = !!DEFAULTS[sel].model;
-  if (isModel){ const nt = document.createElement('p'); nt.className = 'note'; nt.textContent = 'Este personaje es un modelo 3D: puedes cambiarle el nombre y los bailes.'; custom.append(nt); }
+  if (isModel){ const nt = document.createElement('p'); nt.className = 'note'; nt.textContent = 'Este personaje es un modelo 3D: puedes cambiarle los bailes.'; custom.append(nt); }
   for (const f of FIELDS){
     if (isModel && !/^dance/.test(f.k)) continue;
     const g = document.createElement('div'); g.className = 'group';
@@ -1999,12 +2002,12 @@ function select(i){
   chars[sel].group.remove(ring);
   sel = i; chars[i].group.add(ring); netSendLook();
   chars[i].target = null; chars[i].wait = 0;
-  hudName.textContent = defs[i].name;
+  hudName.textContent = myDef().name;
   save(); renderRoster(); renderCustom();
   // desplaza solo la fila de personajes (scrollIntoView movería toda la página hacia el panel oculto)
   const card = roster.children[i]; if (card) roster.scrollLeft = card.offsetLeft - roster.clientWidth/2 + card.clientWidth/2;
 }
-nameInput.addEventListener('input', () => { defs[sel].name = nameInput.value.trim() || ('Personaje ' + (sel+1)); hudName.textContent = defs[sel].name; save(); renderRoster(); netSendLook(); });
+nameInput.addEventListener('input', () => { const v = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 14); if (!v) return; playerName = v; try { localStorage.setItem('dj-studio-nombre', v); } catch(e){} hudName.textContent = v; netSendLook(); });
 const pickR = a => a[Math.floor(Math.random()*a.length)];
 document.getElementById('rnd').addEventListener('click', () => {
   const d = defs[sel];
@@ -2012,7 +2015,7 @@ document.getElementById('rnd').addEventListener('click', () => {
   save(); mount(chars[sel]); renderRoster(); renderCustom();
 });
 document.getElementById('reset').addEventListener('click', () => {
-  defs[sel] = {...DEFAULTS[sel]}; hudName.textContent = defs[sel].name;
+  defs[sel] = {...DEFAULTS[sel]}; hudName.textContent = myDef().name;
   save(); mount(chars[sel]); renderRoster(); renderCustom();
 });
 
@@ -2271,7 +2274,7 @@ function nameTag(text){
   sp.scale.set(1.2, 0.3, 1); sp.position.y = 2.02; sp.renderOrder = 5;
   return sp;
 }
-function myDef(){ return {...defs[sel], name: defs[sel].name || 'Invitado'}; }
+function myDef(){ return {...defs[sel], name: playerName || 'Invitado'}; }
 function ensurePeer(id){
   let r = net.peers.get(id);
   if (!r){
@@ -2726,13 +2729,13 @@ gateForm.addEventListener('submit', e => {
   if (!name){ gateErr.textContent = 'Escribe un nombre para entrar.'; gateName.focus(); return; }
   try { localStorage.setItem('dj-studio-nombre', name); } catch(e){}
   playerName = name;
-  defs[sel].name = name; nameInput.value = name; hudName.textContent = name; save(); renderRoster();
+  nameInput.value = name; hudName.textContent = name; renderRoster();
   gate.hidden = true;
   // el clic de "Entrar" desbloquea el audio: así se escucha al DJ sin tocar nada más
   ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
   openCharSelect(true);
 });
-let playerName = '', entered = false;
+let entered = false;
 function enterRoom(){
   if (entered) return; entered = true;
   identityReady.then(() => { connect(); checkMyTurn(); });
@@ -2868,9 +2871,9 @@ function closeCharSelect(){
   requestAnimationFrame(resize);
 }
 function cselConfirm(){
-  const i = csel.pick, prev = sel, name = playerName || defs[sel].name;
-  if (i !== prev){ defs[prev].name = DEFAULTS[prev].name; select(i); }
-  defs[sel].name = name; nameInput.value = name; hudName.textContent = name;
+  const i = csel.pick;
+  if (i !== sel) select(i);
+  nameInput.value = playerName; hudName.textContent = myDef().name;
   save(); renderRoster(); renderCustom(); netSendLook();
   closeCharSelect();
   enterRoom();
@@ -2878,7 +2881,7 @@ function cselConfirm(){
 cselGo.addEventListener('click', cselConfirm);
 cselEl.addEventListener('keydown', e => { if (e.key === 'Escape' && !csel.first) closeCharSelect(); });
 addEventListener('resize', () => { if (!cselEl.hidden) cselResize(); });
-document.getElementById('openCsel').addEventListener('click', () => { setPanel(false); playerName = playerName || defs[sel].name; openCharSelect(false); });
+document.getElementById('openCsel').addEventListener('click', () => { setPanel(false); openCharSelect(false); });
 
 /* ---------- configuración en ventana (engranaje) ---------- */
 const panelEl = document.getElementById('panel'), gearBtn = document.getElementById('gearBtn');
@@ -2891,7 +2894,7 @@ gearBtn.addEventListener('click', () => setPanel(!panelEl.classList.contains('op
 document.getElementById('closePanel').addEventListener('click', () => setPanel(false));
 addEventListener('keydown', e => { if (e.key === 'Escape' && panelEl.classList.contains('open')) setPanel(false); });
 
-hudName.textContent = defs[sel].name;
+hudName.textContent = myDef().name;
 camTarget.set(chars[sel].x, 1, chars[sel].z);
 renderCount(); renderRoster(); renderCustom(); renderItems(); save();
 window.__djInfo = () => { const v = new THREE.Vector4(); renderer.getCurrentViewport(v); return {calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr: renderer.getPixelRatio(), vp:[v.x,v.y,v.z,v.w], size:[renderer.domElement.width, renderer.domElement.height]}; };
