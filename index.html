@@ -433,6 +433,9 @@ const DEFAULTS = [
 DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hairColor:'#8a3a1a', top:'tirantes', topColor:'#f2efe8', pants:'short', pantsColor:'#2c3fa8', shoes:'#1d1c21', danceA:'balanceo', danceB:'manos',
   model:'models/nika.glb', modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
+DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
+  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, signature:true, tag:'Modelo 3D · El DJ',
+  bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
 const NCH = DEFAULTS.length;
 

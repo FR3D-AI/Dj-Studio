@@ -19,3 +19,4 @@ Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
 
 ## Créditos
 - Modelo de **Nika** (`models/nika.glb`): basado en [«Teal-Haired Anime Girl»](https://sketchfab.com/3d-models/teal-haired-anime-girl-png-to-stl-supavoxel-aec3ed6d87d24586b17ce3d1b9b9c82b) de Zara Petrov, licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Cambios: pelo recoloreado, malla reducida de 647 mil a 45 mil triángulos, textura horneada de nuevo y esqueleto de 19 huesos con pesos propios.
+- Modelo de **DJ FR3D** (`models/fr3d.glb`): generado con Meshy AI a partir de una foto propia; malla reducida, textura horneada y esqueleto hechos para este juego.
