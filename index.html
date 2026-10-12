@@ -863,6 +863,41 @@ const LIGHTS = ITEMS.find(i => i.id === 'luces'), STAGE = ITEMS.find(i => i.id =
 const inDJZone = c => room.items.dj && c.x > 9.0 && Math.abs(c.z) < 1.02;
 
 /* ---------- personajes ---------- */
+/* ---------- marcha: ciclo de caminar/correr con rodillas, tobillos y codos ---------- */
+// u = fracción del ciclo de cada pierna (0 = el talón toca el suelo). Ángulos en ejes del personaje:
+// muslo negativo = adelante, rodilla positiva = flexión, pie positivo = punta abajo, codo negativo = flexión.
+const GAIT = {th:[0,0], kn:[0,0], ft:[0,0], ar:[0,0], el:[0,0], bob:0, twist:0, lean:0};
+const gBump = (u, c, s) => { let x = u - c; x -= Math.round(x); return Math.exp(-x*x / (2*s*s)); };
+const gaitCad = spd => 0.85 + 0.32*Math.min(spd, 5);           // ciclos por segundo según la velocidad
+function gait(phase, spd, o){
+  const run = Math.min(1, Math.max(0, (spd - 2.9) / 1.3));
+  const cad = gaitCad(spd), step = spd / (2*cad);               // metros por paso
+  const A = Math.asin(Math.min(0.72, step / 1.75));             // amplitud del muslo
+  const st = 0.6 - 0.2*run;                                     // fracción de apoyo (al correr el pie pisa menos)
+  const K = 0.5 + 0.95*A + 0.55*run;                            // flexión de rodilla en el balanceo
+  const u0 = phase / (2*Math.PI);
+  for (let i = 0; i < 2; i++){
+    const u = (u0 + i*0.5) - Math.floor(u0 + i*0.5);
+    // el apoyo dura más que el balanceo: se "estira" la fase para que la pierna vaya atrás lento y adelante rápido
+    const w = u < st ? u / st * 0.5 : 0.5 + (u - st) / (1 - st) * 0.5;
+    const th = -A*Math.cos(2*Math.PI*w) - 0.12*A - 0.1*run;
+    // rodilla: amortigua al pisar, se dobla fuerte justo después de despegar y se estira antes de pisar
+    const kn = 0.06 + (0.14 + 0.25*run)*gBump(u, 0.13, 0.07) + K*gBump(u, st + 0.12, 0.1);
+    // pie: punta arriba al pisar, plano en el apoyo, empuja con la punta al despegar
+    const f = -0.22*gBump(u, 0.0, 0.05) + (0.55 + 0.2*run)*gBump(u, st + 0.02, 0.07) - 0.08*gBump(u, 0.9, 0.06);
+    const ft = Math.max(-0.5, Math.min(0.75, f - th - kn));
+    // brazo contrario a la pierna del mismo lado, con un leve retraso; el codo se dobla más cuando el brazo va adelante
+    const sw = Math.cos(2*Math.PI*w - 0.3);
+    const ar = A*(0.85 + 0.5*run)*sw + 0.04;
+    const el = -(0.22 + 0.32*Math.max(0, -sw) + 0.05*Math.max(0, sw)) - 1.05*run;
+    o.th[i] = th; o.kn[i] = kn; o.ft[i] = ft; o.ar[i] = ar; o.el[i] = el;
+  }
+  // la cadera sube a mitad del apoyo y baja con los dos pies en el suelo
+  o.bob = (0.018 + 0.03*run) * (0.5 - 0.5*Math.cos(4*Math.PI*(u0 - 0.06)));
+  o.twist = (o.ar[1] - o.ar[0]) * 0.1;                     // hombros en contra de la cadera
+  o.lean = 0.03 + 0.12*run;
+  return o;
+}
 function shade_(c, f){ return '#' + new THREE.Color(c).multiplyScalar(f).getHexString(); }
 /* ---------- personajes con modelo 3D (glTF con esqueleto) ---------- */
 // El juego anima "articulaciones de control" (las mismas que usan los personajes hechos por código)
@@ -876,12 +911,12 @@ const MODELS_READY = Promise.all(DEFAULTS.filter(d => d.model).map(d => loadMode
 function buildModelCharacter(d){
   const g = new THREE.Group();
   const P = () => new THREE.Object3D();
-  const legs = [P(), P()], arms = [P(), P()], knees = [P(), P()], elbows = [P(), P()], head = P(), body = P();
+  const legs = [P(), P()], arms = [P(), P()], knees = [P(), P()], elbows = [P(), P()], feet = [P(), P()], head = P(), body = P();
   const map = [['thighR', legs[0]], ['thighL', legs[1]], ['upperarmR', arms[0]], ['upperarmL', arms[1]], ['shinR', knees[0]], ['shinL', knees[1]],
-               ['forearmR', elbows[0]], ['forearmL', elbows[1]], ['spine', body], ['head', head]];
+               ['forearmR', elbows[0]], ['forearmL', elbows[1]], ['footR', feet[0]], ['footL', feet[1]], ['spine', body], ['head', head]];
   const rig = {bones: null};
   const e = new THREE.Euler(), dq = new THREE.Quaternion();
-  g.userData = {legs, arms, knees, elbows, head, body, model: true, sync(){
+  g.userData = {legs, arms, knees, elbows, feet, head, body, model: true, sync(){
     if (!rig.bones) return;
     for (const [name, o] of map){
       const k = rig.bones[name]; if (!k) continue;
@@ -1002,7 +1037,7 @@ function buildCharacter(d){
   }
 
   // piernas
-  const legs = [], knees = [];
+  const legs = [], knees = [], feet = [];
   const tl = 0.43, sl = 0.42;
   for (const s of [-1,1]){
     const th = joint(hips, s*0.09*B, -0.05, 0);
@@ -1020,16 +1055,17 @@ function buildCharacter(d){
     if (d.pants === 'cargo'){ part(capsuleGeo(sl - 0.03, 0.08*B, 0.076*B), pc, kn); part(sleeveGeo(0.05, 0.078*B, 0.08*B), shade_(pc, 0.8), kn, 0, -sl + 0.065, 0); }
     else if (d.pants === 'short') part(capsuleGeo(sl, 0.06*B, 0.042*B), skin, kn);
     else part(capsuleGeo(sl - 0.02, 0.066*B, 0.054*B), pc, kn);
-    // zapatilla
-    const ac = d.shoeAccent || d.shoes, fy = -sl - 0.03;
-    part(new THREE.BoxGeometry(0.098, 0.028, 0.265), '#ecebe6', kn, 0, fy - 0.03, 0.045);
-    part(ellipGeo(0.06, 0.84, 0.66, 2.1, 14, 8), d.shoes, kn, 0, fy, 0.045);
+    // zapatilla (cuelga del tobillo para que el pie pueda pisar plano y empujar con la punta)
+    const ft = joint(kn, 0, -sl, 0);
+    const ac = d.shoeAccent || d.shoes, fy = -0.03;
+    part(new THREE.BoxGeometry(0.098, 0.028, 0.265), '#ecebe6', ft, 0, fy - 0.03, 0.045);
+    part(ellipGeo(0.06, 0.84, 0.66, 2.1, 14, 8), d.shoes, ft, 0, fy, 0.045);
     if (ac !== d.shoes){
-      part(ellipGeo(0.046, 1.07, 0.6, 0.95, 12, 6), ac, kn, 0, fy - 0.008, 0.138);
-      part(ellipGeo(0.042, 1.18, 0.95, 0.75, 12, 6), ac, kn, 0, fy + 0.005, -0.058);
-      part(new THREE.BoxGeometry(0.104, 0.012, 0.2), ac, kn, 0, fy - 0.012, 0.05);
+      part(ellipGeo(0.046, 1.07, 0.6, 0.95, 12, 6), ac, ft, 0, fy - 0.008, 0.138);
+      part(ellipGeo(0.042, 1.18, 0.95, 0.75, 12, 6), ac, ft, 0, fy + 0.005, -0.058);
+      part(new THREE.BoxGeometry(0.104, 0.012, 0.2), ac, ft, 0, fy - 0.012, 0.05);
     }
-    legs.push(th); knees.push(kn);
+    legs.push(th); knees.push(kn); feet.push(ft);
   }
 
   // cuello y cabeza
@@ -1105,8 +1141,8 @@ function buildCharacter(d){
     }
   }
 
-  [hips, body, neck, head, ...arms, ...elbows, ...legs, ...knees].forEach(j => bake(j, null, CHAR_MAT));
-  g.userData = {legs, arms, head, body, knees, elbows};
+  [hips, body, neck, head, ...arms, ...elbows, ...legs, ...knees, ...feet].forEach(j => bake(j, null, CHAR_MAT));
+  g.userData = {legs, arms, head, body, knees, elbows, feet};
   return g;
 }
 
@@ -1614,7 +1650,8 @@ function tick(){
     if (c === me && firstPerson && !djNow) wantRot = yaw + Math.PI; // en primera persona el cuerpo mira hacia donde miras
     if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||(c===me&&firstPerson)?12:3)); }
     c.move += ((speed > 0 ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
-    c.phase += dt * (3 + moved*2.6);
+    c.spd = (c.spd || 0) + (moved - (c.spd || 0)) * Math.min(1, dt*8);
+    c.phase += dt * 2*Math.PI * gaitCad(c.spd);
     c.y += (floorY(c.x, c.z) - c.y) * Math.min(1, dt*14);
   }
   for (let a=0;a<live.length;a++) for (let b=a+1;b<live.length;b++){
@@ -1641,30 +1678,31 @@ function tick(){
       if (move === 'giro') c.spinA = tmpPose.spin; else c.spinA *= Math.max(0, 1 - dt*4);
     }
     const q = c.pose;
-    g.position.set(c.x, c.y + Math.abs(Math.sin(c.phase))*0.04*c.move + q.bounce*dn + d*pulse*0.02*groove, c.z);
+    const G = gait(c.phase || 0, c.spd || 0, GAIT), mv = c.move, wl = mv*(1-dn);
+    g.position.set(c.x, c.y + G.bob*mv + q.bounce*dn + d*pulse*0.02*groove, c.z);
     g.rotation.y = c.rot;
-    const sw = Math.sin(c.phase) * 0.7 * c.move;
-    legs[0].rotation.x = sw + q.l0*dn; legs[1].rotation.x = -sw + q.l1*dn;
-    const idle = Math.sin(t*1.6 + c.i) * 0.04 * (1-c.move);
-    arms[0].rotation.x = (-sw*0.9)*(1-d)*(1-dn) + d*(-0.72 + Math.sin(t*8)*0.08*groove) + q.a0*dn;
-    arms[1].rotation.x = ( sw*0.9)*(1-d)*(1-dn) + d*(-0.62) + q.a1*dn;
-    const {knees, elbows} = g.userData;
+    legs[0].rotation.x = G.th[0]*mv + q.l0*dn; legs[1].rotation.x = G.th[1]*mv + q.l1*dn;
+    const idle = Math.sin(t*1.6 + c.i) * 0.04 * (1-mv);
+    arms[0].rotation.x = G.ar[0]*mv*(1-d)*(1-dn) + d*(-0.72 + Math.sin(t*8)*0.08*groove) + q.a0*dn;
+    arms[1].rotation.x = G.ar[1]*mv*(1-d)*(1-dn) + d*(-0.62) + q.a1*dn;
+    const {knees, elbows, feet} = g.userData;
     if (knees){
-      const wk = 0.95*c.move*(1-dn);
-      knees[0].rotation.x = Math.max(0, -Math.cos(c.phase))*wk + q.k0*dn + 0.05*(1-dn);
-      knees[1].rotation.x = Math.max(0,  Math.cos(c.phase))*wk + q.k1*dn + 0.05*(1-dn);
+      knees[0].rotation.x = G.kn[0]*wl + q.k0*dn + 0.05*(1-dn)*(1-mv);
+      knees[1].rotation.x = G.kn[1]*wl + q.k1*dn + 0.05*(1-dn)*(1-mv);
     }
+    if (feet){ feet[0].rotation.x = G.ft[0]*wl - 0.05*(1-dn)*(1-mv); feet[1].rotation.x = G.ft[1]*wl - 0.05*(1-dn)*(1-mv); }
     if (elbows){
-      const we = (-0.15 - 0.5*c.move)*(1-dn)*(1-d);
-      elbows[0].rotation.x = we + q.e0*dn + d*(-1.0 + Math.sin(t*8)*0.1*groove);
-      elbows[1].rotation.x = we + q.e1*dn + d*(-1.05);
+      const rest = -0.15*(1-mv);
+      elbows[0].rotation.x = (rest + G.el[0]*mv)*(1-dn)*(1-d) + q.e0*dn + d*(-1.0 + Math.sin(t*8)*0.1*groove);
+      elbows[1].rotation.x = (rest + G.el[1]*mv)*(1-dn)*(1-d) + q.e1*dn + d*(-1.05);
     }
+    head.rotation.y = -G.twist*0.7*wl;
     arms[0].rotation.z = (-0.06 - idle)*(1-dn) + q.z0*dn;
     arms[1].rotation.z = ( 0.06 + idle)*(1-dn) + q.z1*dn;
     head.rotation.x = q.head*dn + d*pulse*0.3*groove;
-    body.rotation.y = (q.twist + c.spinA) * dn;
+    body.rotation.y = (q.twist + c.spinA) * dn + G.twist*wl;
     body.rotation.z = q.roll * dn;
-    body.rotation.x = q.lean * dn;
+    body.rotation.x = q.lean * dn + G.lean*wl;
     if (g.userData.sync) g.userData.sync();
   }
   // objetos que reaccionan a la música
@@ -2136,7 +2174,8 @@ function updateRemotes(dt){
     r.rot += Math.atan2(Math.sin(r.trot - r.rot), Math.cos(r.trot - r.rot)) * k;
     const sp = Math.hypot(r.x - ox, r.z - oz) / dt || 0;
     r.move += ((sp > 0.25 ? Math.min(1, sp/2.4 + 0.3) : 0) - r.move) * Math.min(1, dt*10);
-    r.phase += dt * (3 + sp*2.6);
+    r.spd = (r.spd || 0) + (sp - (r.spd || 0)) * Math.min(1, dt*8);
+    r.phase += dt * 2*Math.PI * gaitCad(r.spd);
     r.y += (floorY(r.x, r.z) - r.y) * Math.min(1, dt*14);
     r.dj += ((sp < 0.25 && inDJZone(r) ? 1 : 0) - r.dj) * Math.min(1, dt*6);
   }
