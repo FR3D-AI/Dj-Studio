@@ -432,7 +432,7 @@ DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hair
   model:'models/nika.glb', modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
-  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[0.2, 0.45], signature:true, tag:'Modelo 3D · El DJ',
+  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[0.2, 0.45], signature:true, tag:'Modelo 3D · DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
   model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
@@ -450,7 +450,7 @@ const LEGENDS = {
  "Benji": "Skater de día y locutor de una radio pirata de noche. Transmitía desde una van estacionada en el skatepark y su señal llegaba justo hasta donde terminaba la ciudad. Inventó un giro que lleva su nombre.",
  "Sol": "Cazador de vinilos. Encontró en una feria un disco de funk sin nombre y lo sampleó en un beat que dio la vuelta al mundo. Todavía busca a la banda para darles las gracias.",
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
- "DJ FR3D": "El DJ de la casa. Sus trenzas rojas se ven desde el fondo de cualquier pista y cuentan que nunca ha cerrado un set antes del amanecer. Empezó tocando en fiestas de barrio con dos tornamesas prestadas; hoy, cuando suelta el drop, la sala entera salta.",
+ "DJ FR3D": "Se considera un eterno aprendiz. En una libreta anota lo que le enseña cada noche: el espíritu de las primeras fiestas de barrio del Bronx, el pulso del house de Chicago, la precisión del techno de Detroit y el sabor de los vinilos de cumbia de su abuelo. Por eso ningún set suyo suena igual al anterior.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
