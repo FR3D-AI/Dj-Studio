@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
   background:rgba(242,236,224,.08);border:2px solid rgba(242,236,224,.25);touch-action:none}
 .joy i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
   background:var(--accent);opacity:.9;box-shadow:0 2px 10px rgba(0,0,0,.4)}
-.app{position:relative}
+.app{position:relative;overflow:hidden;overflow:clip}
 .panel{position:absolute;z-index:30;top:0;right:0;height:100%;width:min(400px,100%);overflow-y:auto;background:var(--panel);
   border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(0,0,0,.45);
   padding:14px 16px 18px;display:flex;flex-direction:column;gap:14px;
@@ -177,6 +177,38 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
   .djbar{top:120px}
   .chat:not(.closed) ~ .djbar{display:none}
 }
+.csel{position:fixed;inset:0;z-index:55;overflow:auto;display:flex;justify-content:center;padding:16px;
+  background:radial-gradient(ellipse at 30% 20%, rgba(211,18,31,.22), transparent 55%), radial-gradient(ellipse at 80% 90%, rgba(122,60,255,.25), transparent 55%), #0f0d15}
+.cselwrap{width:min(1180px,100%);display:flex;flex-direction:column;gap:14px;min-height:0}
+.cselhead{display:flex;flex-direction:column;gap:2px}
+.ctitle{font:400 clamp(26px,4vw,40px)/1.05 var(--display);color:var(--fg);letter-spacing:.02em}
+.cselmain{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.cselstage{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;height:min(68vh,620px);min-height:380px;background:#120f1a}
+.cselstage canvas{display:block;width:100%;height:100%}
+.cselinfo{position:absolute;left:0;right:0;bottom:0;padding:48px 18px 16px;display:flex;flex-direction:column;gap:4px;pointer-events:none;
+  background:linear-gradient(transparent, rgba(12,10,18,.88) 55%)}
+.cname{font:400 clamp(30px,4.4vw,48px)/1 var(--display);color:var(--fg);text-shadow:0 3px 18px rgba(0,0,0,.6)}
+.cselinfo p{margin:0;color:#d9d2e6;max-width:46ch;line-height:1.35;text-shadow:0 2px 10px rgba(0,0,0,.8)}
+.ctag{align-self:flex-start;font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.ctag.sig{background:#d3121f;color:#fff;border-color:#d3121f}
+.cselside{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cselgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:10px}
+.ccard{position:relative;display:flex;flex-direction:column;gap:5px;align-items:stretch;padding:6px 6px 8px;border-radius:12px;cursor:pointer;
+  background:var(--panel-2);border:2px solid transparent;color:var(--fg);font:700 14px var(--body);transition:transform .12s,border-color .12s}
+.ccard img{width:100%;aspect-ratio:1;border-radius:8px;background:#1a1624;display:block}
+.ccard:hover{transform:translateY(-2px)}
+.ccard[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,179,71,.18)}
+.ccard.sig{background:linear-gradient(165deg,#4a1218,#211a2c 70%)}
+.ccard.sig::after{content:"★";position:absolute;top:8px;right:9px;width:22px;height:22px;border-radius:50%;background:#d3121f;color:#fff;font-size:12px;display:grid;place-items:center}
+.ccard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cselgo{padding:14px 18px;font-size:17px}
+@media (max-width:780px){
+  .cselmain{grid-template-columns:1fr}
+  .cselstage{height:auto;min-height:0;display:flex;flex-direction:column}
+  .cselstage canvas{height:40vh;min-height:250px}
+  .cselinfo{position:static;padding:4px 16px 14px;background:none}
+  .cselgrid{grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:92px;overflow-x:auto;padding-bottom:4px}
+}
 .items .opt[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(166,156,184,.6)}
 .grid{grid-template-columns:1fr}
 </style>
@@ -209,6 +241,22 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <p class="note" id="djTurnNote"></p>
     <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
     <button class="btn" id="djTurnLater" type="button">Ahora no</button>
+  </div>
+</div>
+<div class="csel" id="charSel" hidden role="dialog" aria-modal="true" aria-labelledby="cselTitle">
+  <div class="cselwrap">
+    <div class="cselhead"><span class="lbl" id="cselStep">Paso 2 de 2</span><div class="ctitle" id="cselTitle">Elige tu personaje</div></div>
+    <div class="cselmain">
+      <div class="cselstage">
+        <canvas id="cselCanvas" aria-label="Vista previa del personaje"></canvas>
+        <div class="cselinfo"><span class="ctag" id="cselTag"></span><div class="cname" id="cselName"></div><p id="cselBio"></p></div>
+      </div>
+      <div class="cselside">
+        <div class="cselgrid" id="cselGrid" role="listbox" aria-label="Personajes"></div>
+        <button class="btn primary cselgo" id="cselGo" type="button">Entrar</button>
+        <p class="note">Podrás cambiar ropa, colores y bailes después en la configuración (engranaje).</p>
+      </div>
+    </div>
   </div>
 </div>
 <div class="app">
@@ -321,6 +369,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <div class="legend"><span><i></i>En la sala</span><span>Toca uno que no esté y entra en lugar de otro</span></div>
 
     <h2>Personalizar</h2>
+    <button class="btn" id="openCsel" type="button">Cambiar de personaje</button>
     <div class="group"><label for="nameInput">Nombre</label><input class="name" id="nameInput" maxlength="14"></div>
     <div class="grid" id="custom"></div>
     <div class="actions">
@@ -349,13 +398,16 @@ const DANCES = [['rebote','Rebote'],['balanceo','Balanceo'],['puno','Puño arrib
 const FIELDS = [
   {k:'build', label:'Complexión', type:'opt', opts:[['delgado','Delgado'],['normal','Normal'],['fornido','Fornido']]},
   {k:'skin', label:'Piel', type:'sw', opts:SKINS},
-  {k:'hair', label:'Peinado', type:'opt', opts:[['rapado','Rapado'],['afro','Afro'],['coleta','Coleta'],['trenzas','Trenzas'],['cresta','Cresta'],['gorra','Gorra'],['calvo','Calvo']]},
+  {k:'hair', label:'Peinado', type:'opt', opts:[['rapado','Rapado'],['afro','Afro'],['coleta','Coleta'],['trenzas','Trenzas'],['cresta','Cresta'],['gorra','Gorra'],['calvo','Calvo'],['gorraTrenzas','Gorra y trenzas largas']]},
+  {k:'beard', label:'Barba', type:'opt', opts:[['no','Sin barba'],['corta','Barba corta']]},
+  {k:'acc', label:'Accesorios', type:'opt', opts:[['no','Ninguno'],['expansiones','Expansiones']]},
   {k:'hairColor', label:'Color de pelo o gorra', type:'sw', opts:HAIRC},
-  {k:'top', label:'Parte de arriba', type:'opt', opts:[['camiseta','Camiseta'],['tirantes','Tirantes'],['chaqueta','Chaqueta'],['sudadera','Sudadera']]},
+  {k:'top', label:'Parte de arriba', type:'opt', opts:[['camiseta','Camiseta'],['oversize','Polera oversize'],['tirantes','Tirantes'],['chaqueta','Chaqueta'],['sudadera','Sudadera']]},
   {k:'topColor', label:'Color de arriba', type:'sw', opts:CLOTH},
-  {k:'pants', label:'Parte de abajo', type:'opt', opts:[['largo','Pantalón'],['short','Short']]},
+  {k:'pants', label:'Parte de abajo', type:'opt', opts:[['largo','Pantalón'],['cargo','Cargo'],['short','Short']]},
   {k:'pantsColor', label:'Color de abajo', type:'sw', opts:PANTS},
   {k:'shoes', label:'Zapatillas', type:'sw', opts:SHOES},
+  {k:'shoeAccent', label:'Detalle de zapatillas', type:'sw', opts:SHOES},
   {k:'danceA', label:'Baile normal', type:'opt', opts:DANCES},
   {k:'danceB', label:'Baile en el drop', type:'opt', opts:DANCES}
 ];
@@ -370,18 +422,24 @@ const DEFAULTS = [
   {name:'Rocco', build:'fornido', skin:SKINS[1], hair:'calvo', hairColor:HAIRC[0], top:'tirantes', topColor:CLOTH[1], pants:'largo', pantsColor:PANTS[2], shoes:SHOES[5], danceA:'headbang', danceB:'puno'},
   {name:'Yesi', build:'normal', skin:SKINS[1], hair:'coleta', hairColor:HAIRC[3], top:'camiseta', topColor:CLOTH[9], pants:'short', pantsColor:PANTS[5], shoes:SHOES[0], danceA:'manos', danceB:'salto'},
   {name:'Benji', build:'delgado', skin:SKINS[5], hair:'gorra', hairColor:HAIRC[6], top:'sudadera', topColor:CLOTH[5], pants:'largo', pantsColor:PANTS[1], shoes:SHOES[0], danceA:'running', danceB:'giro'},
-  {name:'Sol', build:'normal', skin:SKINS[0], hair:'afro', hairColor:HAIRC[2], top:'camiseta', topColor:CLOTH[3], pants:'short', pantsColor:PANTS[4], shoes:SHOES[3], danceA:'rebote', danceB:'manos'}
+  {name:'Sol', build:'normal', skin:SKINS[0], hair:'afro', hairColor:HAIRC[2], top:'camiseta', topColor:CLOTH[3], pants:'short', pantsColor:PANTS[4], shoes:SHOES[3], danceA:'rebote', danceB:'manos'},
+  // personaje exclusivo, hecho a partir de la ficha de Fred Fuentes
+  {name:'Fred', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno', signature:true, tag:'Personaje exclusivo', bio:'Gorra roja, trenzas rojas largas con argollas plateadas, barba, expansiones, polera oversize y cargo.'}
 ];
+DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
+const NCH = DEFAULTS.length;
 
 const KEY = 'habitacion10-v1', ROOMKEY = 'habitacion10-sala-v2';
 let defs, room;
 try { defs = JSON.parse(localStorage.getItem(KEY)); } catch(e) { defs = null; }
-if (!Array.isArray(defs) || defs.length !== 10) defs = DEFAULTS.map(d => ({...d}));
+if (!Array.isArray(defs) || defs.length < 10) defs = DEFAULTS.map(d => ({...d}));
+while (defs.length < NCH) defs.push({...DEFAULTS[defs.length]});
+defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || ![4,6].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
-room.active = room.active.filter((v,i,a) => v>=0 && v<10 && a.indexOf(v)===i).slice(0, room.count);
-for (let i=0; room.active.length < room.count && i<10; i++) if (!room.active.includes(i)) room.active.push(i);
+room.active = room.active.filter((v,i,a) => v>=0 && v<NCH && a.indexOf(v)===i).slice(0, room.count);
+for (let i=0; room.active.length < room.count && i<NCH; i++) if (!room.active.includes(i)) room.active.push(i);
 room.items = room.items || {};
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(defs)); localStorage.setItem(ROOMKEY, JSON.stringify(room)); } catch(e){} }
 
@@ -805,21 +863,38 @@ function buildCharacter(d){
   const legs = [], arms = [];
   for (const s of [-1,1]){
     const leg = new THREE.Group(); leg.position.set(s*0.12*B, 0.9, 0);
-    box(0.19*B,0.45,0.21*B,d.pantsColor,0,-0.225,0,leg);
-    box(0.17*B,0.38,0.19*B, d.pants==='short'?d.skin:d.pantsColor,0,-0.64,0,leg);
+    if (d.pants === 'cargo'){
+      // cargo ancho con bolsillos laterales y basta sobre la zapatilla
+      box(0.22*B,0.46,0.23*B,d.pantsColor,0,-0.225,0,leg);
+      box(0.21*B,0.37,0.22*B,d.pantsColor,0,-0.64,0,leg);
+      box(0.035,0.17,0.14,shade_(d.pantsColor,1.35),s*0.12*B,-0.47,0,leg);
+      box(0.04,0.03,0.15,shade_(d.pantsColor,1.6),s*0.12*B,-0.385,0,leg);
+      box(0.215*B,0.05,0.225*B,shade_(d.pantsColor,0.8),0,-0.8,0,leg);
+    } else {
+      box(0.19*B,0.45,0.21*B,d.pantsColor,0,-0.225,0,leg);
+      box(0.17*B,0.38,0.19*B, d.pants==='short'?d.skin:d.pantsColor,0,-0.64,0,leg);
+    }
     box(0.2*B,0.1,0.32,d.shoes,0,-0.85,0.05,leg);
+    const ac = d.shoeAccent || d.shoes;
+    if (ac !== d.shoes){ // zapatillas de dos colores: puntera, talón y franja
+      box(0.205*B,0.06,0.1,ac,0,-0.86,0.17,leg); box(0.205*B,0.08,0.07,ac,0,-0.84,-0.08,leg);
+      box(0.21*B,0.03,0.18,ac,0,-0.825,0.04,leg); box(0.21*B,0.02,0.33,'#1d1c21',0,-0.895,0.05,leg);
+    }
     g.add(leg); legs.push(leg);
   }
   box(0.47*B,0.08,0.27*B, shade_(d.pantsColor,0.7), 0,0.93,0, body);
-  box(0.46*B,0.6,0.26*B, d.topColor, 0,1.26,0, body);
+  if (d.top === 'oversize'){ box(0.53*B,0.68,0.3*B, d.topColor, 0,1.22,0, body); box(0.2,0.03,0.05,shade_(d.topColor,0.82),0,1.545,0.135*B,body); }
+  else box(0.46*B,0.6,0.26*B, d.topColor, 0,1.26,0, body);
   if (d.top==='tirantes'){ box(0.24*B,0.18,0.27*B, d.skin, 0,1.47,0.002, body); }
   if (d.top==='chaqueta'){ box(0.13*B,0.52,0.02,'#ece8df',0,1.24,0.135*B,body); box(0.02,0.52,0.02,shade_(d.topColor,0.6),0.075*B,1.24,0.14*B,body); box(0.02,0.52,0.02,shade_(d.topColor,0.6),-0.075*B,1.24,0.14*B,body); }
   if (d.top==='sudadera'){ box(0.3*B,0.14,0.02,shade_(d.topColor,0.75),0,1.08,0.135*B,body); box(0.34,0.2,0.1,shade_(d.topColor,0.85),0,1.6,-0.17,body); }
   const upC = d.top==='tirantes' ? d.skin : d.topColor;
   const loC = (d.top==='chaqueta'||d.top==='sudadera') ? d.topColor : d.skin;
   for (const s of [-1,1]){
-    const arm = new THREE.Group(); arm.position.set(s*(0.23*B+0.075*B), 1.5, 0);
-    box(0.13*B,0.3,0.15*B,upC,0,-0.15,0,arm);
+    const ov = d.top === 'oversize';
+    const arm = new THREE.Group(); arm.position.set(s*((ov ? 0.265 : 0.23)*B+0.075*B), 1.5, 0);
+    if (ov) box(0.18*B,0.36,0.2*B,upC,0,-0.16,0,arm); // manga ancha hasta el codo
+    else box(0.13*B,0.3,0.15*B,upC,0,-0.15,0,arm);
     box(0.12*B,0.28,0.14*B,loC,0,-0.44,0,arm);
     box(0.1,0.1,0.11,d.skin,0,-0.63,0,arm);
     body.add(arm); arms.push(arm);
@@ -834,6 +909,47 @@ function buildCharacter(d){
   H(0.1,0.025,0.02,'#7a3b2e',0,1.69,0.151);
   H(0.04,0.06,0.04,shade_(d.skin,0.9),0,1.75,0.16);
   const hc = d.hairColor;
+  if (d.beard === 'corta'){
+    const bc = '#1b1411';
+    H(0.3,0.075,0.05,bc,0,1.655,0.13); H(0.034,0.17,0.22,bc,-0.151,1.73,0.03); H(0.034,0.17,0.22,bc,0.151,1.73,0.03);
+    H(0.15,0.025,0.02,bc,0,1.716,0.155); H(0.03,0.04,0.02,bc,-0.07,1.69,0.153); H(0.03,0.04,0.02,bc,0.07,1.69,0.153);
+  }
+  if (d.acc === 'expansiones'){
+    for (const sx of [-1,1]){
+      H(0.03,0.08,0.06,d.skin,sx*0.163,1.77,-0.01);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.032,0.011,6,14), M('#0e0d10'));
+      ring.rotation.y = Math.PI/2; ring.position.set(sx*0.172, 1.725-1.56, -0.01); ring.castShadow = true; head.add(ring);
+    }
+  }
+  if (d.hair === 'gorraTrenzas'){
+    // gorra de visera plana
+    H(0.335,0.13,0.335,hc,0,1.975,0); H(0.33,0.022,0.2,hc,0,1.925,0.25); H(0.33,0.006,0.2,'#2b2b2b',0,1.912,0.25);
+    H(0.06,0.03,0.06,shade_(hc,0.7),0,2.05,0); H(0.13,0.05,0.02,shade_(hc,0.8),0,1.95,-0.17);
+    // emblema original en el frente (monograma FF)
+    const em = document.createElement('canvas'); em.width = 128; em.height = 80; const ex = em.getContext('2d');
+    ex.font = '900 62px Impact, "Arial Black", sans-serif'; ex.textAlign = 'center'; ex.textBaseline = 'middle';
+    ex.lineWidth = 9; ex.strokeStyle = '#f2efe8'; ex.strokeText('FF', 64, 44); ex.fillStyle = '#111'; ex.fillText('FF', 64, 44);
+    const emb = new THREE.Mesh(new THREE.PlaneGeometry(0.15,0.094), new THREE.MeshLambertMaterial({map: new THREE.CanvasTexture(em), transparent:true}));
+    emb.position.set(0, 1.985-1.56, 0.169); head.add(emb);
+    // trenzas: atrás hasta media espalda, a los lados y por delante de los hombros, con argollas plateadas
+    const braid = (x, z, top, len, tiltX, tiltZ, beads) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.034, len, 0.034), M(shade_(hc, 0.85 + ((x*37+z*53)%1+1)%1*0.3)));
+      m.position.set(x, top - len/2 - 1.56, z); m.rotation.set(tiltX||0, 0, tiltZ||0); m.castShadow = true; head.add(m);
+      for (const f of beads || []){
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.03,0.045), M('#c9cbd2'));
+        b.position.copy(new THREE.Vector3(0, len/2 - len*f, 0).applyEuler(m.rotation).add(m.position)); b.rotation.copy(m.rotation); head.add(b);
+      }
+    };
+    for (let i=0;i<7;i++){ const x = -0.135 + i*0.045; braid(x, -0.185, 1.91, 0.74 + (i%2)*0.06, -0.06, 0, i%3===0 ? [0.55] : []); }
+    for (let i=0;i<5;i++){ const x = -0.11 + i*0.055; braid(x, -0.215, 1.86, 0.62, -0.1, 0, i===2 ? [0.7] : []); }
+    for (const sx of [-1,1]){
+      braid(sx*0.172, -0.09, 1.9, 0.5, 0, sx*0.05, []);
+      braid(sx*0.172, -0.035, 1.9, 0.42, 0, sx*0.04, sx>0 ? [0.6] : [0.35]);
+      // por delante de los hombros
+      braid(sx*0.2, 0.06, 1.86, 0.58, 0.3, sx*0.04, [0.42, 0.8]);
+      braid(sx*0.228, 0.02, 1.86, 0.52, 0.26, sx*0.06, []);
+    }
+  }
   const cap = () => { H(0.32,0.06,0.32,hc,0,1.95,0); H(0.32,0.2,0.04,hc,0,1.85,-0.15); H(0.03,0.12,0.24,hc,-0.155,1.87,-0.02); H(0.03,0.12,0.24,hc,0.155,1.87,-0.02); };
   if (d.hair==='rapado') cap();
   if (d.hair==='afro'){ const a = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26,1), M(hc)); a.scale.set(1,0.85,0.82); a.position.set(0,1.96-1.56,-0.06); a.castShadow = true; head.add(a); }
@@ -911,7 +1027,7 @@ function placeCamera(){
 
 /* ---------- entrada ---------- */
 const keys = {};
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || !gate.hidden) return; keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || !gate.hidden || !document.getElementById('charSel').hidden) return; keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
@@ -1474,7 +1590,7 @@ function setCount(n){
     room.active.filter(i => !keep.includes(i)).forEach(i => setOn(chars[i], false));
     room.active = room.active.filter(i => keep.includes(i));
   } else {
-    for (let i=0; room.active.length < n && i<10; i++) if (!room.active.includes(i)){ room.active.push(i); setOn(chars[i], true); }
+    for (let i=0; room.active.length < n && i<NCH; i++) if (!room.active.includes(i)){ room.active.push(i); setOn(chars[i], true); }
   }
   save(); renderCount(); renderRoster();
 }
@@ -1553,7 +1669,8 @@ function select(i){
   chars[i].target = null; chars[i].wait = 0;
   hudName.textContent = defs[i].name;
   save(); renderRoster(); renderCustom();
-  roster.children[i]?.scrollIntoView({block:'nearest', inline:'nearest'});
+  // desplaza solo la fila de personajes (scrollIntoView movería toda la página hacia el panel oculto)
+  const card = roster.children[i]; if (card) roster.scrollLeft = card.offsetLeft - roster.clientWidth/2 + card.clientWidth/2;
 }
 nameInput.addEventListener('input', () => { defs[sel].name = nameInput.value.trim() || ('Personaje ' + (sel+1)); hudName.textContent = defs[sel].name; save(); renderRoster(); netSendLook(); });
 const pickR = a => a[Math.floor(Math.random()*a.length)];
@@ -2076,7 +2193,7 @@ let lastSlotAnnounced = null;
 function checkMyTurn(){
   const a = activeSlot();
   if (a && a.id !== lastSlotAnnounced){ lastSlotAnnounced = a.id; addChat({kind:'system', text: 'Ahora toca: ' + a.name + ' hasta las ' + fmtTime(a.end)}); }
-  if (a && a.pub === ident.pub && !net.casting && !shownTurns.has(a.id) && gate.hidden){
+  if (a && a.pub === ident.pub && !net.casting && !shownTurns.has(a.id) && gate.hidden && cselEl.hidden){
     shownTurns.add(a.id);
     djTurnNote.textContent = 'Tu turno: ' + fmtTime(a.start) + ' – ' + fmtTime(a.end) + '. Usa Chrome o Edge (en Mac, Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
     djTurn.hidden = false;
@@ -2252,7 +2369,7 @@ function toggleView(){
   renderView();
 }
 viewBtn.addEventListener('click', toggleView);
-addEventListener('keydown', e => { if (e.code === 'KeyV' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && gate.hidden) toggleView(); });
+addEventListener('keydown', e => { if (e.code === 'KeyV' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && gate.hidden && cselEl.hidden) toggleView(); });
 renderView();
 const identityReady = (async () => {
   try { await loadIdentity(); } catch(e){ ident.pub = 'sin-llave-' + Math.random().toString(36).slice(2); }
@@ -2273,13 +2390,132 @@ gateForm.addEventListener('submit', e => {
   const name = gateName.value.trim().replace(/\s+/g, ' ').slice(0, 14);
   if (!name){ gateErr.textContent = 'Escribe un nombre para entrar.'; gateName.focus(); return; }
   try { localStorage.setItem('dj-studio-nombre', name); } catch(e){}
+  playerName = name;
   defs[sel].name = name; nameInput.value = name; hudName.textContent = name; save(); renderRoster();
   gate.hidden = true;
   // el clic de "Entrar" desbloquea el audio: así se escucha al DJ sin tocar nada más
   ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
+  openCharSelect(true);
+});
+let playerName = '', entered = false;
+function enterRoom(){
+  if (entered) return; entered = true;
   identityReady.then(() => { connect(); checkMyTurn(); });
   setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = '0'; }, 12000);
-});
+}
+
+/* ---------- selección de personaje ---------- */
+const cselEl = document.getElementById('charSel'), cselGrid = document.getElementById('cselGrid');
+let cselCanvas = document.getElementById('cselCanvas');
+const cselName = document.getElementById('cselName'), cselBio = document.getElementById('cselBio'), cselTag = document.getElementById('cselTag'), cselGo = document.getElementById('cselGo');
+const csel = {r:null, scene:null, cam:null, char:null, pick:0, raf:0, last:0, first:false, portraits:[]};
+const labelOf = (k, v) => { const f = FIELDS.find(x => x.k === k); const o = f && f.opts.find(x => x[0] === v); return o ? o[1] : v; };
+function bioOf(i){
+  const d = defs[i], D = DEFAULTS[i];
+  if (D.bio) return D.bio;
+  return [labelOf('build', d.build), labelOf('hair', d.hair).toLowerCase(), labelOf('top', d.top).toLowerCase(), labelOf('pants', d.pants).toLowerCase()].join(' · ') + '. Baila: ' + labelOf('danceA', d.danceA).toLowerCase() + '.';
+}
+function cselSetup(){
+  if (csel.r) return;
+  const fresh = cselCanvas.cloneNode(false); cselCanvas.replaceWith(fresh); cselCanvas = fresh;
+  csel.r = new THREE.WebGLRenderer({canvas: cselCanvas, antialias:true, preserveDrawingBuffer:false});
+  csel.r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  if (csel.scene){ return; }
+  csel.scene = new THREE.Scene(); csel.scene.background = new THREE.Color('#120f1a');
+  csel.scene.add(new THREE.HemisphereLight('#fff1e0', '#2a2040', 0.75));
+  const key = new THREE.DirectionalLight('#ffffff', 0.75); key.position.set(1.5, 3, 2.5); csel.scene.add(key);
+  const rim = new THREE.DirectionalLight('#ff2a3a', 0.9); rim.position.set(-2.5, 2.2, -2); csel.scene.add(rim);
+  const rim2 = new THREE.DirectionalLight('#7a5cff', 0.6); rim2.position.set(2.5, 1.5, -2.2); csel.scene.add(rim2);
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.95, 0.06, 48), new THREE.MeshLambertMaterial({color:'#1f1a2b'})); disc.position.y = -0.03; csel.scene.add(disc);
+  const glow = new THREE.Mesh(new THREE.RingGeometry(0.88, 0.97, 64), new THREE.MeshBasicMaterial({color:'#ffb347'})); glow.rotation.x = -Math.PI/2; glow.position.y = 0.005; csel.scene.add(glow);
+  csel.cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+}
+function disposeTree(o){ o.traverse(m => { if (m.isMesh){ m.geometry.dispose(); if (m.material !== CHAR_MAT && m.material !== BAKED_MAT && m.material.dispose){ if (m.material.map) m.material.map.dispose(); m.material.dispose(); } } }); }
+function makePortraits(){
+  const r = csel.r, cam = csel.cam, size = 192;
+  r.setSize(size, size, false); cam.aspect = 1; cam.fov = 26; cam.updateProjectionMatrix();
+  cam.position.set(0.42, 1.78, 1.75); cam.lookAt(0, 1.66, 0);
+  csel.portraits = defs.map((d, i) => {
+    const g = buildCharacter(d); g.rotation.y = 0.22; csel.scene.add(g);
+    r.render(csel.scene, cam);
+    const url = cselCanvas.toDataURL('image/png');
+    csel.scene.remove(g); disposeTree(g);
+    return url;
+  });
+}
+function cselOrder(){ const idx = defs.map((_, i) => i); return idx.filter(i => DEFAULTS[i].signature).concat(idx.filter(i => !DEFAULTS[i].signature)); }
+function renderCselGrid(){
+  cselGrid.innerHTML = '';
+  for (const i of cselOrder()){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ccard' + (DEFAULTS[i].signature ? ' sig' : '');
+    b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === csel.pick);
+    const img = document.createElement('img'); img.alt = ''; img.src = csel.portraits[i] || '';
+    b.append(img, DEFAULTS[i].name);
+    b.addEventListener('click', () => cselPick(i));
+    b.addEventListener('dblclick', () => { cselPick(i); cselConfirm(); });
+    cselGrid.append(b);
+  }
+}
+function cselPick(i){
+  csel.pick = i;
+  if (csel.char){ csel.scene.remove(csel.char); disposeTree(csel.char); }
+  csel.char = buildCharacter(defs[i]); csel.char.rotation.y = 0.5; csel.scene.add(csel.char);
+  const D = DEFAULTS[i];
+  cselName.textContent = D.name; cselBio.textContent = bioOf(i);
+  cselTag.textContent = D.tag || 'Personaje de la sala'; cselTag.classList.toggle('sig', !!D.signature);
+  cselGo.textContent = 'Entrar con ' + D.name;
+  [...cselGrid.children].forEach((b, k) => b.setAttribute('aria-selected', cselOrder()[k] === i));
+}
+function cselResize(){
+  const w = cselCanvas.clientWidth || 600, h = cselCanvas.clientHeight || 500;
+  csel.r.setSize(w, h, false); csel.cam.aspect = w / h; csel.cam.fov = 30; csel.cam.updateProjectionMatrix();
+  csel.cam.position.set(0, 1.25, w / h < 0.8 ? 6.2 : 4.9); csel.cam.lookAt(0, 1.0, 0);
+}
+const cselPose = {};
+function cselLoop(now){
+  if (cselEl.hidden){ csel.raf = 0; return; }
+  const dt = Math.min(0.05, (now - (csel.last || now)) / 1000); csel.last = now;
+  const g = csel.char;
+  if (g){
+    g.rotation.y += dt * 0.5;
+    const d = defs[csel.pick], P = now / 1000 * Math.PI * 2, {legs, arms, head, body} = g.userData;
+    dancePose('balanceo', P*0.5, 0, 0, cselPose);
+    const k = 0.55;
+    g.position.y = cselPose.bounce * k;
+    legs[0].rotation.x = cselPose.l0 * k; legs[1].rotation.x = cselPose.l1 * k;
+    arms[0].rotation.x = cselPose.a0 * k; arms[1].rotation.x = cselPose.a1 * k;
+    arms[0].rotation.z = -0.08 + cselPose.z0 * k; arms[1].rotation.z = 0.08 + cselPose.z1 * k;
+    head.rotation.x = cselPose.head * k; body.rotation.y = cselPose.twist * k; body.rotation.z = cselPose.roll * k; body.rotation.x = cselPose.lean * k;
+  }
+  csel.r.render(csel.scene, csel.cam);
+  csel.raf = requestAnimationFrame(cselLoop);
+}
+function openCharSelect(first){
+  csel.first = !!first;
+  document.getElementById('cselStep').textContent = first ? 'Paso 2 de 2' : 'Cambiar personaje';
+  cselEl.hidden = false;
+  cselSetup(); makePortraits(); renderCselGrid(); cselResize(); cselPick(sel);
+  setTimeout(() => cselGrid.querySelector('[aria-selected="true"]')?.focus(), 50);
+  if (!csel.raf){ csel.last = 0; csel.raf = requestAnimationFrame(cselLoop); }
+}
+function closeCharSelect(){
+  cselEl.hidden = true;
+  if (csel.char){ csel.scene.remove(csel.char); disposeTree(csel.char); csel.char = null; }
+  if (csel.r){ csel.r.dispose(); csel.r.forceContextLoss(); csel.r = null; } // libera la GPU para el juego
+  requestAnimationFrame(resize);
+}
+function cselConfirm(){
+  const i = csel.pick, prev = sel, name = playerName || defs[sel].name;
+  if (i !== prev){ defs[prev].name = DEFAULTS[prev].name; select(i); }
+  defs[sel].name = name; nameInput.value = name; hudName.textContent = name;
+  save(); renderRoster(); renderCustom(); netSendLook();
+  closeCharSelect();
+  enterRoom();
+}
+cselGo.addEventListener('click', cselConfirm);
+cselEl.addEventListener('keydown', e => { if (e.key === 'Escape' && !csel.first) closeCharSelect(); });
+addEventListener('resize', () => { if (!cselEl.hidden) cselResize(); });
+document.getElementById('openCsel').addEventListener('click', () => { setPanel(false); playerName = playerName || defs[sel].name; openCharSelect(false); });
 
 /* ---------- configuración en ventana (engranaje) ---------- */
 const panelEl = document.getElementById('panel'), gearBtn = document.getElementById('gearBtn');
@@ -2295,7 +2531,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && panelEl.classList.c
 hudName.textContent = defs[sel].name;
 camTarget.set(chars[sel].x, 1, chars[sel].z);
 renderCount(); renderRoster(); renderCustom(); renderItems(); save();
-window.__djInfo = () => ({calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr: renderer.getPixelRatio()});
+window.__djInfo = () => { const v = new THREE.Vector4(); renderer.getCurrentViewport(v); return {calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr: renderer.getPixelRatio(), vp:[v.x,v.y,v.z,v.w], size:[renderer.domElement.width, renderer.domElement.height]}; };
 requestAnimationFrame(tick);
 })();
 </script>
