@@ -436,6 +436,9 @@ DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hair
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
   model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, signature:true, tag:'Modelo 3D · El DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
+DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
+  model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, signature:true, tag:'Modelo 3D · DJ',
+  bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
 const NCH = DEFAULTS.length;
 
@@ -915,6 +918,44 @@ function gait(phase, spd, o, fem){
   o.spineZ = -o.hipRoll*0.85;                                   // hombros nivelados
   o.lean = 0.03 + 0.12*run - 0.05*fw;                           // pecho erguido
   o.head = -0.05*fw;
+  return o;
+}
+/* ---------- manos del DJ sobre la mesa ---------- */
+// Quien está en la cabina trabaja la mesa solo: perillas y fader del mixer, scratch en un plato, empuja el otro plato,
+// se lleva el audífono a la oreja y en el drop levanta un brazo al público. Cambia de acción cada 2 compases.
+// Índice 0 = brazo derecho (hacia el plato derecho), 1 = izquierdo. Valores en ejes del personaje.
+const DJ_ACTS = ['mezcla', 'scratch', 'perillas', 'jog', 'auricular', 'mezcla', 'scratch', 'perillas'];
+const DJP = {a:[0,0], z:[0,0], e:[0,0], ez:[0,0], twist:0, lean:0, head:0, headY:0, headZ:0, bounce:0};
+function djPose(P, t, seed, drop, sounding, o){
+  const beat = P / Math.PI, bar2 = Math.floor(beat / 8);
+  let act = sounding ? DJ_ACTS[(bar2 * 5 + seed * 3) % DJ_ACTS.length] : 'perillas';
+  if (drop && sounding && (bar2 + seed) % 2 === 0) act = 'arriba';
+  const s1 = Math.sin(P), s2 = Math.sin(P*2), s4 = Math.sin(P*4), sp = sounding ? 1 : 0.35;
+  // base: las dos manos sobre el mixer
+  o.a[0] = -0.88; o.a[1] = -0.88; o.z[0] = -0.06; o.z[1] = 0.06; o.e[0] = -0.6; o.e[1] = -0.6; o.ez[0] = 0.3; o.ez[1] = -0.3;
+  o.twist = 0; o.lean = 0.3; o.headY = 0; o.headZ = 0; o.bounce = 0;
+  // mano que gira perillas: pequeños giros y saltos de una perilla a otra en cada tiempo
+  const knob = i => { const k = Math.floor(beat + i*0.5) % 3; o.z[i] += (i ? 1 : -1) * (k - 1) * 0.05; o.a[i] += (k === 1 ? -0.04 : 0.03); o.e[i] += 0.07*Math.sin(t*9 + i)*sp; };
+  const fader = i => { o.z[i] += (i ? 1 : -1) * (0.02 + 0.06*Math.sin(P*0.5)); o.a[i] += 0.03*s2*sp; };
+  if (act === 'mezcla'){ knob(0); fader(1); }
+  else if (act === 'perillas'){ knob(0); knob(1); o.lean = 0.26; }
+  else if (act === 'scratch'){ // derecha en el plato derecho: adelante-atrás rápido; izquierda en el crossfader
+    o.twist = -0.38; o.z[0] = -0.5; o.a[0] = -0.95 + 0.08*s4; o.e[0] = -0.4 + 0.22*s4; o.ez[0] = 0.1; o.lean = 0.34;
+    o.z[1] = 0.1 + 0.06*Math.sign(Math.sin(P*4 + 0.6)); o.a[1] = -0.85; o.ez[1] = -0.45;
+  }
+  else if (act === 'jog'){ // izquierda empuja el plato izquierdo con un movimiento circular
+    o.twist = 0.38; o.lean = 0.34; o.z[1] = 0.5 + 0.06*Math.cos(t*3.2); o.a[1] = -0.95 + 0.07*Math.sin(t*3.2); o.e[1] = -0.45; o.ez[1] = -0.1; o.ez[0] = 0.45;
+    knob(0);
+  }
+  else if (act === 'auricular'){ // izquierda sostiene el audífono contra la oreja
+    o.a[1] = -0.32; o.z[1] = 1.0; o.e[1] = -0.5; o.ez[1] = 2.55; o.headZ = 0.2; o.headY = -0.12;
+    knob(0); o.twist = -0.06;
+  }
+  else if (act === 'arriba'){ // drop: brazo derecho arriba marcando el ritmo
+    o.a[0] = -2.55 - 0.3*Math.abs(s1); o.z[0] = -0.2; o.e[0] = -0.25 - 0.25*Math.abs(s1); o.ez[0] = 0;
+    fader(1); o.lean = 0.16; o.bounce = 0.03*Math.abs(s1);
+  }
+  o.head = (sounding ? 0.16*Math.abs(s1) : 0.03) + 0.06;   // cabeceo al ritmo mirando la mesa
   return o;
 }
 /* ---------- pose de poder (selección de personaje) ---------- */
@@ -1722,8 +1763,8 @@ function tick(){
     legs[0].rotation.z = G.thz[0]*wl; legs[1].rotation.z = G.thz[1]*wl;
     const hp = g.userData.hips; if (hp){ hp.rotation.y = G.hipYaw*wl; hp.rotation.z = G.hipRoll*wl; }
     const idle = Math.sin(t*1.6 + c.i) * 0.04 * (1-mv);
-    arms[0].rotation.x = G.ar[0]*mv*(1-d)*(1-dn) + d*(-0.72 + Math.sin(t*8)*0.08*groove) + q.a0*dn;
-    arms[1].rotation.x = G.ar[1]*mv*(1-d)*(1-dn) + d*(-0.62) + q.a1*dn;
+    arms[0].rotation.x = G.ar[0]*mv*(1-dn) + q.a0*dn;
+    arms[1].rotation.x = G.ar[1]*mv*(1-dn) + q.a1*dn;
     const {knees, elbows, feet} = g.userData;
     if (knees){
       knees[0].rotation.x = G.kn[0]*wl + q.k0*dn + 0.05*(1-dn)*(1-mv);
@@ -1732,16 +1773,33 @@ function tick(){
     if (feet){ feet[0].rotation.x = G.ft[0]*wl - 0.05*(1-dn)*(1-mv); feet[1].rotation.x = G.ft[1]*wl - 0.05*(1-dn)*(1-mv); }
     if (elbows){
       const rest = -0.15*(1-mv);
-      elbows[0].rotation.x = (rest + G.el[0]*mv)*(1-dn)*(1-d) + q.e0*dn + d*(-1.0 + Math.sin(t*8)*0.1*groove);
-      elbows[1].rotation.x = (rest + G.el[1]*mv)*(1-dn)*(1-d) + q.e1*dn + d*(-1.05);
+      elbows[0].rotation.x = (rest + G.el[0]*mv)*(1-dn) + q.e0*dn;
+      elbows[1].rotation.x = (rest + G.el[1]*mv)*(1-dn) + q.e1*dn;
+      elbows[0].rotation.z = 0; elbows[1].rotation.z = 0;
     }
     head.rotation.y = -G.twist*0.7*wl;
     arms[0].rotation.z = (-0.06 - idle)*(1-dn) + q.z0*dn - G.az*wl;
     arms[1].rotation.z = ( 0.06 + idle)*(1-dn) + q.z1*dn + G.az*wl;
-    head.rotation.x = q.head*dn + d*pulse*0.3*groove + G.head*wl;
+    head.rotation.x = q.head*dn + G.head*wl;
+    head.rotation.z = 0;
     body.rotation.y = (q.twist + c.spinA) * dn + G.twist*wl;
     body.rotation.z = q.roll * dn + G.spineZ*wl;
     body.rotation.x = q.lean * dn + G.lean*wl;
+    if (d > 0.002){
+      // en la cabina: las manos trabajan la mesa (se mezcla suave al entrar y salir)
+      if (!c.djq){ c.djq = {a:[0,0], z:[0,0], e:[0,0], ez:[0,0], twist:0, lean:0, head:0, headY:0, headZ:0, bounce:0}; }
+      const D = djPose(P, t, c.i + (c.id ? c.id.length : 0), music.drop, music.sounding, DJP), Q = c.djq, k = Math.min(1, dt*10);
+      for (let i = 0; i < 2; i++){ for (const key of ['a','z','e','ez']) Q[key][i] += (D[key][i] - Q[key][i]) * k; }
+      for (const key of ['twist','lean','head','headY','headZ','bounce']) Q[key] += (D[key] - Q[key]) * k;
+      const mix = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * d; };
+      for (let i = 0; i < 2; i++){
+        mix(arms[i], 'x', Q.a[i]); mix(arms[i], 'z', Q.z[i]);
+        if (elbows){ mix(elbows[i], 'x', Q.e[i]); mix(elbows[i], 'z', Q.ez[i]); }
+      }
+      mix(body, 'y', Q.twist); mix(body, 'x', Q.lean); mix(body, 'z', 0);
+      mix(head, 'x', Q.head); mix(head, 'y', Q.headY); mix(head, 'z', Q.headZ);
+      g.position.y += Q.bounce * d;
+    }
     if (g.userData.sync) g.userData.sync();
   }
   // objetos que reaccionan a la música
