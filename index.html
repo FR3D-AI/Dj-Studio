@@ -100,6 +100,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .btn.live{background:#e5484d;border-color:#e5484d;color:#fff}
 .livebanner{position:absolute;right:12px;bottom:14px;max-width:calc(100% - 160px);background:#e5484d;color:#fff;font:400 13px var(--display);letter-spacing:.03em;
   padding:7px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.adv summary{cursor:pointer;color:var(--muted);font:600 13px var(--body)}
+.adv[open] summary{margin-bottom:8px}
 .items .opt[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(166,156,184,.6)}
 @media (min-width:900px){
   .app{flex-direction:row}
@@ -130,7 +132,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
         <button class="btn primary" id="castBtn" type="button" disabled>Transmitir a la sala</button>
         <button class="btn" id="hearBtn" type="button" hidden>Escuchar al DJ</button>
       </div>
-      <p class="note" id="castNote">Pon música (una pista o Rekordbox en vivo) y transmítela: quien entre a la página te verá en la cabina, escuchará tu música y bailará contigo.</p>
+      <p class="note" id="castNote">Abre Rekordbox y toca Transmitir: el navegador te pedirá compartir el audio del computador. Quien entre a la página te verá en la cabina, escuchará tu mezcla y bailará contigo.</p>
     </section>
 
     <section class="music" aria-labelledby="musicLbl">
@@ -147,11 +149,16 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <p class="note">Elige los archivos de tus pistas (MP3, WAV, M4A) o arrástralos a la sala. Suenan solo en tu navegador, no se suben a ningún lado.</p>
       <div class="livebox">
         <div class="mtop"><span class="lbl">Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></div>
-        <div class="row">
-          <select id="liveDev" aria-label="Entrada de audio"><option value="">Entrada de audio…</option></select>
-          <button class="btn" id="liveBtn" type="button">Escuchar en vivo</button>
-        </div>
-        <p class="note" id="liveNote">Envía la salida de Rekordbox a un cable de audio virtual (BlackHole o iShowU Audio Capture) y elígelo aquí. La sala baila con lo que estás mezclando.</p>
+        <button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button>
+        <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige <b>Pantalla completa</b> y activa <b>Compartir audio del sistema</b>. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
+        <details class="adv">
+          <summary>Opción avanzada: entrada de audio</summary>
+          <div class="row">
+            <select id="liveDev" aria-label="Entrada de audio"><option value="">Entrada de audio…</option></select>
+            <button class="btn" id="liveBtn" type="button">Escuchar en vivo</button>
+          </div>
+          <p class="note" id="liveNote">Para mesas con tarjeta de sonido o un cable de audio virtual (BlackHole, iShowU Audio Capture).</p>
+        </details>
       </div>
     </section>
 
@@ -657,11 +664,11 @@ function ensureAudio(){
 }
 // entrada en vivo: el audio de Rekordbox llega por un dispositivo de entrada (p. ej. BlackHole)
 let outGain = null, liveStream = null, liveNode = null;
-async function startLive(deviceId){
+async function startLive(deviceId, stream){
   ensureAudio(); if (!actx) throw new Error('Este navegador no soporta audio web.');
   if (actx.state === 'suspended') await actx.resume();
   stopLive();
-  liveStream = await navigator.mediaDevices.getUserMedia({audio:{deviceId: deviceId ? {exact: deviceId} : undefined, echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+  liveStream = stream || await navigator.mediaDevices.getUserMedia({audio:{deviceId: deviceId ? {exact: deviceId} : undefined, echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
   audioEl.pause();
   liveNode = actx.createMediaStreamSource(liveStream);
   liveNode.connect(analyser); outGain.gain.value = 0; // no lo reenviamos a los parlantes: Rekordbox ya suena
@@ -1128,6 +1135,44 @@ liveBtn.addEventListener('click', async () => {
     renderLive();
   }
 });
+const sysBtn = document.getElementById('sysBtn'), sysNote = document.getElementById('sysNote');
+let sysVideo = null;
+async function captureSystemAudio(){
+  if (!navigator.mediaDevices?.getDisplayMedia){ sysNote.textContent = 'Este navegador no puede capturar el audio del computador. Usa Chrome o Edge en un computador.'; return false; }
+  let st;
+  try {
+    st = await navigator.mediaDevices.getDisplayMedia({
+      video: {frameRate: 1, width: {max: 640}, height: {max: 360}},
+      audio: {echoCancellation:false, noiseSuppression:false, autoGainControl:false, suppressLocalAudioPlayback:false},
+      systemAudio: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude', monitorTypeSurfaces: 'include'
+    });
+  } catch(e){
+    sysNote.textContent = e && e.name === 'NotAllowedError' ? 'Cancelaste la captura. Vuelve a tocar el botón cuando quieras.' : 'No se pudo capturar el audio: ' + (e && e.message || e);
+    return false;
+  }
+  const at = st.getAudioTracks();
+  if (!at.length){
+    st.getTracks().forEach(t => t.stop());
+    sysNote.textContent = 'No llegó audio. Vuelve a intentarlo y activa el interruptor “Compartir audio del sistema” antes de compartir (en Mac necesitas Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
+    return false;
+  }
+  sysVideo = st.getVideoTracks()[0] || null; if (sysVideo) sysVideo.enabled = false; // solo usamos el audio
+  const audioOnly = new MediaStream(at);
+  await startLive(null, audioOnly);
+  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
+  renderLive(); renderPlaylist(); renderSys();
+  nowEl.textContent = 'En vivo: audio del computador';
+  sysNote.textContent = 'Capturando el audio del computador. Todo lo que suene en Rekordbox llega a la sala.';
+  return true;
+}
+function renderSys(){
+  const on = music.source === 'live' && !!sysVideo;
+  sysBtn.textContent = on ? 'Dejar de capturar' : 'Capturar audio del computador';
+}
+sysBtn.addEventListener('click', async () => {
+  if (music.source === 'live' && sysVideo){ sysVideo.stop(); sysVideo = null; stopLive(); renderLive(); renderSys(); if (net.casting) stopCast(); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; return; }
+  await captureSystemAudio();
+});
 liveDev.addEventListener('change', () => { if (music.source === 'live') liveBtn.click(), setTimeout(() => liveBtn.click(), 50); });
 navigator.mediaDevices?.addEventListener?.('devicechange', listInputs);
 listInputs();
@@ -1226,7 +1271,8 @@ function startCast(){
   ensureAudio(); if (!actx) return;
   if (actx.state === 'suspended') actx.resume();
   if (!(music.source === 'live' || (cur >= 0 && !audioEl.paused))){
-    netEl.note.textContent = 'Primero pon música: carga una pista o activa Rekordbox en vivo, y luego transmite.';
+    netEl.note.textContent = 'Elige la pantalla y activa “Compartir audio del sistema” para transmitir lo que suena en Rekordbox.';
+    captureSystemAudio().then(ok => { if (ok) startCast(); else netEl.note.textContent = sysNote.textContent; });
     return;
   }
   if (!net.castDest){ net.castDest = actx.createMediaStreamDestination(); analyser.connect(net.castDest); }
@@ -1237,6 +1283,7 @@ function startCast(){
   const me = chars[sel];
   if (room.items.dj){ me.x = 4.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
   netEl.note.textContent = 'Estás en vivo. Todos los conectados escuchan tu música y bailan contigo.';
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch(e){}
   renderNet();
 }
 function stopCast(silent){
