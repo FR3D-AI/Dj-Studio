@@ -432,10 +432,10 @@ DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hair
   model:'models/nika.glb', modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
-  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, signature:true, tag:'Modelo 3D · El DJ',
+  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, pose:'mando', signature:true, tag:'Modelo 3D · El DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
-  model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, signature:true, tag:'Modelo 3D · DJ',
+  model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, pose:'arriba', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
 const NCH = DEFAULTS.length;
@@ -922,6 +922,35 @@ function gait(phase, spd, o, fem){
   o.head = -0.05*fw;
   return o;
 }
+/* ---------- poses de poder de los DJ (selección de personaje) ---------- */
+// DJ FR3D: "al mando": puño derecho arriba marcando el ritmo, la otra mano en la cintura, mentón arriba
+function djPoseMando(t, o){
+  const br = Math.sin(t*1.7), pump = Math.abs(Math.sin(t*3.4));
+  o.hipRoll = 0.07; o.hipYaw = -0.1;
+  o.spineX = -0.08 + 0.01*br; o.spineY = 0.1; o.spineZ = -0.06;
+  o.head = [-0.16 - 0.05*pump, -0.1, 0.04];
+  o.thigh = [[-0.04, 0, -0.17 - o.hipRoll], [0.02, 0, 0.17 - o.hipRoll]];
+  o.knee = [0.12 + 0.05*pump, 0.08 + 0.05*pump]; o.foot = [-0.08, -0.05];
+  o.arm = [[-2.75 - 0.18*pump, 0, -0.22], [0.02 + 0.01*br, 0, 0.78]];
+  o.fore = [[-0.25 - 0.2*pump, 0, 0.1], [-0.32, 0, -1.85]];
+  o.bob = -0.01 - 0.014*pump;
+  return o;
+}
+// DJ Wishi: "manos arriba": los dos brazos en V, pecho afuera, mentón arriba; los brazos laten con el ritmo
+function djPoseArriba(t, o){
+  const br = Math.sin(t*1.7), pump = Math.abs(Math.sin(t*3.4));
+  o.hipRoll = -0.04; o.hipYaw = 0.05;
+  o.spineX = -0.1 + 0.01*br; o.spineY = 0.06; o.spineZ = 0.02;
+  o.head = [-0.2 - 0.05*pump, 0.08, -0.04];
+  o.thigh = [[0.02, 0, -0.18 - o.hipRoll], [-0.04, 0, 0.16 - o.hipRoll]];
+  o.knee = [0.08 + 0.06*pump, 0.12 + 0.06*pump]; o.foot = [-0.06, -0.08];
+  o.arm = [[-0.35, 0, -2.45 - 0.1*pump], [-0.35, 0, 2.45 + 0.1*pump]];
+  o.fore = [[-0.35, 0, 0.35], [-0.35, 0, -0.35]];
+  o.bob = -0.012 - 0.015*pump;
+  return o;
+}
+const POSE_FN = {poder: powerPose, mando: djPoseMando, arriba: djPoseArriba};
+
 /* ---------- manos del DJ sobre la mesa ---------- */
 // Quien está en la cabina trabaja la mesa solo: perillas y fader del mixer, scratch en un plato, empuja el otro plato,
 // se lleva el audífono a la oreja y en el drop levanta un brazo al público. Cambia de acción cada 2 compases.
@@ -2778,8 +2807,8 @@ function cselResize(){
 }
 const cselPose = {}, POWER = {};
 // pose de poder: entra girando hacia la cámara y queda con las manos en la cintura, mirando de frente con un leve vaivén
-function cselPower(g, t){
-  const u = g.userData, o = powerPose(t, POWER);
+function cselPower(g, t, fn){
+  const u = g.userData, o = fn(t, POWER);
   if (g.userData.t0 === undefined) g.userData.t0 = t;
   const e = Math.min(1, (t - g.userData.t0) / 0.7), k = e*e*(3 - 2*e);   // transición suave al elegirla
   g.rotation.y = (1 - k) * 1.9 + k * (0.32 + Math.sin(t*0.45)*0.22);
@@ -2802,7 +2831,7 @@ function cselLoop(now){
   const g = csel.char;
   if (g){
     const D = DEFAULTS[csel.pick];
-    if (D.pose === 'poder'){ cselPower(g, now / 1000); csel.r.render(csel.scene, csel.cam); csel.raf = requestAnimationFrame(cselLoop); return; }
+    if (POSE_FN[D.pose]){ cselPower(g, now / 1000, POSE_FN[D.pose]); csel.r.render(csel.scene, csel.cam); csel.raf = requestAnimationFrame(cselLoop); return; }
     g.rotation.y += dt * 0.5;
     const d = defs[csel.pick], P = now / 1000 * Math.PI * 2, {legs, arms, head, body} = g.userData;
     dancePose('balanceo', P*0.5, 0, 0, cselPose);
