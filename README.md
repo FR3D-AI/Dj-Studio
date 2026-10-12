@@ -1,5 +1,18 @@
 # DJ Studio
 
-Sala 3D de 10 × 10 m que corre en el navegador: tarima con cabina DJ, luces de fiesta y 10 personajes personalizables (4 o 6 en la sala). La sala baila al ritmo de tu música: carga pistas o escucha en vivo la salida de Rekordbox mediante una entrada de audio (BlackHole en Mac).
+Sala 3D de 10 × 10 m que corre en el navegador: tarima con cabina DJ, luces de fiesta y 10 personajes personalizables (4 o 6 en la sala). Todos los que abren la página entran a la misma sala en línea.
 
-Todo está en `index.html` (Three.js desde CDN). Se publica con GitHub Pages desde la rama `main`.
+**Jugar:** https://fr3d-ai.github.io/Dj-Studio/
+
+## Tocar en vivo con Rekordbox
+1. Abre Rekordbox y pon música.
+2. En la página toca **Transmitir a la sala**.
+3. Elige **Pantalla completa**, activa **Compartir audio del sistema** y toca **Compartir**.
+
+Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
+
+## Cómo funciona
+- Todo el juego está en `index.html` (Three.js desde CDN).
+- La sala en línea usa conexión directa entre navegadores (WebRTC), con Trystero 0.25.4 incluido en `vendor/`.
+- Cada oyente analiza el audio que recibe para bailar en sincronía.
+- Se publica con GitHub Pages desde la rama `main`.
