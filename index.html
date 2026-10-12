@@ -427,8 +427,6 @@ const DEFAULTS = [
   {name:'Yesi', build:'normal', skin:SKINS[1], hair:'coleta', hairColor:HAIRC[3], top:'camiseta', topColor:CLOTH[9], pants:'short', pantsColor:PANTS[5], shoes:SHOES[0], danceA:'manos', danceB:'salto'},
   {name:'Benji', build:'delgado', skin:SKINS[5], hair:'gorra', hairColor:HAIRC[6], top:'sudadera', topColor:CLOTH[5], pants:'largo', pantsColor:PANTS[1], shoes:SHOES[0], danceA:'running', danceB:'giro'},
   {name:'Sol', build:'normal', skin:SKINS[0], hair:'afro', hairColor:HAIRC[2], top:'camiseta', topColor:CLOTH[3], pants:'short', pantsColor:PANTS[4], shoes:SHOES[3], danceA:'rebote', danceB:'manos'},
-  // personaje exclusivo, hecho a partir de la ficha de Fred Fuentes
-  {name:'Fred', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno', signature:true, tag:'Personaje exclusivo', bio:'Gorra roja, trenzas rojas largas con argollas plateadas, barba, expansiones, polera oversize y cargo.'}
 ];
 DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hairColor:'#8a3a1a', top:'tirantes', topColor:'#f2efe8', pants:'short', pantsColor:'#2c3fa8', shoes:'#1d1c21', danceA:'balanceo', danceB:'manos',
   model:'models/nika.glb', modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
@@ -446,11 +444,15 @@ const KEY = 'habitacion10-v1', ROOMKEY = 'habitacion10-sala-v2';
 let defs, room;
 try { defs = JSON.parse(localStorage.getItem(KEY)); } catch(e) { defs = null; }
 if (!Array.isArray(defs) || defs.length < 10) defs = DEFAULTS.map(d => ({...d}));
+// se quitó a "Fred" (el personaje hecho por código, que estaba en la posición 10): se saca de lo guardado
+let fredQuitado = false;
+if (defs.length > 10 && defs[10] && !defs[10].model && defs[10].hair === 'gorraTrenzas'){ defs.splice(10, 1); fredQuitado = true; }
 while (defs.length < NCH) defs.push({...DEFAULTS[defs.length]});
 defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || ![4,6].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
+if (fredQuitado) room.active = room.active.filter(v => v !== 10).map(v => v > 10 ? v - 1 : v);
 room.active = room.active.filter((v,i,a) => v>=0 && v<NCH && a.indexOf(v)===i).slice(0, room.count);
 for (let i=0; room.active.length < room.count && i<NCH; i++) if (!room.active.includes(i)) room.active.push(i);
 room.items = room.items || {};
