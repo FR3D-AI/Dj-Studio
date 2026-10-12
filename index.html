@@ -151,7 +151,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
           <select id="liveDev" aria-label="Entrada de audio"><option value="">Entrada de audio…</option></select>
           <button class="btn" id="liveBtn" type="button">Escuchar en vivo</button>
         </div>
-        <p class="note" id="liveNote">Envía la salida de Rekordbox a BlackHole y elige “BlackHole” aquí. La sala baila con lo que estás mezclando.</p>
+        <p class="note" id="liveNote">Envía la salida de Rekordbox a un cable de audio virtual (BlackHole o iShowU Audio Capture) y elígelo aquí. La sala baila con lo que estás mezclando.</p>
       </div>
     </section>
 
@@ -1102,7 +1102,7 @@ async function listInputs(){
   const prev = liveDev.value;
   liveDev.innerHTML = '<option value="">Entrada de audio…</option>';
   devs.forEach((d,i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('Entrada ' + (i+1)); liveDev.append(o); });
-  const bh = devs.find(d => /blackhole|loopback|soundflower|vb-?cable/i.test(d.label));
+  const bh = devs.find(d => /blackhole|loopback|soundflower|vb-?cable|ishowu|ndi audio/i.test(d.label));
   liveDev.value = prev && devs.some(d => d.deviceId === prev) ? prev : (bh ? bh.deviceId : '');
 }
 function renderLive(){
@@ -1118,7 +1118,7 @@ liveBtn.addEventListener('click', async () => {
   try {
     await startLive(liveDev.value);
     await listInputs(); renderLive(); renderPlaylist();
-    liveNote.textContent = /blackhole|loopback|soundflower|vb-?cable/i.test(liveDev.selectedOptions[0]?.textContent || '')
+    liveNote.textContent = /blackhole|loopback|soundflower|vb-?cable|ishowu|ndi audio/i.test(liveDev.selectedOptions[0]?.textContent || '')
       ? 'Conectado. Si la sala no baila, revisa que Rekordbox esté enviando audio a BlackHole.'
       : 'Estás escuchando por esta entrada. Para captar Rekordbox directo, elige BlackHole en la lista.';
   } catch (e){
