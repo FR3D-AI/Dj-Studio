@@ -148,6 +148,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .djbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
   max-width:calc(100% - 720px);min-width:300px;background:rgba(23,20,31,.88);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .djbar .opt{padding:4px 10px;font-size:13px}
+.bpmtag{font:400 14px var(--display);color:var(--live);font-variant-numeric:tabular-nums;white-space:nowrap}
 .agenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .agenda li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
 .agenda li span{color:var(--muted);flex:1;min-width:120px;font-variant-numeric:tabular-nums}
@@ -195,7 +196,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <ol class="steps">
       <li>Abre tu software de DJ (Rekordbox, Serato, Traktor…) y deja lista tu primera pista.</li>
       <li>Toca <b>Compartir sonido</b> aquí abajo.</li>
-      <li>En la ventana del navegador elige <b>Pantalla completa</b> y selecciona tu pantalla.</li>
+      <li>En la ventana del navegador elige la pestaña <b>Ventana</b> y selecciona tu software de DJ: eso es lo que verá la sala en el computador de la cabina. (También sirve <b>Pantalla completa</b>, pero se verá todo lo que tengas abierto).</li>
       <li>Activa el interruptor <b>Compartir audio del sistema</b> y toca <b>Compartir</b>.</li>
       <li>Dale play. Todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
     </ol>
@@ -214,6 +215,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <form class="chatform" id="chatForm"><input id="chatIn" maxlength="200" placeholder="Escribe al chat…" autocomplete="off" aria-label="Mensaje"><button class="btn primary" type="submit">Enviar</button></form>
     </div>
     <div class="djbar" id="djBar" hidden>
+      <span class="bpmtag" id="djBpm">BPM —</span>
       <span class="lbl">Luces</span>
       <div class="row" id="lightRow" role="group" aria-label="Escenas de luces"></div>
       <button class="btn live" id="djBarStop" type="button">Terminar</button>
@@ -283,7 +285,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <div class="livebox">
         <div class="mtop"><span class="lbl">Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></div>
         <button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button>
-        <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige <b>Pantalla completa</b> y activa <b>Compartir audio del sistema</b>. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
+        <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige la <b>Ventana</b> de Rekordbox y activa <b>Compartir audio del sistema</b>. La sala verá esa ventana en el computador de la cabina. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
         <details class="adv">
           <summary>Opción avanzada: entrada de audio</summary>
           <div class="row">
@@ -697,6 +699,15 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   for (let i=0;i<6;i++){ knobs.push(box(0.04,0.03,0.04, i%2?'#ffb347':'#5fe0a0', 3.5+(i%3)*0.1, 1.07, i<3?-0.08:0.08, g)); }
   // auriculares sobre la mesa
   box(0.16,0.03,0.04,'#111',3.85,1.0,0.32,g);
+  // computador del DJ sobre un soporte: muestra lo que se ve en su software (la pantalla compartida)
+  box(0.22,0.14,0.2,'#2a2a30',3.86,1.06,0,g);
+  box(0.52,0.02,0.36,'#9a9aa6',3.86,1.14,0,g);
+  const lap = new THREE.Group(); lap.position.set(3.62,1.15,0); lap.rotation.z = 0.22; lap.scale.setScalar(1.4); g.add(lap);
+  box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lap);
+  const lapMats = [new THREE.MeshBasicMaterial({color:'#141224'}), new THREE.MeshBasicMaterial({color:'#141224'})];
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.35,0.22), lapMats[0]); front.rotation.y = Math.PI/2; front.position.set(0.008,0.125,0); lap.add(front);
+  const backGeo = new THREE.PlaneGeometry(0.35,0.22); const buv = backGeo.attributes.uv; for (let i=0;i<buv.count;i++) buv.setX(i, 1 - buv.getX(i));
+  const back = new THREE.Mesh(backGeo, lapMats[1]); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lap.add(back);
   // parlantes
   const cones = [];
   for (const s of [-1,1]){
@@ -706,17 +717,17 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     cones.push(woof, tw);
   }
   solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
-  return {led:led.material, discs, cones, knobs, rig:g};
+  return {led:led.material, discs, cones, knobs, rig:g, lapScreens:[front, back], lapMats};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
   const tc = '#55506a';
-  for (const s of [-1,1]) box(0.1,2.85,0.1,tc,7.75,1.425,s*2.45,g);
-  box(0.12,0.12,5.0,tc,7.75,2.86,0,g);
   const heads = [];
   [-1.6,0,1.6].forEach((zz,k) => {
     const pivot = new THREE.Group(); pivot.position.set(7.75,2.7,zz); g.add(pivot);
     box(0.2,0.22,0.24,'#1b1a20',0,0,0,pivot);
+    box(0.025,0.3,0.025,'#777',7.75,2.87,zz,g);   // colgado del techo, como la bola disco
+    box(0.14,0.03,0.14,'#333',7.75,3.0,zz,g);
     const geo = new THREE.ConeGeometry(0.6,3.8,20,1,true); geo.translate(0,-1.9,0); geo.rotateX(-Math.PI/2);
     const bm = new THREE.MeshBasicMaterial({color:'#ff4fa0', transparent:true, opacity:0.14, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
     const beam = new THREE.Mesh(geo, bm); pivot.add(beam);
@@ -737,13 +748,6 @@ item('luces','Luces de ambiente',true,(g)=>{
   wash[0].position.set(-6,2.5,-2.5); wash[1].position.set(-6,2.5,2.5); wash.forEach(l => g.add(l));
   return {heads, strip, wash};
 });
-item('bola','Bola disco',true,(g)=>{
-  box(0.02,0.4,0.02,'#888',2,2.82,0,g);
-  const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24,1), new THREE.MeshPhongMaterial({color:'#d9d9e0', shininess:120, specular:'#ffffff', flatShading:true}));
-  ball.position.set(2,2.5,0); g.add(ball);
-  const lights = ['#ff4fa0','#4fc3ff'].map(c => { const l = new THREE.PointLight(c, 0.9, 7, 2); g.add(l); return l; });
-  return {ball, lights};
-});
 item('planta','Macetas',true,(g,solid)=>{
   for (const zs of [-1, 1]){ // una a cada lado
     mesh(new THREE.CylinderGeometry(0.22,0.17,0.4,10), M('#a8573f'), -9.4,0.2,zs*4.4, g);
@@ -762,7 +766,7 @@ item('cama','Cama',false,(g,solid)=>{
   solid(3.1,5,2.55,4.9);
 }, -11);
 applyItems();
-const DJ = ITEMS.find(i => i.id === 'dj'), BALL = ITEMS.find(i => i.id === 'bola');
+const DJ = ITEMS.find(i => i.id === 'dj');
 const LIGHTS = ITEMS.find(i => i.id === 'luces'), STAGE = ITEMS.find(i => i.id === 'tarima');
 const inDJZone = c => room.items.dj && c.x > 9.0 && Math.abs(c.z) < 1.02;
 
@@ -944,7 +948,7 @@ function resolve(c){
 // 3) Un analizador en vivo mide graves, medios y agudos para las luces.
 const audioEl = new Audio(); audioEl.preload = 'auto';
 let actx = null, analyser = null, freq = null;
-const music = {bass:0, mids:0, highs:0, avg:0, lastBeat:-9, lastReal:-9, pulse:0, bpm:122, intervals:[], phase:0, beats:0, real:false, track:null, source:null, level:0, loudT:0, quietT:9, sounding:false, fast:0, slow:0, dropT:0, drop:false, dropStart:false, calm:true};
+const music = {bass:0, mids:0, highs:0, avg:0, lastBeat:-9, lastReal:-9, pulse:0, bpm:122, intervals:[], phase:0, beats:0, real:false, track:null, source:null, liveGrid:null, level:0, loudT:0, quietT:9, sounding:false, fast:0, slow:0, dropT:0, drop:false, dropStart:false, calm:true};
 function ensureAudio(){
   if (actx) return;
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -965,7 +969,7 @@ async function startLive(deviceId, stream){
   audioEl.pause();
   liveNode = actx.createMediaStreamSource(liveStream);
   liveNode.connect(analyser); outGain.gain.value = 0; // no lo reenviamos a los parlantes: Rekordbox ya suena
-  music.source = 'live'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9;
+  music.source = 'live'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9; resetLiveBpm();
 }
 function stopLive(){
   if (liveNode){ liveNode.disconnect(); liveNode = null; }
@@ -1060,7 +1064,13 @@ function analyse(t, dt){
       music.pulse = Math.exp(-frac * period * 7);
       return;
     }
-    // mientras se analiza la pista: detección en vivo del bombo
+    if (live && music.liveGrid){
+      const g = music.liveGrid, period = 60/g.bpm, tb = (ta - g.t0) / period, k = Math.floor(tb), frac = tb - k;
+      music.bpm = g.bpm; music.beats = k; music.phase = tb * Math.PI;
+      music.pulse = Math.exp(-frac * period * 7);
+      return;
+    }
+    // mientras se mide el tempo: detección en vivo del bombo
     if (ta < music.lastReal || ta < music.lastBeat){ music.lastReal = -9; music.lastBeat = -9; }
     if (b > music.avg * 1.15 + 0.03 && b > 0.2 && ta - music.lastReal > 0.27) onBeat(ta, true);
     else if (ta - music.lastBeat > 60/music.bpm * 1.02) onBeat(ta, false);
@@ -1070,6 +1080,69 @@ function analyse(t, dt){
   }
   music.pulse *= Math.exp(-dt * 7);
   music.phase += dt * (playing ? music.bpm : 123) / 60 * Math.PI;
+}
+
+/* ---------- pantalla del computador del DJ ---------- */
+let lapVideo = null, lapTex = null;
+function setLaptopVideo(track){
+  const mats = DJ.api.lapMats;
+  if (!track || track.readyState === 'ended'){
+    mats.forEach(m => { m.map = null; m.color.set('#141224'); m.needsUpdate = true; });
+    if (lapVideo) lapVideo.srcObject = null;
+    return;
+  }
+  if (!lapVideo){ lapVideo = document.createElement('video'); lapVideo.muted = true; lapVideo.playsInline = true; lapVideo.autoplay = true; }
+  lapVideo.srcObject = new MediaStream([track]); lapVideo.play().catch(() => {});
+  if (!lapTex){ lapTex = new THREE.VideoTexture(lapVideo); lapTex.minFilter = THREE.LinearFilter; lapTex.magFilter = THREE.LinearFilter; }
+  mats.forEach(m => { m.map = lapTex; m.color.set('#ffffff'); m.needsUpdate = true; });
+}
+
+/* ---------- BPM en vivo: se mide cada 10 segundos ---------- */
+// Se toma la energía de los graves 100 veces por segundo y cada 10 s se busca el tempo que mejor
+// explica los golpes de los últimos 12 s. Con eso se arma una "cuadrícula" de golpes estable para luces y bailes.
+const bpmEst = {buf: [], an: null, data: null, nextAt: 0};
+function liveSourceOn(){ return (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode); }
+function resetLiveBpm(){ bpmEst.buf.length = 0; music.liveGrid = null; bpmEst.nextAt = 0; }
+setInterval(() => {
+  if (!actx || !analyser || !liveSourceOn()) return;
+  if (!bpmEst.an){ bpmEst.an = actx.createAnalyser(); bpmEst.an.fftSize = 512; bpmEst.an.smoothingTimeConstant = 0; analyser.connect(bpmEst.an); bpmEst.data = new Uint8Array(bpmEst.an.frequencyBinCount); }
+  bpmEst.an.getByteFrequencyData(bpmEst.data);
+  const hz = actx.sampleRate / 512, a = Math.max(1, Math.round(30/hz)), b = Math.max(a+1, Math.round(160/hz));
+  let e = 0; for (let i=a;i<=b;i++) e += bpmEst.data[i] * bpmEst.data[i];
+  const now = actx.currentTime;
+  bpmEst.buf.push([now, e]);
+  while (bpmEst.buf.length && now - bpmEst.buf[0][0] > 12) bpmEst.buf.shift();
+  if (!bpmEst.nextAt) bpmEst.nextAt = now + 6;
+  if (now >= bpmEst.nextAt){ bpmEst.nextAt = now + 10; estimateLiveBpm(); }
+}, 10);
+function estimateLiveBpm(){
+  const buf = bpmEst.buf; if (buf.length < 300 || !music.sounding) return;
+  const FPS = 100, t0 = buf[0][0], t1 = buf[buf.length-1][0], N = Math.floor((t1 - t0) * FPS);
+  if (N < 500) return;
+  const env = new Float32Array(N); let j = 0;
+  for (let i=0;i<N;i++){
+    const t = t0 + i / FPS;
+    while (j < buf.length - 2 && buf[j+1][0] < t) j++;
+    const [ta, ea] = buf[j], [tb, eb] = buf[j+1], f = tb > ta ? Math.min(1, Math.max(0, (t - ta)/(tb - ta))) : 0;
+    env[i] = Math.log(1 + ea + (eb - ea)*f);
+  }
+  const on = new Float32Array(N);
+  for (let i=1;i<N;i++) on[i] = Math.max(0, env[i] - env[i-1]);
+  const comb = (bpm, K) => { const lag = FPS*60/bpm; let s = 0;
+    for (let i=0;i<N;i++){ if (!on[i]) continue; let c = 0;
+      for (let k=1;k<=K;k++){ const q = i + k*lag, q0 = q|0; if (q0+1 >= N) break; const fr = q - q0; c += on[q0]*(1-fr) + on[q0+1]*fr; }
+      s += on[i]*c; }
+    return s; };
+  let best = -1, bpm = 122;
+  for (let b=80;b<=180;b+=0.5){ const w = Math.exp(-0.5*Math.pow(Math.log2(b/124)/0.8, 2)); const v = comb(b, 4)*w; if (v > best){ best = v; bpm = b; } }
+  let best2 = -1, fine = bpm;
+  for (let b=bpm-0.6;b<=bpm+0.6;b+=0.05){ const v = comb(b, 8); if (v > best2){ best2 = v; fine = b; } }
+  bpm = fine;
+  const P = FPS*60/bpm; let bo = 0, bs = -1;
+  for (let o=0;o<P;o+=0.5){ let v = 0; for (let q=o;q<N-1;q+=P){ const q0 = q|0, fr = q - q0; v += on[q0]*(1-fr) + on[q0+1]*fr; } if (v > bs){ bs = v; bo = o; } }
+  const prev = music.liveGrid;
+  if (prev && Math.abs(prev.bpm - bpm) < 1.2) bpm = prev.bpm*0.4 + bpm*0.6; // suaviza pequeñas variaciones
+  music.liveGrid = {bpm, t0: t0 + bo / FPS, at: actx.currentTime};
 }
 
 /* ---------- bailes ---------- */
@@ -1097,7 +1170,7 @@ const POSE_KEYS = ['a0','a1','z0','z1','l0','l1','twist','roll','lean','head','b
 const tmpPose = {};
 
 /* ---------- escenas de luces (las elige el DJ) ---------- */
-const LIGHT_PRESETS = [['rojo','Full rojo'],['dos','Dos colores'],['arcoiris','Arcoíris'],['estrobo','Estrobo'],['oceano','Océano']];
+const LIGHT_PRESETS = [['arcoiris','Todos los colores'],['dos','Bicolor'],['rojo','Rojo Rave'],['estrobo','Flash blanco'],['oceano','Océano']];
 let lightPreset = 'arcoiris';
 function presetColor(k, t, out){
   const b = music.beats;
@@ -1125,6 +1198,7 @@ const hudName = document.getElementById('hudName'), hudPos = document.getElement
 const ledCol = new THREE.Color(), tmpV = new THREE.Vector3();
 const PALETTE = ['#ff4fa0','#4fc3ff','#ffd24f','#7a3cff','#5fe0a0','#ff6a3c'];
 let lastHud = 0;
+const djBpmEl = document.getElementById('djBpm');
 function tick(){
   const raw = clock.getDelta() || 0.016;
   const dt = Math.max(0.001, Math.min(raw, 0.05));
@@ -1238,14 +1312,6 @@ function tick(){
     api.knobs.forEach((k,i) => k.position.y = 1.07 + (groove ? Math.max(0, Math.sin(t*5+i))*0.015 : 0));
   }
   if (room.items.tarima){ if (party > 0.5) presetColor(1, t, STAGE.api.edge.color); else STAGE.api.edge.color.setHSL(0.1, 0.9, 0.45); }
-  if (room.items.bola){
-    const api = BALL.api; api.ball.rotation.y += dt * (0.6 + lvl*1.5);
-    api.lights.forEach((l,k) => {
-      const a = t*(0.5+lvl*0.8) + k*2.09;
-      l.position.set(2 + Math.cos(a)*3.5, 0.8 + Math.sin(t*1.3+k)*0.3, Math.sin(a)*3);
-      const m = presetColor(k + 3, t, l.color); l.intensity = (0.6 + pulse*1.0) * party * m;
-    });
-  }
   if (room.items.luces){
     const api = LIGHTS.api, speedL = 0.5 + lvl*0.6;
     for (const h of api.heads){
@@ -1273,7 +1339,8 @@ function tick(){
     hudPos.textContent = inDJZone(me) && me.move < 0.2 ? 'Pinchando en la cabina' : `x ${me.x.toFixed(1)} m · z ${me.z.toFixed(1)} m`;
     const playing = music.sounding;
     hudMusic.hidden = !playing;
-    if (playing) hudMusic.textContent = `♪ ${Math.round(music.bpm)} BPM`;
+    if (playing) hudMusic.textContent = `♪ ${Math.round(music.bpm)} BPM` + (liveSourceOn() ? (music.liveGrid ? ' · se mide cada 10 s' : ' · midiendo…') : '');
+    djBpmEl.textContent = music.sounding ? 'BPM ' + Math.round(music.bpm) : 'BPM —';
     updateMeter(lvl);
   }
   updateVisuals(t, dt, hueBase);
@@ -1513,7 +1580,7 @@ async function captureSystemAudio(){
   let st;
   try {
     st = await navigator.mediaDevices.getDisplayMedia({
-      video: {frameRate: 1, width: {max: 640}, height: {max: 360}},
+      video: {frameRate: {max: 10}, width: {max: 640}, height: {max: 360}, displaySurface: 'window'},
       audio: {echoCancellation:false, noiseSuppression:false, autoGainControl:false, suppressLocalAudioPlayback:false},
       systemAudio: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude', monitorTypeSurfaces: 'include'
     });
@@ -1527,10 +1594,11 @@ async function captureSystemAudio(){
     sysNote.textContent = 'No llegó audio. Vuelve a intentarlo y activa el interruptor “Compartir audio del sistema” antes de compartir (en Mac necesitas Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
     return false;
   }
-  sysVideo = st.getVideoTracks()[0] || null; if (sysVideo) sysVideo.enabled = false; // solo usamos el audio
+  sysVideo = st.getVideoTracks()[0] || null; // se ve en el computador del DJ (y se envía a la sala en baja calidad)
+  if (sysVideo) setLaptopVideo(sysVideo);
   const audioOnly = new MediaStream(at);
   await startLive(null, audioOnly);
-  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
+  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } setLaptopVideo(null); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
   renderLive(); renderPlaylist(); renderSys();
   nowEl.textContent = 'En vivo: audio del computador';
   sysNote.textContent = 'Capturando el audio del computador. Todo lo que suene en Rekordbox llega a la sala.';
@@ -1541,7 +1609,7 @@ function renderSys(){
   sysBtn.textContent = on ? 'Dejar de capturar' : 'Capturar audio del computador';
 }
 sysBtn.addEventListener('click', async () => {
-  if (music.source === 'live' && sysVideo){ sysVideo.stop(); sysVideo = null; stopLive(); renderLive(); renderSys(); if (net.casting) stopCast(); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; return; }
+  if (music.source === 'live' && sysVideo){ sysVideo.stop(); sysVideo = null; setLaptopVideo(null); stopLive(); renderLive(); renderSys(); if (net.casting) stopCast(); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; return; }
   await captureSystemAudio();
 });
 liveDev.addEventListener('change', () => { if (music.source === 'live') liveBtn.click(), setTimeout(() => liveBtn.click(), 50); });
@@ -1742,7 +1810,10 @@ async function startCast(){
   net.castSince = Date.now(); castPub = castPubFor();
   castSig = await signStr(castPub === 'admin' ? admin.key : ident.priv, 'dj|' + net.selfId + '|' + net.castSince);
   net.casting = true;
-  net.room.addStream(net.castDest.stream);
+  const vtracks = sysVideo && sysVideo.readyState === 'live' ? [sysVideo] : [];
+  net.castStream = new MediaStream([...net.castDest.stream.getAudioTracks(), ...vtracks]);
+  net.room.addStream(net.castStream);
+  setTimeout(limitVideo, 1500);
   net.actions.dj.send(djPayload());
   const me = chars[sel];
   if (room.items.dj){ me.x = 9.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
@@ -1755,10 +1826,24 @@ async function startCast(){
 function stopCast(silent){
   if (!net.casting) return;
   net.casting = false;
-  try { net.room && net.castDest && net.room.removeStream(net.castDest.stream); } catch(e){}
+  try { net.room && net.castStream && net.room.removeStream(net.castStream); } catch(e){}
   if (!silent && net.actions.dj) net.actions.dj.send(djPayload());
   netEl.note.textContent = 'Transmisión terminada.';
   renderNet();
+}
+// el video del computador viaja liviano (máx. 250 kbps, 10 cuadros por segundo) para no saturar al DJ
+function limitVideo(){
+  if (!net.room) return;
+  const peers = net.room.getPeers(), list = peers instanceof Map ? [...peers.values()] : Object.values(peers || {});
+  for (const pc of list){
+    if (!pc || !pc.getSenders) continue;
+    for (const snd of pc.getSenders()){
+      if (!snd.track || snd.track.kind !== 'video') continue;
+      const prm = snd.getParameters(); if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+      prm.encodings[0].maxBitrate = 250000; prm.encodings[0].maxFramerate = 10;
+      snd.setParameters(prm).catch(() => {});
+    }
+  }
 }
 // escuchar al DJ
 function playRemote(stream){
@@ -1771,7 +1856,9 @@ function playRemote(stream){
   net.remoteAudio.srcObject = stream; net.remoteAudio.volume = +volIn.value;
   net.remoteNode = actx.createMediaStreamSource(stream);
   net.remoteNode.connect(analyser); outGain.gain.value = 0;
-  music.source = 'remote'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9;
+  music.source = 'remote'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9; resetLiveBpm();
+  const vt = stream.getVideoTracks()[0]; setLaptopVideo(vt || null);
+  stream.onaddtrack = e => { if (e.track.kind === 'video') setLaptopVideo(e.track); };
   const tryPlay = () => net.remoteAudio.play().then(() => { netEl.hear.hidden = true; if (actx.state === 'suspended') actx.resume(); }).catch(() => { netEl.hear.hidden = false; });
   tryPlay();
   netEl.hear.onclick = () => { actx.resume(); tryPlay(); };
@@ -1780,7 +1867,7 @@ function endRemoteDJ(){
   net.djPeer = null; net.dj = null;
   if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
   if (net.remoteAudio){ net.remoteAudio.pause(); net.remoteAudio.srcObject = null; }
-  net.remoteStream = null; netEl.hear.hidden = true;
+  net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null);
   if (music.source === 'remote'){ music.source = null; if (outGain) outGain.gain.value = 1; }
   renderNet();
 }
@@ -1815,7 +1902,7 @@ async function connect(){
     look.send(lookPayload(), {target: id});
     if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
-    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castDest.stream, {target: id}); }
+    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); }
     renderNet();
   };
   roomObj.onPeerLeave = id => removePeer(id);
