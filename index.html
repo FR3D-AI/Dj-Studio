@@ -987,7 +987,7 @@ function resolve(c){
 // 3) Un analizador en vivo mide graves, medios y agudos para las luces.
 const audioEl = new Audio(); audioEl.preload = 'auto';
 let actx = null, analyser = null, freq = null;
-const music = {bass:0, mids:0, highs:0, avg:0, lastBeat:-9, lastReal:-9, pulse:0, bpm:122, intervals:[], phase:0, beats:0, real:false, track:null, source:null, liveGrid:null, level:0, loudT:0, quietT:9, sounding:false, fast:0, slow:0, dropT:0, drop:false, dropStart:false, calm:true};
+const music = {bass:0, mids:0, highs:0, avg:0, lastBeat:-9, lastReal:-9, pulse:0, bpm:122, intervals:[], phase:0, beats:0, real:false, track:null, source:null, liveGrid:null, hiAvg:0, hits:[], hitCount:0, lastHit:-9, rollK:0, energyK:1, colorStep:0, lightPulse:0, hitPulse:0, level:0, loudT:0, quietT:9, sounding:false, fast:0, slow:0, dropT:0, drop:false, dropStart:false, calm:true};
 function ensureAudio(){
   if (actx) return;
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -1070,6 +1070,15 @@ function onBeat(t, real){
 }
 // ¿suena música de verdad? (no basta con tener una entrada abierta: tiene que haber sonido)
 // y ¿estamos en un drop? (los graves del último segundo superan con claridad al promedio de los últimos ~8 s)
+// Redoble: muchos golpes rápidos en medios/agudos (caja, palmas) en poco tiempo. Ahí sí se permite que las luces "se vuelvan locas".
+function trackRoll(dt, hi){
+  const now = performance.now() / 1000;
+  music.hiAvg += (hi - music.hiAvg) * Math.min(1, dt*3);
+  if (hi > music.hiAvg*1.25 + 0.025 && hi > 0.12 && now - music.lastHit > 0.07){ music.lastHit = now; music.hits.push(now); music.hitCount++; music.hitPulse = 1; }
+  while (music.hits.length && now - music.hits[0] > 1) music.hits.shift();
+  const rolling = music.sounding && music.hits.length >= 7 && music.fast > music.slow*0.85;
+  music.rollK += ((rolling ? 1 : 0) - music.rollK) * Math.min(1, dt*(rolling ? 6 : 1.5));
+}
 function trackEnergy(dt, lvl, bass){
   music.level += (lvl - music.level) * Math.min(1, dt*8);
   if (music.level > 0.05){ music.loudT += dt; music.quietT = 0; } else { music.quietT += dt; music.loudT = 0; }
@@ -1095,6 +1104,7 @@ function analyse(t, dt){
     music.bass += (b - music.bass) * 0.5; music.mids += (m - music.mids) * 0.3; music.highs += (h - music.highs) * 0.3;
     music.avg += (b - music.avg) * 0.025;
     trackEnergy(dt, (b + m + h) / 3, b);
+    trackRoll(dt, (m + h) / 2);
     const ta = live ? actx.currentTime : audioEl.currentTime, tr = live ? null : music.track;
     if (tr && tr.bpm){
       // golpe exacto según la cuadrícula de tempo de la pista
@@ -1111,7 +1121,7 @@ function analyse(t, dt){
     }
     // mientras se mide el tempo: detección en vivo del bombo
     if (ta < music.lastReal || ta < music.lastBeat){ music.lastReal = -9; music.lastBeat = -9; }
-    if (b > music.avg * 1.15 + 0.03 && b > 0.2 && ta - music.lastReal > 0.27) onBeat(ta, true);
+    if (b > music.avg * 1.15 + 0.03 && b > 0.25 && ta - music.lastReal > Math.max(0.3, 0.6 * 60 / (music.bpm || 120))) onBeat(ta, true);
     else if (ta - music.lastBeat > 60/music.bpm * 1.02) onBeat(ta, false);
   } else {
     music.bass *= 0.9; music.mids *= 0.9; music.highs *= 0.9;
@@ -1189,7 +1199,7 @@ setInterval(() => {
   if (now >= bpmEst.nextAt){ bpmEst.nextAt = now + 10; estimateLiveBpm(); }
 }, 10);
 function estimateLiveBpm(){
-  const buf = bpmEst.buf; if (buf.length < 300 || !music.sounding) return;
+  const buf = bpmEst.buf; if (buf.length < 300 || !music.sounding || music.fast < 0.15) return;
   const FPS = 100, t0 = buf[0][0], t1 = buf[buf.length-1][0], N = Math.floor((t1 - t0) * FPS);
   if (N < 500) return;
   const env = new Float32Array(N); let j = 0;
@@ -1246,11 +1256,11 @@ const tmpPose = {};
 const LIGHT_PRESETS = [['arcoiris','Todos los colores'],['dos','Bicolor'],['rojo','Rojo Rave'],['estrobo','Flash blanco'],['oceano','Océano']];
 let lightPreset = 'arcoiris';
 function presetColor(k, t, out){
-  const b = music.beats;
+  const b = music.colorStep;
   switch (lightPreset){
     case 'rojo': out.setHSL(0.0, 1, 0.5); return 1;
     case 'dos': out.set(((b + k) % 2) ? '#ff2fb0' : '#2fd5ff'); return 1;
-    case 'estrobo': out.set('#ffffff'); return 0.08 + Math.pow(music.pulse, 3) * 2.6;
+    case 'estrobo': out.set('#ffffff'); return 0.08 + Math.pow(music.lightPulse, 3) * 2.6;
     case 'oceano': out.setHSL(0.52 + 0.1*Math.sin(t*0.3 + k*1.7), 0.9, 0.5); return 0.85;
     default: out.set(PALETTE[(((b + k*2) % PALETTE.length) + PALETTE.length) % PALETTE.length]); return 1;
   }
@@ -1293,6 +1303,15 @@ function tick(){
   botsUpdate(dt, live.filter(c => c !== me));
   party += ((music.sounding ? 1 : 0) - party) * Math.min(1, dt*1.2);
   const pulse = music.pulse;
+  // Ritmo de las luces: con música suave cambian de color cada 4 golpes y titilan poco;
+  // con energía normal, cada golpe; en un redoble, con cada golpe de caja.
+  music.energyK += (Math.max(0, Math.min(1, (music.fast - 0.12) / 0.25)) - music.energyK) * Math.min(1, dt*1.5);
+  music.hitPulse *= Math.exp(-dt*12);
+  if (music.rollK > 0.5) music.colorStep = music.hitCount;
+  else if (music.energyK < 0.35) music.colorStep = Math.floor(music.beats / 4);
+  else if (music.energyK < 0.7) music.colorStep = Math.floor(music.beats / 2);
+  else music.colorStep = music.beats;
+  music.lightPulse = Math.min(1, pulse * (0.2 + 0.8*music.energyK) * (1 - music.rollK) + music.hitPulse * music.rollK);
   let ix = (keys.KeyD||keys.ArrowRight?1:0) - (keys.KeyA||keys.ArrowLeft?1:0) + joyVec.x;
   let iz = (keys.KeyS||keys.ArrowDown?1:0) - (keys.KeyW||keys.ArrowUp?1:0) + joyVec.y;
   const il = Math.hypot(ix, iz);
@@ -1387,21 +1406,23 @@ function tick(){
   }
   if (room.items.tarima){ if (party > 0.5) presetColor(1, t, STAGE.api.edge.color); else STAGE.api.edge.color.setHSL(0.1, 0.9, 0.45); }
   if (room.items.luces){
-    const api = LIGHTS.api, speedL = 0.5 + lvl*0.6;
+    const api = LIGHTS.api;
+    lightAng += dt * (0.55 + music.rollK*0.9); // mismo movimiento de siempre; solo en redobles se aceleran
+    const lp = music.lightPulse;
     for (const h of api.heads){
-      const ang = t*speedL + h.k*2.1;
+      const ang = lightAng + h.k*2.1;
       tmpV.set(h.cx + Math.sin(ang*1.3)*h.rx, 0, h.cz + Math.cos(ang)*h.rz);
       h.pivot.lookAt(tmpV); h.spot.position.set(tmpV.x, 0.025, tmpV.z);
       const m = presetColor(h.k, t, lc);
       h.bm.color.copy(lc); h.spot.material.color.copy(lc); h.sp.color.copy(lc);
       h.tgt.position.copy(tmpV);
-      h.sp.intensity = (2.4 + pulse*1.6) * party * m;
-      h.bm.opacity = Math.min(0.5, (0.15 + pulse*0.12) * party * m); h.bm.visible = party > 0.02;
-      h.spot.material.opacity = Math.min(0.6, (0.12 + pulse*0.25) * party * m); h.spot.visible = party > 0.02;
+      h.sp.intensity = (2.4 + lp*1.6) * party * m;
+      h.bm.opacity = Math.min(0.5, (0.15 + lp*0.12) * party * m); h.bm.visible = party > 0.02;
+      h.spot.material.opacity = Math.min(0.6, (0.12 + lp*0.25) * party * m); h.spot.visible = party > 0.02;
     }
     if (party > 0.5){ presetColor(2, t, ledCol); ledCol.multiplyScalar(0.5 + lvl*0.5); } else ledCol.setHSL(0.6, 0.9, 0.18);
     api.strip.color.copy(ledCol);
-    api.wash.forEach((w,k) => { const m = presetColor(k + 5, t, w.color); w.intensity = (0.7 + music.mids*1.4 + pulse*0.4) * party * m; });
+    api.wash.forEach((w,k) => { const m = presetColor(k + 5, t, w.color); w.intensity = (0.7 + music.mids*1.4 + music.lightPulse*0.4) * party * m; });
   }
 
   camTarget.lerp(tmpV.set(me.x, 1 + me.y, me.z), Math.min(1, dt*6));
@@ -1424,7 +1445,7 @@ function tick(){
   requestAnimationFrame(tick);
 }
 
-let perfT = 0, perfN = 0, frameNo = 0, party = 0;
+let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
 function resize(){
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / Math.max(1,h); camera.updateProjectionMatrix();
