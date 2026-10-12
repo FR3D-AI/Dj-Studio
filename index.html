@@ -91,6 +91,15 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .livebox select{flex:1;min-width:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:600 14px var(--body)}
 .badge{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .badge.on{color:var(--live)}
+.online{display:flex;flex-direction:column;gap:9px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.people:empty{display:none}
+.person{font:600 13px var(--body);padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--fg)}
+.person.me{border-color:var(--accent)}
+.person.dj{background:var(--live);color:#0c2a1b;border-color:var(--live)}
+.btn.live{background:#e5484d;border-color:#e5484d;color:#fff}
+.livebanner{position:absolute;right:12px;bottom:14px;max-width:calc(100% - 160px);background:#e5484d;color:#fff;font:400 13px var(--display);letter-spacing:.03em;
+  padding:7px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .items .opt[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(166,156,184,.6)}
 @media (min-width:900px){
   .app{flex-direction:row}
@@ -105,12 +114,24 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 <div class="app">
   <div class="stage" id="stage">
     <div class="hud"><b id="hudName">—</b><span id="hudPos">x 0.0 m · z 0.0 m</span><span id="hudMusic" class="hm" hidden></span></div>
+    <div class="livebanner" id="liveBanner" hidden></div>
     <div class="drop" id="drop" hidden>Suelta tus pistas para ponerlas en la sala</div>
     <div class="hint" id="hint"></div>
     <div class="joy" id="joy" hidden><i id="knob"></i></div>
   </div>
   <aside class="panel" aria-label="Personajes, vestuario y objetos">
     <div class="head"><h1>Habitación 10×10</h1><small>Sala de 10 m × 10 m · 3 m de alto</small></div>
+
+    <section class="online" aria-labelledby="onLbl">
+      <div class="mtop"><span class="lbl" id="onLbl">Sala en línea</span><span class="badge" id="netState">Desconectado</span></div>
+      <div class="now" id="djNow">Nadie está tocando en vivo</div>
+      <div class="people" id="people"></div>
+      <div class="row">
+        <button class="btn primary" id="castBtn" type="button" disabled>Transmitir a la sala</button>
+        <button class="btn" id="hearBtn" type="button" hidden>Escuchar al DJ</button>
+      </div>
+      <p class="note" id="castNote">Pon música (una pista o Rekordbox en vivo) y transmítela: quien entre a la página te verá en la cabina, escuchará tu música y bailará contigo.</p>
+    </section>
 
     <section class="music" aria-labelledby="musicLbl">
       <div class="mtop"><span class="lbl" id="musicLbl">Música</span><span class="bpm" id="bpm">— BPM</span></div>
@@ -518,7 +539,7 @@ function mount(c){
   c.group = buildCharacter(defs[c.i]);
   c.group.traverse(o => { o.userData.ci = c.i; });
   if (c.on) scene.add(c.group);
-  if (c.i === sel) c.group.add(ring);
+  if (c.i === sel){ c.group.add(ring); if (window.__netReady) netSendLook(); }
 }
 function setOn(c, v){
   if (c.on === v) return;
@@ -649,7 +670,7 @@ async function startLive(deviceId){
 function stopLive(){
   if (liveNode){ liveNode.disconnect(); liveNode = null; }
   if (liveStream){ liveStream.getTracks().forEach(t => t.stop()); liveStream = null; }
-  if (outGain) outGain.gain.value = 1;
+  if (outGain && music.source !== 'remote') outGain.gain.value = 1;
   if (music.source === 'live') music.source = null;
 }
 async function detectTempo(file){
@@ -705,7 +726,7 @@ function onBeat(t, real){
   music.lastBeat = t; music.pulse = 1; music.beats++;
 }
 function analyse(t, dt, djActive){
-  const live = music.source === 'live' && !!liveNode;
+  const live = (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode);
   const playing = !!analyser && (live || (!audioEl.paused && !audioEl.ended));
   music.real = playing;
   if (playing){
@@ -756,8 +777,9 @@ function tick(){
   if (frameNo % 2 === 0) renderer.shadowMap.needsUpdate = true;
   const t = clock.elapsedTime;
   const live = chars.filter(c => c.on);
+  const remotes = netRemotes();
   const me = chars[sel];
-  const djActive = live.some(c => c.dj > 0.5);
+  const djActive = live.some(c => c.dj > 0.5) || remotes.some(c => c.dj > 0.5) || !!net.djPeer || net.casting;
   analyse(t, dt, djActive);
   const groove = music.real ? 1 : (djActive && room.items.dj ? 0.7 : 0);
   const pulse = music.pulse;
@@ -805,8 +827,9 @@ function tick(){
     if (d > 0 && d < 0.58){ const p = (0.58-d)/2; const wa = A===me?0.2:1, wb = B===me?0.2:1;
       A.x -= dx/d*p*wa; A.z -= dz/d*p*wa; B.x += dx/d*p*wb; B.z += dz/d*p*wb; resolve(A); resolve(B); }
   }
+  updateRemotes(dt);
   const P = music.phase;
-  for (const c of live){
+  for (const c of live.concat(remotes)){
     const g = c.group, {legs, arms, head, body} = g.userData;
     const want = groove * (c.move < 0.25 && c.dj < 0.5 ? 1 : 0);
     c.dance += (want - c.dance) * Math.min(1, dt*4);
@@ -983,13 +1006,13 @@ function select(i){
     setOn(chars[out], false); setOn(chars[i], true);
   }
   chars[sel].group.remove(ring);
-  sel = i; chars[i].group.add(ring);
+  sel = i; chars[i].group.add(ring); netSendLook();
   chars[i].target = null; chars[i].wait = 0;
   hudName.textContent = defs[i].name;
   save(); renderRoster(); renderCustom();
   roster.children[i]?.scrollIntoView({block:'nearest', inline:'nearest'});
 }
-nameInput.addEventListener('input', () => { defs[sel].name = nameInput.value.trim() || ('Personaje ' + (sel+1)); hudName.textContent = defs[sel].name; save(); renderRoster(); });
+nameInput.addEventListener('input', () => { defs[sel].name = nameInput.value.trim() || ('Personaje ' + (sel+1)); hudName.textContent = defs[sel].name; save(); renderRoster(); netSendLook(); });
 const pickR = a => a[Math.floor(Math.random()*a.length)];
 document.getElementById('rnd').addEventListener('click', () => {
   const d = defs[sel];
@@ -1007,7 +1030,7 @@ const nowEl = document.getElementById('now'), bpmEl = document.getElementById('b
 const plistEl = document.getElementById('plist'), volIn = document.getElementById('vol'), dropEl = document.getElementById('drop');
 const playlist = []; let cur = -1; let tempoQueue = Promise.resolve();
 audioEl.volume = +volIn.value;
-volIn.addEventListener('input', () => { audioEl.volume = +volIn.value; });
+volIn.addEventListener('input', () => { audioEl.volume = +volIn.value; if (net.remoteAudio) net.remoteAudio.volume = +volIn.value; });
 function updateMeter(lvl){
   lvlEl.style.width = (lvl*100).toFixed(0) + '%';
   bpmEl.textContent = music.real ? (music.track && music.track.bpm ? music.track.bpm.toFixed(1) : Math.round(music.bpm)) + ' BPM' : '— BPM';
@@ -1032,6 +1055,7 @@ function playIdx(i){
   start();
 }
 function start(){
+  if (music.source === 'remote'){ if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; } if (net.remoteAudio) net.remoteAudio.pause(); music.source = null; netEl.hear.hidden = !net.djPeer; }
   stopLive(); renderLive();
   ensureAudio();
   if (actx && actx.state === 'suspended') actx.resume();
@@ -1107,6 +1131,214 @@ liveBtn.addEventListener('click', async () => {
 liveDev.addEventListener('change', () => { if (music.source === 'live') liveBtn.click(), setTimeout(() => liveBtn.click(), 50); });
 navigator.mediaDevices?.addEventListener?.('devicechange', listInputs);
 listInputs();
+
+/* ---------- sala en línea (conexión directa entre navegadores) ---------- */
+// Cada persona que abre la página entra a la misma sala. Se comparten:
+//  · pose: posición del personaje que controlas (10 veces por segundo)
+//  · look: cómo se ve tu personaje y su nombre
+//  · dj:   quién está transmitiendo en vivo y qué suena
+// El audio del DJ viaja directo a cada oyente, y cada computador detecta el ritmo de lo que escucha.
+const APP_ID = 'fr3d-ai-dj-studio-v1', ROOM_ID = 'sala-principal';
+const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null,
+  casting:false, castSince:0, castDest:null, remoteAudio:null, remoteNode:null, remoteStream:null, actions:{}};
+const netEl = {
+  state: document.getElementById('netState'), djNow: document.getElementById('djNow'), people: document.getElementById('people'),
+  cast: document.getElementById('castBtn'), hear: document.getElementById('hearBtn'), note: document.getElementById('castNote'),
+  banner: document.getElementById('liveBanner')
+};
+function hashStyle(id){ let h = 0; for (const ch of id) h = (h*31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
+function nameTag(text){
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const x = cv.getContext('2d');
+  x.font = '700 30px "Barlow Semi Condensed", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const w = Math.min(244, x.measureText(text).width + 28);
+  x.fillStyle = 'rgba(23,20,31,0.82)'; x.beginPath(); x.roundRect ? x.roundRect(128-w/2, 10, w, 44, 22) : x.rect(128-w/2, 10, w, 44); x.fill();
+  x.fillStyle = '#f2ece0'; x.fillText(text, 128, 33);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(cv), transparent:true, depthWrite:false}));
+  sp.scale.set(1.2, 0.3, 1); sp.position.y = 2.3; sp.renderOrder = 5;
+  return sp;
+}
+function myDef(){ return {...defs[sel], name: defs[sel].name || 'Invitado'}; }
+function ensurePeer(id){
+  let r = net.peers.get(id);
+  if (!r){
+    r = {id, i: hashStyle(id), x:0, z:2, y:0, rot:0, tx:0, tz:2, trot:0, phase:0, move:0, dj:0, dance:0, group:null, def:null, tag:null, seen:false};
+    net.peers.set(id, r);
+  }
+  return r;
+}
+function buildRemote(r){
+  if (r.group) scene.remove(r.group);
+  r.group = buildCharacter(r.def);
+  r.tag = nameTag(r.def.name || 'Invitado'); r.group.add(r.tag);
+  if (r.seen) scene.add(r.group);
+}
+function removePeer(id){
+  const r = net.peers.get(id); if (!r) return;
+  if (r.group) scene.remove(r.group);
+  net.peers.delete(id);
+  if (net.djPeer === id) endRemoteDJ();
+  renderNet();
+}
+function netRemotes(){ const a = []; for (const r of net.peers.values()) if (r.group && r.seen) a.push(r); return a; }
+function updateRemotes(dt){
+  const k = Math.min(1, dt*10);
+  for (const r of net.peers.values()){
+    if (!r.group || !r.seen) continue;
+    const ox = r.x, oz = r.z;
+    if (Math.hypot(r.tx - r.x, r.tz - r.z) > 3){ r.x = r.tx; r.z = r.tz; } // salto grande: teletransporta
+    else { r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k; }
+    r.rot += Math.atan2(Math.sin(r.trot - r.rot), Math.cos(r.trot - r.rot)) * k;
+    const sp = Math.hypot(r.x - ox, r.z - oz) / dt || 0;
+    r.move += ((sp > 0.25 ? Math.min(1, sp/2.4 + 0.3) : 0) - r.move) * Math.min(1, dt*10);
+    r.phase += dt * (3 + sp*2.6);
+    r.y += (floorY(r.x, r.z) - r.y) * Math.min(1, dt*14);
+    r.dj += ((sp < 0.25 && inDJZone(r) ? 1 : 0) - r.dj) * Math.min(1, dt*6);
+  }
+}
+function setNetState(text, on){ netEl.state.textContent = text; netEl.state.classList.toggle('on', !!on); }
+function djName(){ if (net.casting) return myDef().name; const r = net.djPeer && net.peers.get(net.djPeer); return r && r.def ? r.def.name : (net.dj && net.dj.name) || 'Alguien'; }
+function renderNet(){
+  const n = net.peers.size + 1;
+  if (net.online) setNetState(n === 1 ? 'Solo tú' : n + ' conectados', true);
+  netEl.people.innerHTML = '';
+  const add = (name, me, isDj) => { const s = document.createElement('span'); s.className = 'person' + (me ? ' me' : '') + (isDj ? ' dj' : ''); s.textContent = (isDj ? '🎧 ' : '') + name + (me ? ' (tú)' : ''); netEl.people.append(s); };
+  if (net.online){
+    add(myDef().name, true, net.casting);
+    for (const r of net.peers.values()) add(r.def ? r.def.name : 'Conectando…', false, r.id === net.djPeer);
+  }
+  const someoneLive = net.casting || !!net.djPeer;
+  if (net.casting) netEl.djNow.textContent = 'Estás transmitiendo en vivo' + (castTrack() ? ': ' + castTrack() : '');
+  else if (net.djPeer) netEl.djNow.textContent = djName() + ' está tocando en vivo' + (net.dj && net.dj.track ? ': ' + net.dj.track : '');
+  else netEl.djNow.textContent = 'Nadie está tocando en vivo';
+  netEl.cast.disabled = !net.online || (!!net.djPeer && !net.casting);
+  netEl.cast.textContent = net.casting ? 'Terminar transmisión' : 'Transmitir a la sala';
+  netEl.cast.classList.toggle('live', net.casting);
+  netEl.banner.hidden = !someoneLive;
+  if (someoneLive) netEl.banner.textContent = 'EN VIVO · ' + djName() + (net.casting ? ' (tú)' : '') + (net.dj && net.dj.track && !net.casting ? ' · ' + net.dj.track : net.casting && castTrack() ? ' · ' + castTrack() : '');
+}
+function castTrack(){ return music.source === 'live' ? 'Rekordbox en vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
+function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince}; }
+
+// transmitir
+function startCast(){
+  if (!net.room) return;
+  ensureAudio(); if (!actx) return;
+  if (actx.state === 'suspended') actx.resume();
+  if (!(music.source === 'live' || (cur >= 0 && !audioEl.paused))){
+    netEl.note.textContent = 'Primero pon música: carga una pista o activa Rekordbox en vivo, y luego transmite.';
+    return;
+  }
+  if (!net.castDest){ net.castDest = actx.createMediaStreamDestination(); analyser.connect(net.castDest); }
+  net.casting = true; net.castSince = Date.now();
+  net.room.addStream(net.castDest.stream);
+  net.actions.dj.send(djPayload());
+  // tu personaje sube a la cabina
+  const me = chars[sel];
+  if (room.items.dj){ me.x = 4.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
+  netEl.note.textContent = 'Estás en vivo. Todos los conectados escuchan tu música y bailan contigo.';
+  renderNet();
+}
+function stopCast(silent){
+  if (!net.casting) return;
+  net.casting = false;
+  try { net.room && net.castDest && net.room.removeStream(net.castDest.stream); } catch(e){}
+  if (!silent && net.actions.dj) net.actions.dj.send(djPayload());
+  netEl.note.textContent = 'Transmisión terminada.';
+  renderNet();
+}
+// escuchar al DJ remoto
+function playRemote(stream){
+  ensureAudio(); if (!actx) return;
+  if (net.casting) stopCast();
+  stopLive(); renderLive(); audioEl.pause();
+  if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
+  net.remoteStream = stream;
+  if (!net.remoteAudio){ net.remoteAudio = new Audio(); net.remoteAudio.autoplay = true; }
+  net.remoteAudio.srcObject = stream; net.remoteAudio.volume = +volIn.value;
+  net.remoteNode = actx.createMediaStreamSource(stream);
+  net.remoteNode.connect(analyser); outGain.gain.value = 0; // suena por el elemento de audio, no doble
+  music.source = 'remote'; music.intervals = []; music.avg = 0; music.lastReal = -9; music.lastBeat = -9;
+  const tryPlay = () => net.remoteAudio.play().then(() => { netEl.hear.hidden = true; if (actx.state === 'suspended') actx.resume(); }).catch(() => { netEl.hear.hidden = false; });
+  tryPlay();
+  netEl.hear.onclick = () => { actx.resume(); tryPlay(); };
+}
+function endRemoteDJ(){
+  net.djPeer = null; net.dj = null;
+  if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
+  if (net.remoteAudio){ net.remoteAudio.pause(); net.remoteAudio.srcObject = null; }
+  net.remoteStream = null; netEl.hear.hidden = true;
+  if (music.source === 'remote'){ music.source = null; if (outGain) outGain.gain.value = 1; }
+  renderNet();
+}
+netEl.cast.addEventListener('click', () => net.casting ? stopCast() : startCast());
+
+let lastPose = '', lastPoseAt = 0;
+function sendPose(){
+  if (!net.room || net.peers.size === 0) return;
+  const me = chars[sel];
+  const p = [+me.x.toFixed(2), +me.z.toFixed(2), +me.rot.toFixed(2)], key = p.join(',');
+  const now = performance.now();
+  if (key === lastPose && now - lastPoseAt < 1000) return;
+  lastPose = key; lastPoseAt = now; net.actions.pose.send(p);
+}
+let lookTimer = 0;
+function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { if (net.room) net.actions.look.send(myDef()); renderNet(); }, 150); }
+
+async function connect(){
+  setNetState('Conectando…', false);
+  let mod;
+  try { mod = await import('./vendor/trystero-nostr.js'); }
+  catch(e){ setNetState('Sin conexión', false); netEl.djNow.textContent = 'No se pudo cargar el módulo de red.'; return; }
+  const roomObj = mod.joinRoom({appId: APP_ID}, ROOM_ID);
+  net.room = roomObj; net.selfId = mod.selfId; net.online = true;
+  const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
+  net.actions = {pose, look, dj};
+  roomObj.onPeerJoin = id => {
+    ensurePeer(id);
+    look.send(myDef(), {target: id});
+    lastPose = '';
+    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castDest.stream, {target: id}); }
+    renderNet();
+  };
+  roomObj.onPeerLeave = id => removePeer(id);
+  look.onMessage = (d, meta) => {
+    const id = meta && meta.peerId || meta; if (!d || typeof d !== 'object') return;
+    const r = ensurePeer(id);
+    const clean = {...DEFAULTS[0]};
+    for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
+    clean.name = String(d.name || 'Invitado').slice(0, 14);
+    r.def = clean; buildRemote(r); renderNet();
+  };
+  pose.onMessage = (p, meta) => {
+    const id = meta && meta.peerId || meta; if (!Array.isArray(p)) return;
+    const r = ensurePeer(id);
+    r.tx = Math.max(-HALF, Math.min(HALF, +p[0] || 0)); r.tz = Math.max(-HALF, Math.min(HALF, +p[1] || 0)); r.trot = +p[2] || 0;
+    if (!r.seen){ r.seen = true; r.x = r.tx; r.z = r.tz; r.rot = r.trot; if (r.group) scene.add(r.group); }
+  };
+  dj.onMessage = (d, meta) => {
+    const id = meta && meta.peerId || meta; if (!d || typeof d !== 'object') return;
+    if (d.on){
+      // si dos transmiten a la vez, gana quien empezó primero
+      if (net.casting && (net.castSince < d.since || (net.castSince === d.since && net.selfId < id))) return;
+      if (net.casting){ stopCast(true); netEl.note.textContent = (d.name || 'Otra persona') + ' empezó a transmitir antes que tú.'; }
+      net.djPeer = id; net.dj = {name: String(d.name || '').slice(0,14), track: String(d.track || '').slice(0,60), since: +d.since || 0};
+      if (net.remoteStream && music.source !== 'remote') playRemote(net.remoteStream);
+    } else if (net.djPeer === id) endRemoteDJ();
+    renderNet();
+  };
+  roomObj.onPeerStream = (stream, id) => {
+    net.djPeer = net.djPeer || id;
+    if (id === net.djPeer) playRemote(stream); else net.remoteStream = stream;
+    renderNet();
+  };
+  setInterval(sendPose, 100);
+  setInterval(() => { if (net.casting) dj.send(djPayload()); renderNet(); }, 3000);
+  renderNet();
+}
+
+window.__netReady = true;
+connect();
 
 hudName.textContent = defs[sel].name;
 camTarget.set(chars[sel].x, 1, chars[sel].z);
