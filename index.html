@@ -1188,10 +1188,19 @@ function animClips(gltf, d){
   let hips = null; gltf.scene.traverse(o => { if (o.isBone && /Hips$/.test(o.name)) hips = o; });
   let up = 1;
   if (hips && hips.parent){ gltf.scene.updateMatrixWorld(true); const m = new THREE.Matrix3().setFromMatrix4(hips.parent.matrixWorld), best = [0,1,2].map(i => Math.abs(new THREE.Vector3().setFromMatrixColumn(new THREE.Matrix4().setFromMatrix3(m), i).normalize().y)); up = best.indexOf(Math.max(...best)); }
+  const unit = hips && hips.parent ? new THREE.Vector3().setFromMatrixScale(hips.parent.matrixWorld).x : 1;
+  out.speed = {};
   for (const clip of gltf.animations){
     const c = clip.clone();
     for (const tr of c.tracks){
-      if (/Hips\.position$/.test(tr.name)){ const v = tr.values; for (let i = 0; i < v.length; i += 3) for (let a = 0; a < 3; a++) if (a !== up) v[i + a] = v[a]; }
+      if (/Hips\.position$/.test(tr.name)){
+        const v = tr.values, n = v.length / 3;
+        // si el clip avanza solo, se mide a qué velocidad camina (m/s) antes de dejarlo en su lugar
+        let dist = 0; for (let a = 0; a < 3; a++) if (a !== up) dist += (v[(n - 1) * 3 + a] - v[a]) ** 2;
+        dist = Math.sqrt(dist) * unit;
+        if (dist > 0.3 && c.duration > 0) out.speed[c.name] = dist / c.duration;
+        for (let i = 0; i < v.length; i += 3) for (let a = 0; a < 3; a++) if (a !== up) v[i + a] = v[a];
+      }
     }
     out[c.name] = c;
   }
@@ -1249,7 +1258,8 @@ function buildModelCharacter(d){
     if (gltf.animations && gltf.animations.length){
       rig.mixer = new THREE.AnimationMixer(inst);
       const clips = animClips(gltf, d);
-      for (const n in clips){ const a = rig.mixer.clipAction(clips[n]); a.setLoop(THREE.LoopRepeat); rig.actions[n] = a; }
+      rig.speed = clips.speed;
+      for (const n in clips){ if (n === 'speed') continue; const a = rig.mixer.clipAction(clips[n]); a.setLoop(THREE.LoopRepeat); rig.actions[n] = a; }
       g.userData.anim = true;
     }
     const hb = rig.bones[bn('head')] && rig.bones[bn('head')].b;
@@ -2047,7 +2057,8 @@ function tick(){
         const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
         vx = rx*ix - fx*iz; vz = rz*ix - fz*iz;
         const l = Math.hypot(vx, vz) || 1; vx /= l; vz /= l;
-        speed = (run ? 4.4 : 2.4) * Math.min(1, il);
+        // con animaciones capturadas se camina a paso real (si no, los pies no alcanzan y el personaje "flota")
+        speed = (run ? 4.4 : (c.group && c.group.userData.anim ? 1.6 : 2.4)) * Math.min(1, il);
       }
     } else {
       if (c.wait > 0) c.wait -= dt;
@@ -2225,8 +2236,10 @@ function animDrive(c, ud, dt, d, def, t){
   const spd = c.spd || 0;
   let name = 'Idle', speed = 1;
   if (c.move > 0.3 && spd > 0.15){
-    if (spd > 3.2){ name = 'Running'; speed = Math.max(0.75, Math.min(1.35, spd / 4.2)); }
-    else { name = 'Walking'; speed = Math.max(0.6, Math.min(1.7, spd / 1.45)); }
+    const sc = (def && def.modelScale) || 1, vs = rig.speed || {};
+    const vWalk = (vs.Walking || 1.45) * sc, vRun = (vs.Running || 4.6) * sc;
+    if (spd > 2.6){ name = 'Running'; speed = Math.max(0.6, Math.min(1.4, spd / vRun)); }
+    else { name = 'Walking'; speed = Math.max(0.55, Math.min(1.5, spd / vWalk)); }
   } else if (c.dance > 0.3){
     const L = dancesOf(def), k = c.danceSel ? (c.danceSel - 1) % L.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % L.length;
     name = L[k][0];
