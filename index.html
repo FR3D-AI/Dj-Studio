@@ -2456,12 +2456,26 @@ let lookTimer = 0;
 function lookPayload(){ return {...myDef(), pub: ident.pub}; }
 function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { if (net.room) net.actions.look.send(lookPayload()); remember(ident.pub, myDef().name); renderNet(); renderAgenda(); }, 150); }
 
+// Servidor TURN público y gratuito (Open Relay de metered.ca): hace de puente cuando la conexión directa no pasa,
+// por ejemplo un celular con datos móviles y un computador con wifi. Las credenciales son temporales y se generan
+// aquí con la clave compartida que publica el proyecto (método "use-auth-secret" de coturn).
+async function turnServers(){
+  try {
+    const user = Math.floor(Date.now() / 1000) + 24*3600 + ':dj-studio';
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('openrelayprojectsecret'), {name:'HMAC', hash:'SHA-1'}, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(user));
+    const credential = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    const h = 'staticauth.openrelay.metered.ca';
+    return [{urls: ['turn:' + h + ':80', 'turn:' + h + ':80?transport=tcp', 'turn:' + h + ':443', 'turns:' + h + ':443?transport=tcp'], username: user, credential}];
+  } catch(e){ return []; }
+}
 async function connect(){
   setNetState('Conectando…', false);
   let mod;
   try { mod = await import('./vendor/trystero-nostr.js'); }
   catch(e){ setNetState('Sin conexión', false); netEl.djNow.textContent = 'No se pudo cargar el módulo de red.'; return; }
-  const roomObj = mod.joinRoom({appId: APP_ID}, ROOM_ID);
+  const turnConfig = await turnServers();
+  const roomObj = mod.joinRoom({appId: APP_ID, turnConfig}, ROOM_ID);
   net.room = roomObj; net.selfId = mod.selfId; net.online = true;
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
   const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat'), logoA = roomObj.makeAction('logo');
