@@ -3200,7 +3200,7 @@ chatForm.addEventListener('submit', e => { e.preventDefault(); if (sendChat(chat
 
 /* ---------- GIFs de GIPHY en el chat ---------- */
 // Clave de la API de GIPHY (gratis en developers.giphy.com). Es una clave pública de sitio web, va en la página.
-const GIPHY_KEY = '';
+const GIPHY_KEY = 'Z1TQMf7jwgibWBGkIeQVkKSgBhe30TBP';
 const gifKey = () => { try { return localStorage.getItem('dj-giphy') || GIPHY_KEY; } catch(e){ return GIPHY_KEY; } };
 const gifPick = document.getElementById('gifPick'), gifQ = document.getElementById('gifQ'), gifGrid = document.getElementById('gifGrid'), gifBtn = document.getElementById('gifBtn');
 const gifCache = new Map(); let gifTimer = 0, gifReq = 0;
