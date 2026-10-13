@@ -447,18 +447,18 @@ const DEFAULTS = [
   {name:'Sol', build:'normal', skin:SKINS[0], hair:'afro', hairColor:HAIRC[2], top:'camiseta', topColor:CLOTH[3], pants:'short', pantsColor:PANTS[4], shoes:SHOES[3], danceA:'rebote', danceB:'manos'},
 ];
 DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hairColor:'#8a3a1a', top:'tirantes', topColor:'#f2efe8', pants:'short', pantsColor:'#2c3fa8', shoes:'#1d1c21', danceA:'balanceo', danceB:'manos',
-  model:'models/nika.glb', modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
+  model:'models/nika.glb', ear:[0.8, 0.085], modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
-  model:'models/fr3d.glb', modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[0.2, 0.45], signature:true, tag:'Modelo 3D · DJ',
+  model:'models/fr3d.glb', ear:[0.71, 0.1, 0.17], modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[0.2, 0.45], signature:true, tag:'Modelo 3D · DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
-  model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
-  model:'models/valknuz.glb', modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[-0.45, -0.75], signature:true, tag:'Modelo 3D · DJ'});
+  model:'models/valknuz.glb', ear:[0.78, 0.09], modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[-0.45, -0.75], signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
-  model:'models/greenroll.glb', modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
+  model:'models/greenroll.glb', ear:[0.78, 0.125, 0.15], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Darío": "Dicen que aprendió a hacer beatbox imitando los frenos del metro. En los 2000 ganó una batalla de b-boys con los ojos vendados y desde entonces nadie le pide la revancha: su rebote hace temblar el piso.",
@@ -814,37 +814,78 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   const g = new THREE.Group(); g0.add(g);
   // mesa de la cabina, el frente mira hacia la sala (oeste)
   box(0.8,0.95,2.0,'#1d1a26',3.6,0.475,0,g);
-  box(0.84,0.04,2.04,'#3a3250',3.6,0.97,0,g);
+  box(0.84,0.04,2.04,'#4a2f1d',3.6,0.97,0,g);   // cubierta de madera
   const led = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,1.9), new THREE.MeshBasicMaterial({color:'#ff6fb0'}));
   led.position.set(3.19,0.62,0); g.add(led);
   const led2 = led.clone(); led2.material = led.material; led2.position.y = 0.3; g.add(led2);
-  const discs = [];
+  // ---- controlador DJ (dos platos con jog, mixer al centro y pads), mirando al DJ (+x) ----
+  const silver = new THREE.MeshPhongMaterial({color:'#c9ccd4', shininess:90, specular:'#ffffff'});
+  const dark = new THREE.MeshPhongMaterial({color:'#15151a', shininess:40});
+  box(0.47,0.05,1.36,'#121216',3.74,1.015,0,g);                 // cuerpo
+  box(0.48,0.008,1.37,'#2a2a32',3.74,0.993,0,g);                // canto
+  const discs = [], pads = [], vu = [], faders = [], knobs = [];
   for (const s of [-1,1]){
-    box(0.5,0.06,0.5,'#2a2a2e',3.62,1.02,s*0.62,g);
-    const disc = mesh(new THREE.CylinderGeometry(0.2,0.2,0.02,24), M('#0e0e10'), 3.62,1.06,s*0.62, g);
-    const lab = mesh(new THREE.CylinderGeometry(0.065,0.065,0.024,16), M(s<0?'#ffb347':'#38b5b0'), 0,0.001,0, disc);
-    box(0.03,0.026,0.12,'#f2ece0',0,0.002,0.13,disc);
-    box(0.03,0.03,0.26,'#c9c9cf',3.47,1.09,s*0.62+0.05,g); // brazo
+    // jog: aro, plato plateado que gira y centro oscuro
+    mesh(new THREE.CylinderGeometry(0.158,0.158,0.012,40), M('#33333b'), 3.69,1.046,s*0.42, g);
+    const disc = mesh(new THREE.CylinderGeometry(0.142,0.146,0.02,40), silver, 3.69,1.058,s*0.42, g);
+    mesh(new THREE.CylinderGeometry(0.06,0.06,0.022,28), dark, 0,0.002,0, disc);
+    mesh(new THREE.CylinderGeometry(0.03,0.03,0.024,20), M('#5a5d66'), 0,0.003,0, disc);
+    box(0.012,0.024,0.05,'#e8e8ee',0,0.003,0.085,disc);          // marca para ver el giro
+    for (let r = 0; r < 3; r++) mesh(new THREE.TorusGeometry(0.1 + r*0.014, 0.0025, 4, 40), M('#9a9da6'), 0,0.011,0, disc).rotation.x = Math.PI/2;
     discs.push(disc);
+    // pads de performance (2 filas x 4) con luz
+    for (let row = 0; row < 2; row++) for (let j = 0; j < 4; j++){
+      const pm = new THREE.MeshBasicMaterial({color:'#26262e'});
+      const pd = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.012,0.052), pm);
+      pd.position.set(3.865 + row*0.06, 1.044, s*(0.285 + j*0.064)); g.add(pd); pads.push({m: pm, s, row, j});
+    }
+    // fader de pitch en el borde
+    box(0.2,0.004,0.012,'#050507',3.69,1.042,s*0.625,g);
+    faders.push(box(0.03,0.018,0.04,'#d9d9de',3.69,1.05,s*0.625,g));
+    // play y cue
+    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#39d86b'}), 3.905,1.046,s*0.62, g);
+    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#ffa83a'}), 3.85,1.046,s*0.62, g);
+    // brazo del canal en el mixer: 4 perillas (gain, agudos, medios, graves), fader de canal
+    for (let r = 0; r < 4; r++){
+      const kb = mesh(new THREE.CylinderGeometry(0.013,0.015,0.02,14), dark, 3.55 + r*0.052, 1.05, s*0.07, g);
+      box(0.012,0.004,0.003,'#f2f2f2',0,0.011,0,kb).position.x = 0.007; knobs.push(kb);
+    }
+    box(0.1,0.004,0.01,'#050507',3.8,1.042,s*0.07,g);
+    faders.push(box(0.025,0.02,0.032,'#d9d9de',3.8,1.05,s*0.07,g));
+    // vúmetro: 8 luces
+    for (let q = 0; q < 8; q++){
+      const vm = new THREE.MeshBasicMaterial({color:'#111'});
+      const v = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.004,0.01), vm); v.position.set(3.72 - q*0.016, 1.042, s*0.018); g.add(v); vu.push({m: vm, q, s});
+    }
   }
-  box(0.42,0.07,0.34,'#34303f',3.62,1.025,0,g);
-  const knobs = [];
-  for (let i=0;i<6;i++){ knobs.push(box(0.04,0.03,0.04, i%2?'#ffb347':'#5fe0a0', 3.5+(i%3)*0.1, 1.07, i<3?-0.08:0.08, g)); }
-  // auriculares sobre la mesa
-  box(0.16,0.03,0.04,'#111',3.85,1.0,0.32,g);
-  // computador del DJ sobre un soporte: muestra lo que se ve en su software (la pantalla compartida)
-  box(0.22,0.14,0.2,'#2a2a30',3.86,1.06,0,g);
-  box(0.52,0.02,0.36,'#9a9aa6',3.86,1.14,0,g);
-  const lap = new THREE.Group(); lap.position.set(3.62,1.15,0); lap.rotation.z = 0.22; lap.scale.setScalar(1.4); g.add(lap);
-  box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lap);
+  // crossfader y perillas maestras
+  box(0.012,0.004,0.13,'#050507',3.915,1.042,0,g);
+  const xf = box(0.032,0.02,0.026,'#d9d9de',3.915,1.05,0,g);
+  for (const zz of [-0.03, 0.03]) knobs.push(mesh(new THREE.CylinderGeometry(0.012,0.014,0.02,14), dark, 3.51, 1.05, zz, g));
+  // pantallita central y cable al computador
+  mesh(new THREE.BoxGeometry(0.05,0.004,0.1), new THREE.MeshBasicMaterial({color:'#2f7fff'}), 3.48,1.042,0, g);
+  const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(3.52,1.03,-0.66), new THREE.Vector3(3.48,1.0,-0.72), new THREE.Vector3(3.55,0.995,-0.8)]), 10, 0.006, 5, false), M('#0d0d10'));
+  g.add(cable);
+  // ---- computador al costado (derecha del DJ), con teclado, mirando hacia el DJ ----
+  const lap = new THREE.Group(); lap.position.set(3.62,0.995,-0.8); lap.rotation.y = -0.5; lap.scale.setScalar(1.25); g.add(lap);
+  const kbCv = document.createElement('canvas'); kbCv.width = 256; kbCv.height = 176;
+  { const x = kbCv.getContext('2d'); x.fillStyle = '#8f909a'; x.fillRect(0,0,256,176); x.fillStyle = '#1d1d22';
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 13; c++) x.fillRect(10 + c*18.2, 12 + r*20, 15, 16);
+    x.fillRect(60, 112, 136, 16); x.fillStyle = '#7b7c86'; x.fillRect(86, 136, 84, 34); }
+  const kbTex = new THREE.CanvasTexture(kbCv);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.26,0.014,0.38), [M('#9a9aa6'), M('#9a9aa6'), new THREE.MeshLambertMaterial({map: kbTex}), M('#9a9aa6'), M('#9a9aa6'), M('#9a9aa6')]);
+  base.material[2].map.rotation = Math.PI/2; base.material[2].map.center.set(0.5,0.5);
+  base.position.set(0.13,0.007,0); base.castShadow = true; lap.add(base);
+  const lid = new THREE.Group(); lid.position.set(0,0.014,0); lid.rotation.z = 0.28; lap.add(lid);
+  box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lid);
   const lapMats = [new THREE.MeshBasicMaterial({color:'#141224'})];
   // tapa trasera: color aluminio con el logo del DJ estampado
   const logoCv = document.createElement('canvas'); logoCv.width = 384; logoCv.height = 240;
   const logoTex = new THREE.CanvasTexture(logoCv);
   const logoMat = new THREE.MeshLambertMaterial({map: logoTex});
-  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.35,0.22), lapMats[0]); front.rotation.y = Math.PI/2; front.position.set(0.008,0.125,0); lap.add(front);
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.35,0.22), lapMats[0]); front.rotation.y = Math.PI/2; front.position.set(0.008,0.125,0); lid.add(front);
   const backGeo = new THREE.PlaneGeometry(0.35,0.22); // la tapa mira al público: el logo se lee al derecho
-  const back = new THREE.Mesh(backGeo, logoMat); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lap.add(back);
+  const back = new THREE.Mesh(backGeo, logoMat); back.rotation.y = -Math.PI/2; back.position.set(-0.008,0.125,0); lid.add(back);
   // parlantes
   const cones = [];
   for (const s of [-1,1]){
@@ -854,7 +895,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     cones.push(woof, tw);
   }
   solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
-  return {led:led.material, discs, cones, knobs, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
+  return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
@@ -1001,38 +1042,44 @@ const POSE_FN = {poder: powerPose, mando: djPoseMando, arriba: djPoseArriba};
 // Quien está en la cabina trabaja la mesa solo: perillas y fader del mixer, scratch en un plato, empuja el otro plato,
 // se lleva el audífono a la oreja y en el drop levanta un brazo al público. Cambia de acción cada 2 compases.
 // Índice 0 = brazo derecho (hacia el plato derecho), 1 = izquierdo. Valores en ejes del personaje.
-const DJ_ACTS = ['mezcla', 'scratch', 'perillas', 'jog', 'auricular', 'mezcla', 'scratch', 'perillas'];
+const DJ_ACTS = ['mezcla', 'scratch', 'pads', 'perillas', 'jog', 'auricular', 'mezcla', 'scratch', 'pads', 'perillas'];
 const DJP = {a:[0,0], z:[0,0], e:[0,0], ez:[0,0], twist:0, lean:0, head:0, headY:0, headZ:0, bounce:0};
+// Mesa: mixer al centro (a ~0,7 m del DJ), jogs a los lados (±0,42 m), pads más cerca del DJ (±0,3–0,5 m).
 function djPose(P, t, seed, drop, sounding, o){
   const beat = P / Math.PI, bar2 = Math.floor(beat / 8);
-  let act = sounding ? DJ_ACTS[(bar2 * 5 + seed * 3) % DJ_ACTS.length] : 'perillas';
+  let act = sounding ? DJ_ACTS[(bar2 * 7 + seed * 3) % DJ_ACTS.length] : 'perillas';
   if (drop && sounding && (bar2 + seed) % 2 === 0) act = 'arriba';
   const s1 = Math.sin(P), s2 = Math.sin(P*2), s4 = Math.sin(P*4), sp = sounding ? 1 : 0.35;
   // base: las dos manos sobre el mixer
-  o.a[0] = -0.88; o.a[1] = -0.88; o.z[0] = -0.06; o.z[1] = 0.06; o.e[0] = -0.6; o.e[1] = -0.6; o.ez[0] = 0.3; o.ez[1] = -0.3;
-  o.twist = 0; o.lean = 0.3; o.headY = 0; o.headZ = 0; o.bounce = 0;
+  o.a[0] = -0.78; o.a[1] = -0.78; o.z[0] = -0.05; o.z[1] = 0.05; o.e[0] = -0.72; o.e[1] = -0.72; o.ez[0] = 0.3; o.ez[1] = -0.3;
+  o.twist = 0; o.lean = 0.24; o.headY = 0; o.headZ = 0; o.bounce = 0;
   // mano que gira perillas: pequeños giros y saltos de una perilla a otra en cada tiempo
-  const knob = i => { const k = Math.floor(beat + i*0.5) % 3; o.z[i] += (i ? 1 : -1) * (k - 1) * 0.05; o.a[i] += (k === 1 ? -0.04 : 0.03); o.e[i] += 0.07*Math.sin(t*9 + i)*sp; };
-  const fader = i => { o.z[i] += (i ? 1 : -1) * (0.02 + 0.06*Math.sin(P*0.5)); o.a[i] += 0.03*s2*sp; };
+  const knob = i => { const k = Math.floor(beat + i*0.5) % 4; o.a[i] += (k - 1.5) * 0.035; o.z[i] += (i ? 1 : -1) * 0.02; o.e[i] += 0.07*Math.sin(t*9 + i)*sp; };
+  const fader = i => { o.a[i] += 0.04 + 0.03*s2*sp; o.e[i] -= 0.12; o.z[i] += (i ? 1 : -1) * 0.03*Math.sin(P*0.5); };
   if (act === 'mezcla'){ knob(0); fader(1); }
-  else if (act === 'perillas'){ knob(0); knob(1); o.lean = 0.26; }
-  else if (act === 'scratch'){ // derecha en el plato derecho: adelante-atrás rápido; izquierda en el crossfader
-    o.twist = -0.38; o.z[0] = -0.5; o.a[0] = -0.95 + 0.08*s4; o.e[0] = -0.4 + 0.22*s4; o.ez[0] = 0.1; o.lean = 0.34;
-    o.z[1] = 0.1 + 0.06*Math.sign(Math.sin(P*4 + 0.6)); o.a[1] = -0.85; o.ez[1] = -0.45;
+  else if (act === 'perillas'){ knob(0); knob(1); o.lean = 0.3; }
+  else if (act === 'scratch'){ // derecha sobre el jog derecho: adelante-atrás rápido; izquierda en el crossfader
+    o.twist = -0.22; o.z[0] = -0.36; o.a[0] = -0.8 + 0.07*s4; o.e[0] = -0.55 + 0.18*s4; o.ez[0] = 0.12; o.lean = 0.28;
+    o.z[1] = 0.04 + 0.05*Math.sign(Math.sin(P*4 + 0.6)); o.a[1] = -0.66; o.e[1] = -0.95; o.ez[1] = -0.4;
   }
-  else if (act === 'jog'){ // izquierda empuja el plato izquierdo con un movimiento circular
-    o.twist = 0.38; o.lean = 0.34; o.z[1] = 0.5 + 0.06*Math.cos(t*3.2); o.a[1] = -0.95 + 0.07*Math.sin(t*3.2); o.e[1] = -0.45; o.ez[1] = -0.1; o.ez[0] = 0.45;
+  else if (act === 'jog'){ // izquierda empuja el jog izquierdo en círculos; derecha en las perillas
+    o.twist = 0.22; o.lean = 0.28; o.z[1] = 0.36 + 0.05*Math.cos(t*3.2); o.a[1] = -0.8 + 0.06*Math.sin(t*3.2); o.e[1] = -0.58; o.ez[1] = -0.12;
     knob(0);
   }
-  else if (act === 'auricular'){ // izquierda sostiene el audífono contra la oreja
+  else if (act === 'pads'){ // las dos manos tocan los pads, golpecitos al ritmo
+    const hitL = Math.max(0, Math.sin(P*2)), hitR = Math.max(0, Math.sin(P*2 + Math.PI));
+    o.a[0] = -0.6 + 0.07*hitR*sp; o.a[1] = -0.6 + 0.07*hitL*sp; o.z[0] = -0.28; o.z[1] = 0.28;
+    o.e[0] = -1.05 + 0.14*hitR*sp; o.e[1] = -1.05 + 0.14*hitL*sp; o.ez[0] = 0.22; o.ez[1] = -0.22; o.lean = 0.2;
+  }
+  else if (act === 'auricular'){ // izquierda sujeta el audífono contra la oreja
     o.a[1] = -0.32; o.z[1] = 1.0; o.e[1] = -0.5; o.ez[1] = 2.55; o.headZ = 0.2; o.headY = -0.12;
     knob(0); o.twist = -0.06;
   }
   else if (act === 'arriba'){ // drop: brazo derecho arriba marcando el ritmo
     o.a[0] = -2.55 - 0.3*Math.abs(s1); o.z[0] = -0.2; o.e[0] = -0.25 - 0.25*Math.abs(s1); o.ez[0] = 0;
-    fader(1); o.lean = 0.16; o.bounce = 0.03*Math.abs(s1);
+    fader(1); o.lean = 0.14; o.bounce = 0.03*Math.abs(s1);
   }
-  o.head = (sounding ? 0.16*Math.abs(s1) : 0.03) + 0.06;   // cabeceo al ritmo mirando la mesa
+  o.head = (sounding ? 0.16*Math.abs(s1) : 0.03) + 0.1;   // cabeceo al ritmo mirando la mesa
   return o;
 }
 /* ---------- pose de poder (selección de personaje) ---------- */
@@ -1053,6 +1100,18 @@ function powerPose(t, o){
   return o;
 }
 function shade_(c, f){ return '#' + new THREE.Color(c).multiplyScalar(f).getHexString(); }
+/* ---------- audífonos del DJ (se ven puestos mientras está en la cabina) ---------- */
+function makeHeadphones(w, top){
+  const g = new THREE.Group(), cupM = new THREE.MeshPhongMaterial({color:'#17171c', shininess:60}), ac = new THREE.MeshBasicMaterial({color:'#ff3b5c'});
+  for (const s of [-1,1]){
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.042,0.042,0.032,18), cupM); cup.rotation.z = Math.PI/2; cup.position.x = s*(w + 0.014); g.add(cup);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 6, 18), ac); ring.rotation.y = Math.PI/2; ring.position.x = s*(w + 0.031); g.add(ring);
+  }
+  const pts = []; for (let i = 0; i <= 16; i++){ const a = Math.PI * i / 16; pts.push(new THREE.Vector3(Math.cos(a)*(w + 0.014), 0.03 + Math.sin(a)*top, 0)); }
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.009, 6, false), cupM));
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
 /* ---------- personajes con modelo 3D (glTF con esqueleto) ---------- */
 // El juego anima "articulaciones de control" (las mismas que usan los personajes hechos por código)
 // y en cada cuadro las traduce a los huesos reales del modelo.
@@ -1091,6 +1150,13 @@ function buildModelCharacter(d){
       rig.bones[o.name] = {b:o, L0:o.quaternion.clone(), P0:pw, P0i:pw.clone().invert()};
     }});
     inst.traverse(o => { o.userData.ci = g.userData.ci; });
+    const hb = rig.bones.head && rig.bones.head.b;
+    if (hb){
+      const ear = d.ear || [0.8, 0.088];
+      const hp = makeHeadphones(ear[1], ear[2] || 0.15); hp.matrixAutoUpdate = false;
+      hp.matrix.copy(hb.matrixWorld).invert().multiply(inst.matrixWorld).multiply(new THREE.Matrix4().makeTranslation(0, ear[0], 0.01));
+      hp.visible = false; hb.add(hp); g.userData.hp = hp;
+    }
   };
   // si el modelo ya está cargado se arma al instante (así la selección puede sacarle retrato)
   if (MODEL_DATA[d.model]) attach(MODEL_DATA[d.model]);
@@ -1296,7 +1362,8 @@ function buildCharacter(d){
   }
 
   [hips, body, neck, head, ...arms, ...elbows, ...legs, ...knees, ...feet].forEach(j => bake(j, null, CHAR_MAT));
-  g.userData = {legs, arms, head, body, knees, elbows, feet, hips};
+  const hp = makeHeadphones(0.086, 0.13); hp.position.set(0, 0.088, 0); hp.visible = false; head.add(hp);
+  g.userData = {legs, arms, head, body, knees, elbows, feet, hips, hp};
   return g;
 }
 
@@ -1971,6 +2038,7 @@ function tick(){
       mix(head, 'x', Q.head); mix(head, 'y', Q.headY); mix(head, 'z', Q.headZ);
       g.position.y += Q.bounce * d;
     }
+    if (g.userData.hp) g.userData.hp.visible = d > 0.5;
     if (g.userData.sync) g.userData.sync();
   }
   // objetos que reaccionan a la música
@@ -1985,7 +2053,15 @@ function tick(){
     api.led.color.copy(ledCol);
     const pump = 1 + pulse * (groove ? 0.2 : 0.04);
     api.cones.forEach(co => co.scale.set(pump, 1, pump));
-    api.knobs.forEach((k,i) => k.position.y = 1.07 + (groove ? Math.max(0, Math.sin(t*5+i))*0.015 : 0));
+    // perillas que giran, pads que se encienden con el beat, vúmetros con los graves y faders que se mueven
+    api.knobs.forEach((k,i) => k.rotation.y = Math.sin(t*0.7 + i*1.7) * (groove ? 1.2 : 0.3));
+    const beatN = Math.floor(music.phase / Math.PI);
+    api.pads.forEach(p => { const on = groove && ((beatN + p.j + p.row*2 + (p.s > 0 ? 1 : 0)) % 4 === 0);
+      p.m.color.setHSL((hueBase + p.j*0.12 + (p.s > 0 ? 0.5 : 0)) % 1, 0.9, on ? 0.45 + 0.25*pulse : 0.13); });
+    api.vu.forEach(v => { const lv = (groove ? Math.min(1, music.bass*1.4 + (v.s > 0 ? 0.05 : 0)) : 0) * 8;
+      v.m.color.set(v.q < lv ? (v.q > 6 ? '#ff3b3b' : v.q > 4 ? '#ffd23b' : '#3bff6b') : '#111'); });
+    api.faders.forEach((f,i) => { if (i % 2) f.position.x = 3.8 - 0.03 + (groove ? 0.03 + 0.01*Math.sin(t*0.4 + i) : 0); });
+    api.xf.position.z = groove ? Math.sin(t*0.25)*0.045 : 0;
   }
   if (room.items.tarima){ if (party > 0.5) presetColor(1, t, STAGE.api.edge.color); else STAGE.api.edge.color.setHSL(0.1, 0.9, 0.45); }
   if (room.items.luces){
@@ -2503,7 +2579,7 @@ async function startCast(){
   net.actions.dj.send(djPayload());
   net.actions.logo.send({data: myLogo || ''}); drawLaptopLogo(myLogo);
   const me = chars[sel];
-  if (room.items.dj){ me.x = 9.5; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
+  if (room.items.dj){ me.x = 9.38; me.z = 0; me.rot = -Math.PI/2; me.target = null; }
   netEl.note.textContent = 'Estás en vivo. Todos los conectados escuchan tu música y bailan contigo.';
   addChat({kind:'system', text: '🎧 ' + myDef().name + ' está en vivo'});
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch(e){}
@@ -2621,7 +2697,7 @@ async function connect(){
     for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
     const md = DEFAULTS.find(x => x.model && x.model === d.model); // solo modelos de la propia página
-    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait});
+    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear});
     if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
     const isNew = !r.def;
     r.def = clean; buildRemote(r); renderNet(); renderAgenda();
