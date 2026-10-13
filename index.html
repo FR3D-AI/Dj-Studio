@@ -437,6 +437,10 @@ DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenz
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
   model:'models/wishi.glb', modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
+DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
+  model:'models/valknuz.glb', modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[-0.45, -0.75], signature:true, tag:'Modelo 3D · DJ'});
+DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
+  model:'models/greenroll.glb', modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Darío": "Dicen que aprendió a hacer beatbox imitando los frenos del metro. En los 2000 ganó una batalla de b-boys con los ojos vendados y desde entonces nadie le pide la revancha: su rebote hace temblar el piso.",
@@ -451,6 +455,8 @@ const LEGENDS = {
  "Sol": "Cazador de vinilos. Encontró en una feria un disco de funk sin nombre y lo sampleó en un beat que dio la vuelta al mundo. Todavía busca a la banda para darles las gracias.",
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
  "DJ FR3D": "Se considera un eterno aprendiz. En una libreta anota lo que le enseña cada noche: el espíritu de las primeras fiestas de barrio del Bronx, el pulso del house de Chicago, la precisión del techno de Detroit y el sabor de los vinilos de cumbia de su abuelo. Por eso ningún set suyo suena igual al anterior.",
+ "DJ Valknuz": "Creció entre vinilos de metal nórdico y casetes de hip hop de la vieja escuela. Antes de cada set estudia a los pioneros de un género distinto, porque dice que un DJ es un cronista: en una sola noche cuenta la historia de la música, del primer breakbeat al último drop.",
+ "DJ Green Roll": "Nadie conoce su cara: detrás de la máscara solo se escucha el ritmo. Aprendió en los raves de bodega, donde el sonido se armaba con lo que hubiera, y su saludo con los cuernos es un homenaje a las bandas de rock que le enseñaron que el volumen también es una emoción.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
@@ -468,7 +474,7 @@ while (defs.length < NCH) defs.push({...DEFAULTS[defs.length]});
 defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
-if (!room || ![4,6].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
+if (!room || ![4,6,10,15].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
 // el nombre del jugador va aparte: los personajes conservan el suyo (antes se escribía encima y quedaban repetidos)
 let playerName = ''; try { playerName = localStorage.getItem('dj-studio-nombre') || ''; } catch(e){}
 defs.forEach((d, i) => { if (playerName && d.name === playerName && DEFAULTS[i].name !== playerName) d.name = DEFAULTS[i].name; });
@@ -1924,7 +1930,7 @@ const roster = document.getElementById('roster'), custom = document.getElementBy
 const countRow = document.getElementById('countRow'), itemsRow = document.getElementById('items');
 function renderCount(){
   countRow.innerHTML = '';
-  for (const n of [4,6]){
+  for (const n of [4,6,10,15]){
     const b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.textContent = n + ' personajes';
     b.setAttribute('aria-pressed', room.count === n);
     b.addEventListener('click', () => setCount(n));
