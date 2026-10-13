@@ -542,6 +542,10 @@ if (defs.length > 10 && defs[10] && !defs[10].model && defs[10].hair === 'gorraT
 while (defs.length < NCH) defs.push({...DEFAULTS[defs.length]});
 defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
+// lo que define el modelo 3D (archivo, tamaño, esqueleto, animaciones, pose) siempre viene del juego, nunca de lo guardado:
+// así, cuando un personaje se actualiza, todos lo ven con la versión nueva
+const MODEL_KEYS = ['model','modelScale','modelLift','rig','ear','dances','idle','armFix','pose','poseAdj','gait','legend','bio','tag','signature'];
+defs.forEach((d,i) => { for (const k of MODEL_KEYS){ if (DEFAULTS[i][k] === undefined) delete d[k]; else d[k] = DEFAULTS[i][k]; } });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || ![4,6,10,15].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
 // el nombre del jugador va aparte: los personajes conservan el suyo (antes se escribía encima y quedaban repetidos)
