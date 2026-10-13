@@ -60,6 +60,16 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
   background:rgba(23,20,31,.8);color:var(--fg);font:700 14px var(--body);cursor:pointer;white-space:nowrap}
 .viewbtn:hover,.viewbtn[aria-pressed="true"]{border-color:var(--accent)}
 .viewbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dancebtn{right:auto;left:auto;top:66px;right:12px;width:46px;padding:0;font-size:22px}
+.dancepanel{position:absolute;right:12px;top:120px;z-index:6;display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;
+  background:rgba(23,20,31,.94);border:1px solid var(--line);max-height:calc(100% - 140px);overflow-y:auto}
+.dancepanel button{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:transparent;color:var(--fg);
+  border-radius:8px;padding:6px 10px;font:600 14px var(--body);cursor:pointer;white-space:nowrap}
+.dancepanel button kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:5px;background:#2d2640;color:var(--accent);font:800 13px var(--body)}
+.dancepanel button[aria-pressed="true"]{border-color:var(--accent);background:rgba(255,179,71,.12)}
+.dancetoast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:6;padding:6px 14px;border-radius:999px;background:rgba(23,20,31,.9);
+  border:1px solid var(--accent);font:700 15px var(--body);color:#f2ece0;opacity:0;transition:opacity .3s;pointer-events:none}
+.dancetoast.on{opacity:1}
 .gear svg{width:24px;height:24px}
 .gear:focus-visible,.close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .djcount{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;
@@ -326,6 +336,9 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <div class="hint" id="hint"></div>
     <div class="bubbles" id="bubbles" aria-hidden="true"></div>
  <button class="viewbtn" id="viewBtn" type="button" aria-pressed="false" title="Cambiar cámara (tecla V)">3ª persona</button>
+ <button class="viewbtn dancebtn" id="danceBtn" type="button" aria-expanded="false" aria-controls="dancePanel" title="Bailes (teclas 1 a 8)">💃</button>
+ <div class="dancepanel" id="dancePanel" hidden role="group" aria-label="Bailes"></div>
+ <div class="dancetoast" id="danceToast" aria-live="polite"></div>
     <button class="gear" id="gearBtn" type="button" aria-label="Abrir configuración" aria-expanded="false" aria-controls="panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -487,7 +500,7 @@ DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hair
   model:'models/nika.glb', ear:[0.8, 0.085], modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
-  model:'models/fr3d.glb', ear:[0.71, 0.1, 0.17], modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[0.2, 0.45], signature:true, tag:'Modelo 3D · DJ',
+  model:'models/fr3d_anim.glb', rig:'mixamo', ear:[1.53, 0.095, 0.16], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
   model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
@@ -1159,22 +1172,61 @@ function loadModel(url){
   return MODEL_CACHE[url];
 }
 const MODELS_READY = Promise.all(DEFAULTS.filter(d => d.model).map(d => loadModel(d.model).catch(() => null)));
+/* ---------- animaciones capturadas (Mixamo) ---------- */
+// Bailes con número: teclas 1–8 (o el botón 💃). 0 = volver al baile automático.
+const ANIM_DANCES = [['Dancing','Free style'], ['Dancing_Running_Man','Running Man'], ['Gangnam_Style','Gangnam'], ['Northern_Soul_Spin_Combo','Soul Spin'],
+  ['Silly_Dancing','Silly'], ['Snake_Hip_Hop_Dance','Snake'], ['Step_Hip_Hop_Dance','Step'], ['Wave_Hip_Hop_Dance','Wave']];
+const MIXAMO_MAP = {thighR:'RightUpLeg', thighL:'LeftUpLeg', shinR:'RightLeg', shinL:'LeftLeg', footR:'RightFoot', footL:'LeftFoot',
+  upperarmR:'RightArm', upperarmL:'LeftArm', forearmR:'RightForeArm', forearmL:'LeftForeArm', hips:'Hips', spine:'Spine1', head:'Head'};
+const ANIM_CLIPS = new WeakMap();
+// Prepara una sola vez los clips de un modelo: deja el cuerpo en su lugar (sin avanzar solo) y arma el "parado".
+function animClips(gltf){
+  if (ANIM_CLIPS.has(gltf)) return ANIM_CLIPS.get(gltf);
+  const out = {};
+  let hips = null; gltf.scene.traverse(o => { if (o.isBone && /Hips$/.test(o.name)) hips = o; });
+  let up = 1;
+  if (hips && hips.parent){ gltf.scene.updateMatrixWorld(true); const m = new THREE.Matrix3().setFromMatrix4(hips.parent.matrixWorld), best = [0,1,2].map(i => Math.abs(new THREE.Vector3().setFromMatrixColumn(new THREE.Matrix4().setFromMatrix3(m), i).normalize().y)); up = best.indexOf(Math.max(...best)); }
+  for (const clip of gltf.animations){
+    const c = clip.clone();
+    for (const tr of c.tracks){
+      if (/Hips\.position$/.test(tr.name)){ const v = tr.values; for (let i = 0; i < v.length; i += 3) for (let a = 0; a < 3; a++) if (a !== up) v[i + a] = v[a]; }
+    }
+    out[c.name] = c;
+  }
+  // algunos bailes parten desde la pose en T: se recortan los primeros cuadros
+  for (const [n] of ANIM_DANCES) if (out[n]) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);
+  if (out.Gangnam_Style) out.Idle = THREE.AnimationUtils.subclip(gltf.animations.find(a => a.name === 'Gangnam_Style'), 'Idle', 0, 2, 30);
+  ANIM_CLIPS.set(gltf, out); return out;
+}
 function buildModelCharacter(d){
   const g = new THREE.Group();
   const P = () => new THREE.Object3D();
   const legs = [P(), P()], arms = [P(), P()], knees = [P(), P()], elbows = [P(), P()], feet = [P(), P()], head = P(), body = P(), hips = P();
+  const MX = d.rig === 'mixamo';
+  const bn = n => MX ? 'mixamorig' + MIXAMO_MAP[n] : n;
   const map = [['thighR', legs[0]], ['thighL', legs[1]], ['upperarmR', arms[0]], ['upperarmL', arms[1]], ['shinR', knees[0]], ['shinL', knees[1]],
-               ['forearmR', elbows[0]], ['forearmL', elbows[1]], ['footR', feet[0]], ['footL', feet[1]], ['hips', hips], ['spine', body], ['head', head]];
-  const rig = {bones: null};
+               ['forearmR', elbows[0]], ['forearmL', elbows[1]], ['footR', feet[0]], ['footL', feet[1]], ['hips', hips], ['spine', body], ['head', head]].map(([n, o]) => [bn(n), o, n]);
+  // el esqueleto de Mixamo está en reposo con los brazos abiertos en A: se bajan para las poses hechas a mano
+  const FIX = MX ? {upperarmR: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, d.armFix || 0.72)), upperarmL: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -(d.armFix || 0.72)))} : {};
+  const rig = {bones: null, mixer: null, actions: {}, cur: null, curName: ''};
   const e = new THREE.Euler(), dq = new THREE.Quaternion();
-  g.userData = {legs, arms, knees, elbows, feet, head, body, hips, model: true, sync(){
+  g.userData = {legs, arms, knees, elbows, feet, head, body, hips, model: true, rig, sync(){
     if (!rig.bones) return;
-    for (const [name, o] of map){
+    for (const [name, o, key] of map){
       const k = rig.bones[name]; if (!k) continue;
       e.set(o.rotation.x, o.rotation.y, o.rotation.z, 'XYZ'); dq.setFromEuler(e);
+      if (FIX[key]) dq.multiply(FIX[key]);
       k.b.quaternion.copy(k.P0i).multiply(dq).multiply(k.P0).multiply(k.L0);
     }
-  }};
+  }, play(name, fade = 0.35, speed = 1){
+    // cambia de animación con una mezcla suave
+    const a = rig.actions[name]; if (!a) return false;
+    a.timeScale = speed;
+    if (rig.curName === name) return true;
+    a.enabled = true; a.reset().setEffectiveWeight(1).fadeIn(fade).play();
+    if (rig.cur) rig.cur.fadeOut(fade);
+    rig.cur = a; rig.curName = name; return true;
+  }, stopAnim(fade = 0.3){ if (rig.cur){ rig.cur.fadeOut(fade); rig.cur = null; rig.curName = ''; } }};
   const attach = gltf => {
     const inst = THREE.SkeletonUtils.clone(gltf.scene);
     const sc = d.modelScale || 1; inst.scale.setScalar(sc); inst.position.y = (d.modelLift || 0) * sc;
@@ -1188,7 +1240,13 @@ function buildModelCharacter(d){
       rig.bones[o.name] = {b:o, L0:o.quaternion.clone(), P0:pw, P0i:pw.clone().invert()};
     }});
     inst.traverse(o => { o.userData.ci = g.userData.ci; });
-    const hb = rig.bones.head && rig.bones.head.b;
+    if (gltf.animations && gltf.animations.length){
+      rig.mixer = new THREE.AnimationMixer(inst);
+      const clips = animClips(gltf);
+      for (const n in clips){ const a = rig.mixer.clipAction(clips[n]); a.setLoop(THREE.LoopRepeat); rig.actions[n] = a; }
+      g.userData.anim = true;
+    }
+    const hb = rig.bones[bn('head')] && rig.bones[bn('head')].b;
     if (hb){
       const ear = d.ear || [0.8, 0.088];
       const hp = makeHeadphones(ear[1], ear[2] || 0.15); hp.matrixAutoUpdate = false;
@@ -2022,12 +2080,13 @@ function tick(){
   for (const c of live.concat(remotes)){
     const g = c.group, {legs, arms, head, body} = g.userData;
     const bot = !c.id && c !== me;
-    const want = groove * (c.move < 0.25 && c.dj < 0.5 ? 1 : 0) * (bot ? (c.like > 0.3 ? 1 : 0.3) : 1);
+    if (c.emote && c.move > 0.4) c.emote = false;   // al caminar se deja de bailar el paso elegido
+    const want = c.emote && c.move < 0.25 && c.dj < 0.5 ? 1 : groove * (c.move < 0.25 && c.dj < 0.5 ? 1 : 0) * (bot ? (c.like > 0.3 ? 1 : 0.3) : 1);
     c.dance += (want - c.dance) * Math.min(1, dt*4);
     const dn = c.dance, d = c.dj, off = c.i * 0.7;
     const def = c.def || defs[c.i] || {};
     // en el drop cambian al segundo baile; en partes tranquilas, balanceo suave
-    const move = (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
+    const move = c.danceSel ? DANCE_IDS[(c.danceSel - 1) % DANCE_IDS.length] : (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
     if (!c.pose){ c.pose = {}; POSE_KEYS.forEach(k => c.pose[k] = 0); c.spinA = 0; }
     if (dn > 0.01){
       dancePose(move, P, pulse, off, tmpPose);
@@ -2038,7 +2097,8 @@ function tick(){
     const q = c.pose;
     const G = gait(c.phase || 0, c.spd || 0, GAIT, gaitFem(def)), mv = c.move, wl = mv*(1-dn);
     const sx = G.sway*wl;
-    g.position.set(c.x + Math.cos(c.rot)*sx, c.y + G.bob*mv + q.bounce*dn + d*pulse*0.02*groove, c.z - Math.sin(c.rot)*sx);
+    const AN = g.userData.anim && d < 0.5 ? 0 : 1;   // con animaciones capturadas el cuerpo ya trae su vaivén
+    g.position.set(c.x + Math.cos(c.rot)*sx*AN, c.y + (G.bob*mv + q.bounce*dn)*AN + d*pulse*0.02*groove, c.z - Math.sin(c.rot)*sx*AN);
     g.rotation.y = c.rot;
     legs[0].rotation.x = G.th[0]*mv + q.l0*dn; legs[1].rotation.x = G.th[1]*mv + q.l1*dn;
     legs[0].rotation.z = G.thz[0]*wl; legs[1].rotation.z = G.thz[1]*wl;
@@ -2082,7 +2142,8 @@ function tick(){
       g.position.y += Q.bounce * d;
     }
     if (g.userData.hp) g.userData.hp.visible = d > 0.5;
-    if (g.userData.sync) g.userData.sync();
+    if (g.userData.anim) animDrive(c, g.userData, dt, d, def, t);
+    else if (g.userData.sync) g.userData.sync();
   }
   // objetos que reaccionan a la música
   const lvl = music.sounding ? Math.min(1, music.bass*1.3) : 0;
@@ -2151,6 +2212,23 @@ function tick(){
 }
 
 let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
+// elige y mezcla la animación capturada según lo que hace el personaje
+function animDrive(c, ud, dt, d, def, t){
+  const rig = ud.rig; if (!rig.mixer) return;
+  if (d > 0.5){ ud.stopAnim(0.25); rig.mixer.update(dt); ud.sync(); return; }   // en la cabina: manos sobre el controlador
+  const spd = c.spd || 0;
+  let name = 'Idle', speed = 1;
+  if (c.move > 0.3 && spd > 0.15){
+    if (spd > 3.2){ name = 'Running'; speed = Math.max(0.75, Math.min(1.35, spd / 4.2)); }
+    else { name = 'Walking'; speed = Math.max(0.6, Math.min(1.7, spd / 1.45)); }
+  } else if (c.dance > 0.3){
+    const k = c.danceSel ? (c.danceSel - 1) % ANIM_DANCES.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % ANIM_DANCES.length;
+    name = ANIM_DANCES[k][0];
+    speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
+  }
+  ud.play(name, 0.35, speed);
+  rig.mixer.update(dt);
+}
 
 /* ---------- estilos visuales: Liviano / Moderno / Clásico (estilo San Andreas) ---------- */
 // Liviano: como siempre, para celulares de gama baja.
@@ -2875,7 +2953,7 @@ let lastPose = '', lastPoseAt = 0;
 function sendPose(){
   if (!net.room || net.peers.size === 0) return;
   const me = chars[sel];
-  const p = [+me.x.toFixed(2), +me.z.toFixed(2), +me.rot.toFixed(2)], key = p.join(',');
+  const p = [+me.x.toFixed(2), +me.z.toFixed(2), +me.rot.toFixed(2), me.danceSel || 0, me.emote ? 1 : 0], key = p.join(',');
   const now = performance.now();
   if (key === lastPose && now - lastPoseAt < 1000) return;
   lastPose = key; lastPoseAt = now; net.actions.pose.send(p);
@@ -2931,7 +3009,7 @@ async function connect(){
     for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
     const md = DEFAULTS.find(x => x.model && x.model === d.model); // solo modelos de la propia página
-    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear});
+    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear, rig: md.rig, armFix: md.armFix});
     if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
     const isNew = !r.def;
     r.def = clean; buildRemote(r); renderNet(); renderAgenda();
@@ -2941,6 +3019,7 @@ async function connect(){
     const id = meta && meta.peerId || meta; if (!Array.isArray(p)) return;
     const r = ensurePeer(id);
     r.tx = Math.max(-HX, Math.min(HX, +p[0] || 0)); r.tz = Math.max(-HZ, Math.min(HZ, +p[1] || 0)); r.trot = +p[2] || 0;
+    r.danceSel = Math.max(0, Math.min(9, Math.floor(+p[3] || 0))); r.emote = !!p[4];
     if (!r.seen){ r.seen = true; r.x = r.tx; r.z = r.tz; r.rot = r.trot; if (r.group) scene.add(r.group); }
   };
   schedA.onMessage = d => { adoptSchedule(d, true); };
@@ -3358,6 +3437,40 @@ function toggleView(){
   renderView();
 }
 viewBtn.addEventListener('click', toggleView);
+/* ---------- bailes con número (teclas 1–8, o el botón 💃) ---------- */
+const danceBtn = document.getElementById('danceBtn'), dancePanel = document.getElementById('dancePanel'), danceToast = document.getElementById('danceToast');
+function danceList(){
+  const me = chars[sel];
+  if (me && me.group && me.group.userData.anim) return ANIM_DANCES.map(([, l]) => l);
+  return DANCE_IDS.slice(0, 8).map(id => labelOf('danceA', id));
+}
+let toastT = 0;
+function setDance(n){
+  const me = chars[sel]; if (!me) return;
+  me.danceSel = n || 0; me.emote = n > 0; lastPose = '';
+  const name = n ? danceList()[n - 1] : 'automático (sigue la música)';
+  danceToast.textContent = n ? '💃 ' + n + ' · ' + name : 'Baile ' + name; danceToast.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => danceToast.classList.remove('on'), 1600);
+  renderDancePanel();
+}
+function renderDancePanel(){
+  dancePanel.innerHTML = '';
+  const me = chars[sel], cur = me && me.danceSel || 0;
+  danceList().forEach((l, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', cur === i + 1);
+    const k = document.createElement('kbd'); k.textContent = i + 1; b.append(k, l);
+    b.addEventListener('click', () => setDance(i + 1)); dancePanel.append(b);
+  });
+  const b0 = document.createElement('button'); b0.type = 'button'; b0.setAttribute('aria-pressed', cur === 0);
+  const k0 = document.createElement('kbd'); k0.textContent = 0; b0.append(k0, 'Automático'); b0.addEventListener('click', () => setDance(0)); dancePanel.append(b0);
+}
+danceBtn.addEventListener('click', () => { const open = dancePanel.hidden; dancePanel.hidden = !open; danceBtn.setAttribute('aria-expanded', open); if (open) renderDancePanel(); });
+addEventListener('keydown', e => {
+  if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || !gate.hidden || !cselEl.hidden) return;
+  const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code); if (!m) return;
+  const n = +m[1]; if (n > 8) return;
+  setDance(n); e.preventDefault();
+});
 addEventListener('keydown', e => { if (e.code === 'KeyV' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && gate.hidden && cselEl.hidden) toggleView(); });
 renderView();
 const identityReady = (async () => {
