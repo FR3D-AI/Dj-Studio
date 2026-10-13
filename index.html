@@ -159,6 +159,9 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .djbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
   max-width:calc(100% - 720px);min-width:300px;background:rgba(23,20,31,.88);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .djbar .opt{padding:4px 10px;font-size:13px}
+.cinerow{gap:6px;align-items:center}
+.cinename{font-size:12px;color:var(--muted);min-width:96px;text-align:center}
+.cinerow .opt[disabled]{opacity:.35}
 .logobox{display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:10px}
 #logoPrev{width:56px;height:40px;object-fit:contain;background:#a3a3ae;border-radius:6px;padding:3px}
 .credits a{color:var(--accent)}
@@ -282,6 +285,12 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <span class="bpmtag" id="djBpm">BPM —</span>
       <span class="lbl">Luces</span>
       <div class="row" id="lightRow" role="group" aria-label="Escenas de luces"></div>
+      <div class="row cinerow" role="group" aria-label="Cámara de cine">
+        <button class="opt" id="cinePrev" type="button" aria-label="Toma anterior">◀</button>
+        <button class="opt" id="cineToggle" type="button" aria-pressed="true">🎬 Cine</button>
+        <span class="cinename" id="cineName"></span>
+        <button class="opt" id="cineNext" type="button" aria-label="Toma siguiente">▶</button>
+      </div>
       <button class="btn live" id="djBarStop" type="button">Terminar</button>
     </div>
     <div class="drop" id="drop" hidden>Suelta tus pistas para ponerlas en la sala</div>
@@ -1333,69 +1342,99 @@ let firstPerson = false, fpPitch = 0; try { firstPerson = localStorage.getItem('
 const fpDir = new THREE.Vector3();
 const camTarget = new THREE.Vector3(chars[sel].x, 1, chars[sel].z);
 /* ---------- cámara de cine mientras el DJ transmite ---------- */
-// En la pantalla de quien está tocando, la cámara pasa a tomas cinematográficas que cortan al ritmo:
-// la mayoría sobre el propio DJ y el resto recorriendo al público y la sala.
-const CINE_DJ = ['orbita', 'heroe', 'manos', 'hombro', 'perfil'], CINE_SALA = ['publico', 'grua', 'bailarin'];
-const cine = {shot:null, start:0, beats:0, endBeat:0, endT:0, seed:0, last:'', focus:null, on:false};
+// En la pantalla de quien está tocando, la cámara puede pasar a tomas cinematográficas que cortan al ritmo
+// (la mayoría sobre el propio DJ). Se activa o desactiva con el botón 🎬 y se navega con ◀ ▶.
+const CINE_DJ = ['orbita', 'heroe', 'manos', 'hombro', 'perfil', 'retrato', 'frontal', 'parlante'];
+const CINE_SALA = ['publico', 'grua', 'bailarin', 'luces', 'piso', 'pantallas', 'esquina', 'barrido', 'seguir'];
+const CINE_NAMES = {orbita:'Órbita', heroe:'Contrapicado', manos:'Manos', hombro:'Sobre el hombro', perfil:'Perfil', retrato:'Retrato',
+  frontal:'Frontal', parlante:'Desde el parlante', publico:'Entre el público', grua:'Grúa', bailarin:'Bailarín', luces:'Luces',
+  piso:'A ras de piso', pantallas:'Pantallas', esquina:'Cámara de esquina', barrido:'Barrido 360', seguir:'Siguiendo a alguien'};
+const cine = {shot:null, start:0, endBeat:0, endT:0, seed:0, last:'', focus:null, on:false, hist:[], hi:-1, enabled:true};
+try { cine.enabled = localStorage.getItem('dj-cine') !== '0'; } catch(e){}
 const cineV = new THREE.Vector3(), cineL = new THREE.Vector3();
 const ease = u => u*u*(3 - 2*u);
-function cinePick(beatNow, t){
+const clampRoom = v => { v.x = Math.max(-9.65, Math.min(9.85, v.x)); v.z = Math.max(-4.7, Math.min(4.7, v.z)); v.y = Math.max(0.15, Math.min(2.9, v.y)); return v; };
+function cineCrowd(){ return chars.filter(c => c.on && c !== chars[sel]).concat(netRemotes()); }
+function cineTiming(t, manual){
+  // en el drop corta el doble de rápido; si el DJ eligió la toma a mano, se queda más tiempo en ella
+  const beat = music.phase / Math.PI, len = manual ? 16 : (music.drop ? 4 : (music.calm ? 16 : 8));
+  cine.start = t; cine.endBeat = Math.ceil(beat) + len; cine.endT = t + len * 60 / (music.bpm || 122);
+}
+function cineApply(entry, t, manual){
+  cine.shot = entry.shot; cine.seed = entry.seed; cine.focus = entry.focus; cine.last = entry.shot;
+  cineTiming(t, manual); renderCine();
+}
+function cineNew(t, manual){
   // dos de cada tres tomas son del DJ; nunca se repite la misma seguida
-  let pool = Math.random() < 0.65 ? CINE_DJ : CINE_SALA, s;
-  do { s = pool[Math.floor(Math.random()*pool.length)]; } while (s === cine.last);
-  const len = music.drop ? 4 : (music.calm ? 16 : 8);        // en el drop corta el doble de rápido
-  cine.shot = s; cine.last = s; cine.start = t; cine.seed = Math.random();
-  cine.endBeat = Math.ceil(beatNow) + len; cine.endT = t + len * 60 / (music.bpm || 122);
-  const crowd = chars.filter(c => c.on && c !== chars[sel]).concat(typeof netRemotes === 'function' ? netRemotes() : []);
-  cine.focus = crowd.length ? crowd[Math.floor(Math.random()*crowd.length)] : null;
+  let pool = Math.random() < 0.62 ? CINE_DJ : CINE_SALA, sh;
+  do { sh = pool[Math.floor(Math.random()*pool.length)]; } while (sh === cine.last);
+  const crowd = cineCrowd();
+  const entry = {shot: sh, seed: Math.random(), focus: crowd.length ? crowd[Math.floor(Math.random()*crowd.length)] : null};
+  cine.hist = cine.hist.slice(0, cine.hi + 1); cine.hist.push(entry); if (cine.hist.length > 40) cine.hist.shift();
+  cine.hi = cine.hist.length - 1;
+  cineApply(entry, t, manual);
+}
+function cineGo(dir){
+  const t = performance.now() / 1000;
+  if (!cine.on){ cine.on = true; }
+  if (dir < 0){ if (cine.hi > 0){ cine.hi--; cineApply(cine.hist[cine.hi], t, true); } }
+  else if (cine.hi < cine.hist.length - 1){ cine.hi++; cineApply(cine.hist[cine.hi], t, true); }
+  else cineNew(t, true);
+}
+function shotPose(name, e, k, sd, me, f, t){
+  const dx = me.x, dy = me.y, dz = me.z, head = dy + 1.55;
+  switch (name){
+    case 'orbita': { const a = sd * (-1.1 + 2.2*e);       // vuelta lenta por delante de la cabina
+      cineV.set(dx - Math.cos(a)*2.3, dy + 1.85 + 0.25*Math.sin(e*Math.PI), dz + Math.sin(a)*2.3); cineL.set(dx, head - 0.1, dz); return 40; }
+    case 'heroe':    cineV.set(dx - 3.3 + 0.9*e, dy + 1.1, dz + sd*(1.75 - 0.35*e)); cineL.set(dx, head + 0.1, dz); return 36;
+    case 'manos':    cineV.set(dx - 0.95 + 0.2*e, dy + 1.75, dz + sd*(1.35 - 0.25*e)); cineL.set(dx - 0.55, dy + 1.2, dz + sd*0.15); return 40;
+    case 'hombro':   cineV.set(dx + 0.45, dy + 1.9, dz + sd*(0.55 - 0.3*e)); cineL.set(dx - 6, dy + 0.9, dz - sd*0.8); return 48;
+    case 'perfil':   cineV.set(dx - 0.35 - 0.3*e, dy + 1.6, dz + sd*(1.7 - 0.35*e)); cineL.set(dx - 0.15, head - 0.1, dz); return 34;
+    case 'retrato':  cineV.set(dx - 1.05 + 0.15*e, head + 0.05, dz + sd*(0.8 - 0.2*e)); cineL.set(dx, head + 0.02, dz); return 28;
+    case 'frontal':  cineV.set(dx - 4.6 + 1.3*e, dy + 1.95, dz); cineL.set(dx, head - 0.05, dz); return 34;
+    case 'parlante': cineV.set(9.15, dy + 1.45 + 0.2*e, sd*1.55); cineL.set(dx - 0.2, head - 0.1, dz); return 42;
+    case 'publico':  cineV.set(1.5 + k*3, 1.35, sd*(-4 + 8*e)); cineL.set(dx, head, dz); return 46;
+    case 'grua':     cineV.set(-9.2 + 1.2*e, 1.2 + 1.5*e, sd*(3.8 - 2*e)); cineL.set(dx - 1, 1.3, dz); return 50;
+    case 'bailarin': { const a = k*6.28 + sd*e*1.6;
+      cineV.set(f.x + Math.cos(a)*1.7, (f.y || 0) + 1.45, f.z + Math.sin(a)*1.7); cineL.set(f.x, (f.y || 0) + 1.25, f.z); return 40; }
+    case 'luces':    cineV.set(4.2 + 1.2*e, 0.55, sd*(2.4 - 0.6*e)); cineL.set(8.3, 2.55, 0); return 62;
+    case 'piso':     cineV.set(0.5 + 4*e, 0.22, sd*(1.2 - 0.6*e)); cineL.set(dx, 1.1, dz); return 58;
+    case 'pantallas':cineV.set(-6.5 + 9*e, 1.55, sd*3.4); cineL.set(-4.5 + 9*e, 1.75, sd*5); return 52;
+    case 'esquina':  cineV.set(-9.6, 2.85, sd*4.6); cineL.set(-1 + (dx + 1)*e, 0.8 + 0.7*e, dz*e); return 55;
+    case 'barrido': { const a = k*6.28 + sd*e*2.6;
+      cineV.set(1.5 + Math.cos(a)*0.4, 2.15, Math.sin(a)*0.4); cineL.set(1.5 + Math.cos(a)*7, 1.1, Math.sin(a)*4.5); return 62; }
+    case 'seguir': { // detrás de un bailarín, mirando hacia la cabina por encima de su hombro
+      const vx = f.x - 9, vz = f.z, l = Math.hypot(vx, vz) || 1;
+      cineV.set(f.x + vx/l*1.5, (f.y || 0) + 1.7, f.z + vz/l*1.5 + sd*0.35*e); cineL.set(9, 1.7, 0); return 44; }
+  }
+  cineV.set(dx - 3, 2, dz); cineL.set(dx, head, dz); return 45;
 }
 function cineCamera(){
-  const t = performance.now() / 1000, beat = music.phase / Math.PI, sounding = music.sounding;
-  if (!cine.on){ cine.on = true; cinePick(beat, t); }
-  if ((sounding && beat >= cine.endBeat) || (!sounding && t >= cine.endT) || t - cine.start > 20) cinePick(beat, t);
-  const dur = Math.max(1, cine.endT - cine.start), u = Math.min(1, (t - cine.start) / dur), e = ease(u), k = cine.seed;
-  const me = chars[sel], dx = me.x, dy = me.y, dz = me.z, head = dy + 1.55, sd = k < 0.5 ? -1 : 1;
-  let fov = 42;
-  switch (cine.shot){
-    case 'orbita': { // vuelta lenta alrededor del DJ, por delante de la cabina
-      const a = sd * (-1.1 + 2.2*e);                       // de un costado al otro
-      cineV.set(dx - Math.cos(a)*2.3, dy + 1.85 + 0.25*Math.sin(e*Math.PI), dz + Math.sin(a)*2.3);
-      cineL.set(dx, head - 0.1, dz); fov = 40; break; }
-    case 'heroe': { // contrapicado desde el público, por el costado del laptop, acercándose
-      cineV.set(dx - 3.3 + 0.9*e, dy + 1.1, dz + sd*(1.75 - 0.35*e));
-      cineL.set(dx, head + 0.1, dz); fov = 36; break; }
-    case 'manos': { // desde el costado de la cabina: manos sobre platos y mixer
-      cineV.set(dx - 0.95 + 0.2*e, dy + 1.75, dz + sd*(1.35 - 0.25*e));
-      cineL.set(dx - 0.55, dy + 1.2, dz + sd*0.15); fov = 40; break; }
-    case 'hombro': { // por detrás del DJ mirando a la pista
-      cineV.set(Math.min(9.85, dx + 0.45), dy + 1.9, dz + sd*(0.55 - 0.3*e));
-      cineL.set(dx - 6, dy + 0.9, dz - sd*0.8); fov = 48; break; }
-    case 'perfil': { // perfil del DJ a la altura de la cara, deslizándose
-      cineV.set(dx - 0.35 - 0.3*e, dy + 1.6, dz + sd*(1.7 - 0.35*e));
-      cineL.set(dx - 0.15, head - 0.1, dz); fov = 34; break; }
-    case 'publico': { // travelling entre la gente, a la altura de los hombros
-      const x = 1.5 + k*3;
-      cineV.set(x, 1.35, sd*(-4 + 8*e));
-      cineL.set(dx, head, dz); fov = 46; break; }
-    case 'grua': { // plano general desde el fondo, subiendo como una grúa
-      cineV.set(-9.2 + 1.2*e, 1.2 + 1.5*e, sd*(3.8 - 2*e));
-      cineL.set(dx - 1, 1.3, dz); fov = 50; break; }
-    case 'bailarin': { // un bailarín de cerca, girando a su alrededor
-      const f = cine.focus && cine.focus.group ? cine.focus : me;
-      const a = k*6.28 + sd*e*1.6, r = 1.7;
-      cineV.set(Math.max(-9.6, Math.min(9.6, f.x + Math.cos(a)*r)), (f.y || 0) + 1.45, Math.max(-4.6, Math.min(4.6, f.z + Math.sin(a)*r)));
-      cineL.set(f.x, (f.y || 0) + 1.25, f.z); fov = 40; break; }
-  }
+  const t = performance.now() / 1000, beat = music.phase / Math.PI;
+  if (!cine.on){ cine.on = true; cineNew(t); }
+  if ((music.sounding && beat >= cine.endBeat) || (!music.sounding && t >= cine.endT) || t - cine.start > 20) cineNew(t);
+  const dur = Math.max(1, cine.endT - cine.start), e = ease(Math.min(1, (t - cine.start) / dur)), k = cine.seed, sd = k < 0.5 ? -1 : 1;
+  const me = chars[sel], f = cine.focus && cine.focus.group && cine.focus.on !== false ? cine.focus : me;
+  // las tomas de un bailarín necesitan a alguien en la pista; si no hay, plano general
+  const shot = (cine.shot === 'bailarin' || cine.shot === 'seguir') && f === me ? 'grua' : cine.shot;
+  const fov = shotPose(shot, e, k, sd, me, f, t);
   // cámara en mano muy suave y un golpe de zoom en cada beat del drop
   const sh = 0.025;
   cineV.x += Math.sin(t*1.3 + k*9)*sh; cineV.y += Math.sin(t*1.7 + k*5)*sh; cineV.z += Math.cos(t*1.1 + k*7)*sh;
-  camera.position.copy(cineV); camera.lookAt(cineL);
-  const f = fov - (music.drop ? 4*music.pulse : 0);
-  if (Math.abs(camera.fov - f) > 0.05){ camera.fov = f; camera.updateProjectionMatrix(); }
+  camera.position.copy(clampRoom(cineV)); camera.lookAt(cineL);
+  const fv = fov - (music.drop ? 4*music.pulse : 0);
+  if (Math.abs(camera.fov - fv) > 0.05){ camera.fov = fv; camera.updateProjectionMatrix(); }
   for (const w of walls) for (const m of w.userData.mats){ m.opacity += (1 - m.opacity) * 0.2; m.depthWrite = m.opacity > 0.9; }
 }
+function renderCine(){
+  const tg = document.getElementById('cineToggle'); if (!tg) return;
+  tg.setAttribute('aria-pressed', cine.enabled); tg.textContent = cine.enabled ? '🎬 Cine' : '🎬 Sin cine';
+  document.getElementById('cinePrev').disabled = !cine.enabled || cine.hi <= 0;
+  document.getElementById('cineNext').disabled = !cine.enabled;
+  document.getElementById('cineName').textContent = cine.enabled && cine.shot ? (CINE_NAMES[cine.shot] || '') : 'Cámara normal';
+}
 function placeCamera(){
-  if (net.casting && room.items.dj){ cineCamera(); return; }
+  if (net.casting && room.items.dj && cine.enabled){ cineCamera(); return; }
   if (cine.on){ cine.on = false; renderView(); }   // vuelve la cámara normal
   if (firstPerson){
     // primera persona: los ojos del personaje
@@ -2710,6 +2749,14 @@ function renderLightRow(){
   });
 }
 document.getElementById('djBarStop').addEventListener('click', () => stopCast());
+document.getElementById('cineToggle').addEventListener('click', () => {
+  cine.enabled = !cine.enabled; try { localStorage.setItem('dj-cine', cine.enabled ? '1' : '0'); } catch(e){}
+  if (!cine.enabled){ cine.on = false; renderView(); }
+  renderCine();
+});
+document.getElementById('cinePrev').addEventListener('click', () => cineGo(-1));
+document.getElementById('cineNext').addEventListener('click', () => cineGo(1));
+renderCine();
 
 /* ---------- agenda y admin: interfaz ---------- */
 const agendaEl = document.getElementById('agendaList'), adminEl = {
