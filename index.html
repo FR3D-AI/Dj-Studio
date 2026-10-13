@@ -52,6 +52,13 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .viewbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .gear svg{width:24px;height:24px}
 .gear:focus-visible,.close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.djcount{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:10px;
+  background:rgba(23,20,31,.92);border:1px solid var(--accent);border-radius:999px;padding:8px 10px 8px 16px;
+  font-weight:700;font-size:15px;color:#f2ece0;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:calc(100% - 24px)}
+.djcount b{font-variant-numeric:tabular-nums;color:var(--accent);font-size:18px}
+.djcount .btn{padding:6px 12px;font-size:13px;white-space:nowrap}
+#djTurn .gatebox{max-height:calc(100dvh - 32px);overflow:auto}
+.djclock{font-size:44px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--accent);margin:4px 0 8px;letter-spacing:1px}
 .gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;
   background:radial-gradient(ellipse at 50% 30%, rgba(122,60,255,.35), rgba(15,13,21,.94) 60%)}
 .gatebox{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;
@@ -228,16 +235,18 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <p class="note">Así te verán los demás. Lo puedes cambiar después en la configuración (engranaje arriba a la derecha).</p>
   </form>
 </div>
+<div class="djcount" id="djCount" hidden role="status" aria-live="polite"><span id="djCountText"></span><button class="btn primary" id="djCountBtn" type="button" hidden>Preparar mi pantalla</button></div>
 <div class="gate" id="djTurn" hidden role="dialog" aria-modal="true" aria-labelledby="djTurnTitle">
   <div class="gatebox">
     <h1 id="djTurnTitle">¡Es tu momento de ser DJ!</h1>
-    <p><b>Abre tu software de DJ y compártenos el sonido de tu pantalla.</b></p>
+    <div class="djclock" id="djTurnClock"></div>
+    <p id="djTurnLead"><b>Abre tu software de DJ y compártenos el sonido de tu pantalla.</b></p>
     <ol class="steps">
       <li>Abre tu software de DJ (Rekordbox, Serato, Traktor…) y deja lista tu primera pista.</li>
-      <li>Toca <b>Compartir sonido</b> aquí abajo.</li>
+      <li>Toca <b>Preparar mi pantalla</b> aquí abajo.</li>
       <li>En la ventana del navegador elige la pestaña <b>Ventana</b> y selecciona tu software de DJ: eso es lo que verá la sala en el computador de la cabina. (También sirve <b>Pantalla completa</b>, pero se verá todo lo que tengas abierto).</li>
       <li>Activa el interruptor <b>Compartir audio del sistema</b> y toca <b>Compartir</b>.</li>
-      <li>Dale play. Todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
+      <li>Listo: cuando llegue tu hora la transmisión parte sola. Dale play y todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
     </ol>
     <p class="note" id="djTurnNote"></p>
     <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
@@ -2561,21 +2570,69 @@ async function connect(){
   renderNet();
 }
 
-/* ---------- aviso: es tu turno ---------- */
+/* ---------- aviso: es tu turno (con 2 minutos de anticipación y cuenta regresiva) ---------- */
+// 2 minutos antes del turno: al DJ le aparece el aviso para preparar su pantalla, y toda la sala ve la cuenta regresiva.
+// Si el DJ ya preparó su pantalla, la transmisión parte sola cuando llega la hora.
+const PREP_MS = 2 * 60 * 1000;
 const djTurn = document.getElementById('djTurn'), djTurnNote = document.getElementById('djTurnNote');
+const djTurnClock = document.getElementById('djTurnClock'), djTurnTitle = document.getElementById('djTurnTitle'), djTurnGo = document.getElementById('djTurnGo');
+const djCount = document.getElementById('djCount'), djCountText = document.getElementById('djCountText'), djCountBtn = document.getElementById('djCountBtn');
 const shownTurns = new Set();
-let lastSlotAnnounced = null;
-function checkMyTurn(){
-  const a = activeSlot();
-  if (a && a.id !== lastSlotAnnounced){ lastSlotAnnounced = a.id; addChat({kind:'system', text: 'Ahora toca: ' + a.name + ' hasta las ' + fmtTime(a.end)}); }
-  if (a && a.pub === ident.pub && !net.casting && !shownTurns.has(a.id) && gate.hidden && cselEl.hidden){
-    shownTurns.add(a.id);
-    djTurnNote.textContent = 'Tu turno: ' + fmtTime(a.start) + ' – ' + fmtTime(a.end) + '. Usa Chrome o Edge (en Mac, Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
-    djTurn.hidden = false;
-  }
+let lastSlotAnnounced = null, prepSlot = null, prepBusy = false;
+const fmtLeft = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+// el turno que viene o el que está en curso, si empieza dentro de 2 minutos
+function soonSlot(now = Date.now()){ return sched.slots.filter(s => s.end > now && s.start - now <= PREP_MS).sort((x, y) => x.start - y.start)[0] || null; }
+function myScreenReady(){ return music.source === 'live' && !!sysVideo && sysVideo.readyState === 'live'; }
+async function prepareCast(){
+  if (prepBusy) return; prepBusy = true;
+  try {
+    ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
+    const s = soonSlot();
+    if (myScreenReady() || await captureSystemAudio()){ prepSlot = s ? s.id : null; }
+    else djTurnNote.textContent = sysNote.textContent;
+  } finally { prepBusy = false; }
+  if (activeSlot() && canCast() && !net.casting && myScreenReady()) startCast();
+  updateTurnUI();
 }
-document.getElementById('djTurnGo').addEventListener('click', () => startCast());
-document.getElementById('djTurnLater').addEventListener('click', () => { djTurn.hidden = true; });
+function updateTurnUI(){
+  const now = Date.now(), s = soonSlot(now), mine = s && s.pub === ident.pub;
+  if (s && s.id !== lastSlotAnnounced && now >= s.start){ lastSlotAnnounced = s.id; addChat({kind:'system', text: 'Ahora toca: ' + s.name + ' hasta las ' + fmtTime(s.end)}); }
+  // la cuenta regresiva para toda la sala
+  const live = net.casting || !!net.djPeer;
+  if (s && now < s.start){
+    djCountText.innerHTML = '🎧 ' + s.name.replace(/[<>&]/g, '') + ' sube a la cabina en <b>' + fmtLeft(s.start - now) + '</b>';
+    djCount.hidden = false;
+  } else if (s && !live && now - s.start < PREP_MS){
+    djCountText.innerHTML = '🎧 Esperando a ' + s.name.replace(/[<>&]/g, '') + '…';
+    djCount.hidden = false;
+  } else djCount.hidden = true;
+  const ready = myScreenReady();
+  djCountBtn.hidden = !(mine && !net.casting && djTurn.hidden);
+  djCountBtn.textContent = ready ? '✔ Pantalla lista' : (now < s?.start ? 'Preparar mi pantalla' : 'Compartir ahora');
+  if (!mine){ if (!djTurn.hidden && !net.casting) djTurn.hidden = true; return; }
+  // al DJ: abrir el aviso una vez por turno (2 minutos antes), sin tapar el ingreso ni la selección
+  if (!net.casting && !shownTurns.has(s.id) && gate.hidden && cselEl.hidden){ shownTurns.add(s.id); djTurn.hidden = false; }
+  if (now < s.start){
+    djTurnTitle.textContent = '¡Te toca ser DJ en ' + fmtLeft(s.start - now) + '!';
+    djTurnClock.textContent = fmtLeft(s.start - now);
+    djTurnGo.textContent = ready ? '✔ Pantalla lista' : 'Preparar mi pantalla';
+    djTurnGo.disabled = ready;
+    djTurnNote.textContent = ready ? 'Todo listo. Tu transmisión parte sola en ' + fmtLeft(s.start - now) + ': deja tu primera pista preparada.'
+      : 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Prepara ahora tu pantalla para partir a la hora. Usa Chrome o Edge en un computador.';
+  } else {
+    djTurnTitle.textContent = '¡Es tu momento de ser DJ!';
+    djTurnClock.textContent = 'EN VIVO';
+    djTurnGo.textContent = ready ? 'Empezar ahora' : 'Compartir sonido'; djTurnGo.disabled = false;
+    djTurnNote.textContent = 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Usa Chrome o Edge (en Mac, Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
+  }
+  // llegó la hora y la pantalla está lista: sale al aire solo
+  if (now >= s.start && ready && !net.casting && net.room && canCast()) startCast();
+}
+function checkMyTurn(){ updateTurnUI(); }
+setInterval(updateTurnUI, 1000);
+djTurnGo.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(); });
+djCountBtn.addEventListener('click', () => { djTurn.hidden = false; updateTurnUI(); });
+document.getElementById('djTurnLater').addEventListener('click', () => { djTurn.hidden = true; updateTurnUI(); });
 
 /* ---------- barra del DJ: escenas de luces ---------- */
 const djBar = document.getElementById('djBar'), lightRow = document.getElementById('lightRow'), musicSec = document.getElementById('musicSec');
