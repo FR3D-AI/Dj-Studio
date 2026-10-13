@@ -22,6 +22,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .app{height:100%;display:flex;flex-direction:column}
 .stage{position:relative;flex:1 1 auto;min-height:280px;background:#0f0d15;overflow:hidden;touch-action:none}
 .stage canvas{display:block;width:100%;height:100%}
+.stage canvas.pixel{image-rendering:pixelated;image-rendering:crisp-edges}
 .hud{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:2px;pointer-events:none;
   background:rgba(23,20,31,.72);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
 .hud b{font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:.02em;color:var(--accent)}
@@ -381,6 +382,12 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     </section>
 
     <div class="group">
+      <span class="lbl" id="styleLbl">Estilo visual</span>
+      <div class="row" id="styleRow" role="group" aria-labelledby="styleLbl"></div>
+      <p class="note" id="styleNote"></p>
+      <p class="note" id="fpsNote" aria-live="off"></p>
+    </div>
+    <div class="group">
       <span class="lbl" id="countLbl">Personajes en la sala</span>
       <div class="row" id="countRow" role="group" aria-labelledby="countLbl"></div>
     </div>
@@ -406,6 +413,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
 <script src="vendor/SkeletonUtils.js"></script>
+<script src="vendor/post.js"></script>
 <script>
 (function(){
 const HX = 10, HZ = 5, HALF = 5, WALL_H = 3, R = 0.3; // sala de 20 m (x) por 10 m (z)
@@ -535,7 +543,7 @@ function box(w,h,d,c,x=0,y=0,z=0,parent=scene){
 function mesh(geo, mat, x, y, z, parent){ const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; }
 
 // suelo: linóleo a cuadros de 0,5 m
-(function(){
+const FLOOR = (function(){
   const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 640;
   const x = cv.getContext('2d'); const nx = 40, nz = 20, s = 32;
   for (let i=0;i<nx;i++) for (let j=0;j<nz;j++){ x.fillStyle = (i+j)%2 ? '#d9cfb8' : '#3d7a74'; x.fillRect(i*s,j*s,s,s); }
@@ -546,6 +554,7 @@ function mesh(geo, mat, x, y, z, parent){ const m = new THREE.Mesh(geo, mat); m.
   // malla con subdivisiones para que la luz de los focos se note en el piso
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,10,60,30), new THREE.MeshLambertMaterial({map:tex}));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+  return floor;
 })();
 
 // paredes con corte automático hacia la cámara
@@ -877,7 +886,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   base.material[2].map.rotation = Math.PI/2; base.material[2].map.center.set(0.5,0.5);
   base.position.set(0.13,0.007,0); base.castShadow = true; lap.add(base);
   const lid = new THREE.Group(); lid.position.set(0,0.014,0); lid.rotation.z = 0.28; lap.add(lid);
-  box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lid);
+  const lidBox = box(0.012,0.25,0.38,'#9a9aa6',0,0.125,0,lid);
   const lapMats = [new THREE.MeshBasicMaterial({color:'#141224'})];
   // tapa trasera: color aluminio con el logo del DJ estampado
   const logoCv = document.createElement('canvas'); logoCv.width = 384; logoCv.height = 240;
@@ -895,7 +904,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     cones.push(woof, tw);
   }
   solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
-  return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
+  return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, lidBox, lapBase: base, silver, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
@@ -1904,9 +1913,14 @@ function tick(){
   perfT += raw; perfN++; frameNo++;
   if (perfT > 2){
     const fps = perfN / perfT; let nd = dpr;
-    if (fps < 50 && dpr > DPR_MIN) nd = Math.max(DPR_MIN, dpr - 0.2);
-    else if (fps > 58 && dpr < DPR_MAX) nd = Math.min(DPR_MAX, dpr + 0.1);
-    if (nd !== dpr){ dpr = nd; renderer.setPixelRatio(dpr); resize(); }
+    GFX.fps = fps;
+    if (GFX.mode !== 'clasico'){
+      if (fps < 50 && dpr > DPR_MIN) nd = Math.max(DPR_MIN, dpr - 0.2);
+      else if (fps > 58 && dpr < DPR_MAX) nd = Math.min(DPR_MAX, dpr + 0.1);
+      if (nd !== dpr){ dpr = nd; renderer.setPixelRatio(dpr); resize(); }
+    }
+    gfxCheckFps(fps);
+    const fn = document.getElementById('fpsNote'); if (fn) fn.textContent = 'Rendimiento ahora: ' + Math.round(fps) + ' cuadros por segundo · resolución ' + Math.round(renderer.getPixelRatio() / (window.devicePixelRatio || 1) * 100) + '%';
     perfT = 0; perfN = 0;
   }
   const t = clock.elapsedTime;
@@ -2077,9 +2091,9 @@ function tick(){
       const m = presetColor(h.k, t, lc);
       h.bm.color.copy(lc); h.spot.material.color.copy(lc); h.sp.color.copy(lc);
       h.tgt.position.copy(tmpV);
-      h.sp.intensity = (2.4 + lp*1.6) * party * m;
-      h.bm.opacity = Math.min(0.5, (0.15 + lp*0.12) * party * m); h.bm.visible = party > 0.02;
-      h.spot.material.opacity = Math.min(0.6, (0.12 + lp*0.25) * party * m); h.spot.visible = party > 0.02;
+      h.sp.intensity = (2.4 + lp*1.6) * party * m * GFX.lightK;
+      h.bm.opacity = Math.min(0.5 * GFX.beamK, (0.15 + lp*0.12) * party * m * GFX.beamK); h.bm.visible = party > 0.02;
+      h.spot.material.opacity = Math.min(0.6, (0.12 + lp*0.25) * party * m) * GFX.spotK; h.spot.visible = party > 0.02;
     }
     if (party > 0.5){ presetColor(2, t, ledCol); ledCol.multiplyScalar(0.5 + lvl*0.5); } else ledCol.setHSL(0.6, 0.9, 0.18);
     api.strip.color.copy(ledCol);
@@ -2102,14 +2116,204 @@ function tick(){
   }
   updateVisuals(t, dt, hueBase);
   if (frameNo % 2 === 0) renderer.shadowMap.needsUpdate = true;
-  renderer.render(scene, camera);
+  gfxFrame(t, dt, live.concat(remotes));
   requestAnimationFrame(tick);
 }
 
 let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
+
+/* ---------- estilos visuales: Liviano / Moderno / Clásico (estilo San Andreas) ---------- */
+// Liviano: como siempre, para celulares de gama baja.
+// Moderno: bloom, tono cinematográfico y color de discoteca, humo, piso con reflejos, sombras suaves,
+//          oclusión de contacto y mapa de entorno para los metales.
+// Clásico: imita el look de la PS2 sin usar nada del juego: baja resolución estirada, filtro cálido tipo smog,
+//          estela al moverse, niebla de distancia, sombras de mancha y texturas pixeladas.
+const STYLE_KEY = 'dj-estilo', STYLES = [['liviano','Liviano'], ['moderno','Moderno'], ['clasico','Clásico (San Andreas)']];
+const GFX = {mode:'liviano', composer:null, bloom:null, after:null, grade:null, reflector:null, env:null, level:0, lowFps:0, fps:60,
+  beamK:1, spotK:1, lightK:1, blobs:new Map(), ao:null, nearest:new Map(), auto:false};
+const blobTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32,32,2,32,32,31); gr.addColorStop(0,'rgba(0,0,0,0.9)'); gr.addColorStop(0.55,'rgba(0,0,0,0.45)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle = gr; x.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI/2);
+// sombra suave en la base de las paredes y bajo la tarima (oclusión ambiental barata)
+function makeAO(){
+  const c = document.createElement('canvas'); c.width = 4; c.height = 64; const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0,0,0,64); gr.addColorStop(0,'rgba(0,0,0,0.7)'); gr.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0,0,4,64);
+  const tex = new THREE.CanvasTexture(c), mat = new THREE.MeshBasicMaterial({map: tex, transparent:true, depthWrite:false});
+  const g = new THREE.Group();
+  const strip = (len, x0, z0, rot, depth = 0.9) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, depth), mat); m.rotation.set(-Math.PI/2, 0, rot);
+    m.position.set(x0, 0.006, z0); m.renderOrder = 1; g.add(m); };
+  strip(20, 0, -HZ + 0.45, 0); strip(20, 0, HZ - 0.45, Math.PI); strip(10, -HX + 0.45, 0, -Math.PI/2); strip(10, HX - 0.45, 0, Math.PI/2);
+  strip(4.2, HX - 2.5 - 0.35, 0, Math.PI/2, 0.7);   // al pie de la tarima
+  return g;
+}
+const gradeShader = {
+  uniforms: {tDiffuse:{value:null}, uExposure:{value:1.0}, uLevel:{value:0}, uTime:{value:0}},
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uExposure, uLevel, uTime; varying vec2 vUv;
+    vec3 aces(vec3 x){ return clamp((x*(2.51*x + 0.03)) / (x*(2.43*x + 0.59) + 0.14), 0.0, 1.0); }
+    void main(){
+      vec3 c = texture2D(tDiffuse, vUv).rgb * uExposure;
+      c = aces(c);
+      float l = dot(c, vec3(0.299, 0.587, 0.114));
+      c = mix(vec3(l), c, 1.14);                                         // más saturación
+      c += (1.0 - l) * vec3(0.045, 0.012, 0.075);                        // sombras hacia el morado de club
+      c = mix(c, c * vec3(1.06, 0.97, 1.04), 0.6);
+      vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * (0.75 - 0.2*uLevel);   // viñeta que se abre con la música
+      gl_FragColor = vec4(c, 1.0);
+    }`
+};
+const smogShader = {
+  uniforms: {tDiffuse:{value:null}, uLevel:{value:0}, uTime:{value:0}, uRes:{value:new THREE.Vector2(640, 480)}},
+  vertexShader: gradeShader.vertexShader,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uLevel, uTime; uniform vec2 uRes; varying vec2 vUv;
+    void main(){
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      float l = dot(c, vec3(0.299, 0.587, 0.114));
+      c = mix(vec3(l), c, 0.82);                                          // un poco desaturado
+      c *= vec3(1.14, 1.0, 0.76);                                         // cálido
+      c = mix(c, vec3(0.86, 0.66, 0.42), 0.10 + 0.16*uLevel);             // smog que sube con la música
+      c = (c - 0.5) * 1.12 + 0.52;                                        // contraste
+      float dith = fract(sin(dot(floor(vUv*uRes), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+      c = floor(c * 31.0 + dith) / 31.0;                                  // color de 15 bits con tramado, como la consola
+      vec2 d = vUv - 0.5; c *= 1.0 - dot(d, d) * 0.5;
+      gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }`
+};
+function gfxSize(){ const w = stage.clientWidth || 800, h = stage.clientHeight || 600; return [w, h]; }
+function gfxBuild(mode){
+  const [w, h] = gfxSize();
+  if (GFX.composer){ GFX.composer.renderTarget1.dispose(); GFX.composer.renderTarget2.dispose(); GFX.composer = null; }
+  GFX.bloom = GFX.after = GFX.grade = null;
+  if (mode === 'liviano') return;
+  const comp = new THREE.EffectComposer(renderer);
+  comp.addPass(new THREE.RenderPass(scene, camera));
+  if (mode === 'moderno'){
+    if (GFX.level < 2){ GFX.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(w/2, h/2), 0.55, 0.42, 0.9); comp.addPass(GFX.bloom); }
+    GFX.grade = new THREE.ShaderPass(gradeShader); comp.addPass(GFX.grade);
+  } else {
+    GFX.after = new THREE.AfterimagePass(0.62); comp.addPass(GFX.after);
+    GFX.grade = new THREE.ShaderPass(smogShader); comp.addPass(GFX.grade);
+  }
+  comp.setPixelRatio(renderer.getPixelRatio()); comp.setSize(w, h);
+  GFX.composer = comp;
+}
+function gfxResize(w, h){
+  if (GFX.mode === 'clasico'){ const pr = Math.min(1, 480 / Math.max(1, h)); if (Math.abs(renderer.getPixelRatio() - pr) > 0.01){ renderer.setPixelRatio(pr); renderer.setSize(w, h, false); } }
+  if (GFX.composer){ GFX.composer.setPixelRatio(renderer.getPixelRatio()); GFX.composer.setSize(w, h); }
+  if (GFX.grade && GFX.grade.uniforms.uRes) GFX.grade.uniforms.uRes.value.set(w * renderer.getPixelRatio(), h * renderer.getPixelRatio());
+  if (GFX.reflector){ const pr = renderer.getPixelRatio(); GFX.reflector.getRenderTarget().setSize(Math.round(w*pr*0.4), Math.round(h*pr*0.4)); }
+}
+function setShadowType(type, enabled){
+  if (renderer.shadowMap.type === type && renderer.shadowMap.enabled === enabled) return;
+  renderer.shadowMap.type = type; renderer.shadowMap.enabled = enabled; renderer.shadowMap.needsUpdate = true;
+  scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); });
+}
+function setNearest(on){
+  if (on){
+    scene.traverse(o => { if (!o.material) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { const t = m.map;
+      if (t && !t.isRenderTargetTexture && !GFX.nearest.has(t)){ GFX.nearest.set(t, [t.magFilter, t.minFilter]); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapNearestFilter; t.needsUpdate = true; } }); });
+  } else {
+    for (const [t, [mag, min]] of GFX.nearest){ t.magFilter = mag; t.minFilter = min; t.needsUpdate = true; }
+    GFX.nearest.clear();
+  }
+}
+function setEnv(on){
+  if (on && !GFX.env){ const pm = new THREE.PMREMGenerator(renderer); GFX.env = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture; pm.dispose(); }
+  scene.environment = on ? GFX.env : null;
+  const api = DJ.api;
+  // metales de la cabina: brillan con el entorno en Moderno, mate en los otros estilos
+  if (!api.metal){
+    api.metal = new THREE.MeshStandardMaterial({color:'#d4d7de', metalness:0.85, roughness:0.26});
+    api.alu = new THREE.MeshStandardMaterial({color:'#a8aab4', metalness:0.75, roughness:0.32});
+    api.discs.forEach(d => d.material = api.metal); api.lidBox.material = api.alu;
+  }
+  api.metal.metalness = on ? 0.85 : 0.15; api.alu.metalness = on ? 0.75 : 0.1;
+  api.metal.needsUpdate = api.alu.needsUpdate = true;
+  for (const url in MODEL_DATA) MODEL_DATA[url].scene.traverse(o => { if (o.isMesh && o.material){ o.material.envMapIntensity = on ? 0.4 : 1; o.material.needsUpdate = true; } });
+}
+function setReflector(on){
+  if (on && !GFX.reflector && THREE.Reflector){
+    const [w, h] = gfxSize(), pr = renderer.getPixelRatio();
+    const r = new THREE.Reflector(new THREE.PlaneGeometry(20, 10), {textureWidth: Math.round(w*pr*0.4), textureHeight: Math.round(h*pr*0.4), color: 0x60606c, clipBias: 0.003});
+    // el reflejo se recalcula cada 2 cuadros: casi no se nota y cuesta la mitad
+    const draw = r.onBeforeRender; r.onBeforeRender = function(...a){ if (frameNo % 2 === 0) draw.apply(this, a); };
+    r.rotation.x = -Math.PI/2; r.position.y = -0.003; scene.add(r); GFX.reflector = r;
+  } else if (!on && GFX.reflector){ scene.remove(GFX.reflector); GFX.reflector.getRenderTarget().dispose(); GFX.reflector = null; }
+  FLOOR.material.transparent = !!GFX.reflector; FLOOR.material.opacity = GFX.reflector ? 0.86 : 1; FLOOR.material.needsUpdate = true;
+}
+function applyStyle(mode, auto){
+  GFX.mode = mode; GFX.auto = !!auto;
+  if (mode !== 'moderno') GFX.level = 0;
+  const modern = mode === 'moderno', classic = mode === 'clasico';
+  // resolución
+  renderer.domElement.classList.toggle('pixel', classic);
+  if (!classic){ renderer.setPixelRatio(dpr); }
+  // niebla y fondo
+  if (modern){ scene.fog = new THREE.FogExp2('#1c1229', 0.03); scene.background.set('#0d0a14'); }
+  else if (classic){ scene.fog = new THREE.Fog('#3b2b22', 7, 25); scene.background.set('#3b2b22'); }
+  else { scene.fog = new THREE.Fog('#0f0d15', 24, 46); scene.background.set('#0f0d15'); }
+  GFX.beamK = modern ? 1.5 : 1; GFX.spotK = modern ? 0.5 : 1; GFX.lightK = modern ? 0.75 : 1;
+  FLOOR.material.color.setScalar(modern ? 0.78 : 1);
+  // sombras
+  setShadowType(modern ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap, !classic);
+  sun.shadow.radius = modern ? 4 : 1;
+  setNearest(classic);
+  setEnv(modern);
+  setReflector(modern && GFX.level < 1);
+  if (!GFX.ao){ GFX.ao = makeAO(); scene.add(GFX.ao); }
+  GFX.ao.visible = modern;
+  gfxBuild(mode);
+  resize();
+  renderStyleRow();
+}
+function gfxFrame(t, dt, people){
+  // sombras de mancha (Clásico) y sombra de contacto suave (Moderno) bajo cada personaje
+  const blobOn = GFX.mode !== 'liviano', alpha = GFX.mode === 'clasico' ? 0.6 : 0.3;
+  const seen = new Set();
+  if (blobOn) for (const c of people){
+    if (!c.group || c.on === false) continue;
+    let b = GFX.blobs.get(c);
+    if (!b){ b = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({map: blobTex, transparent:true, depthWrite:false})); b.renderOrder = 2; scene.add(b); GFX.blobs.set(c, b); }
+    b.visible = true; b.material.opacity = alpha; b.scale.setScalar(GFX.mode === 'clasico' ? 0.95 : 0.8);
+    b.position.set(c.x, (c.y || 0) + 0.012, c.z); seen.add(c);
+  }
+  for (const [c, b] of GFX.blobs) if (!seen.has(c)){ if (!c.group || c.on === false){ scene.remove(b); GFX.blobs.delete(c); } else b.visible = false; }
+  if (!GFX.composer){ renderer.render(scene, camera); return; }
+  const lvl = music.sounding ? Math.min(1, music.bass*1.3) : 0;
+  if (GFX.grade){ GFX.grade.uniforms.uLevel.value += (lvl - GFX.grade.uniforms.uLevel.value) * Math.min(1, dt*4); GFX.grade.uniforms.uTime.value = t; }
+  if (GFX.bloom) GFX.bloom.strength = 0.45 + 0.3*lvl + 0.15*music.pulse;
+  if (GFX.after) GFX.after.uniforms.damp.value = 0.6 + 0.12*lvl;   // más estela con la música fuerte
+  GFX.composer.render(dt);
+}
+// si el Moderno no aguanta 30 cuadros por segundo con la resolución ya al mínimo, se aliviana solo
+function gfxCheckFps(fps){
+  if (GFX.mode !== 'moderno' || /calidad=fija/.test(location.search)){ GFX.lowFps = 0; return; }
+  // no se mide mientras carga ni en las pantallas de ingreso y selección (ahí siempre va más lento)
+  if (clock.elapsedTime < 10 || !gate.hidden || !cselEl.hidden || document.hidden){ GFX.lowFps = 0; return; }
+  if (fps < 30 && dpr <= DPR_MIN + 0.01) GFX.lowFps++; else GFX.lowFps = 0;
+  if (GFX.lowFps < 3) return;
+  GFX.lowFps = 0; GFX.level++;
+  const note = document.getElementById('styleNote');
+  if (GFX.level === 1){ setReflector(false); if (note) note.textContent = 'Tu equipo iba lento: se quitaron los reflejos del piso.'; }
+  else if (GFX.level === 2){ gfxBuild('moderno'); resize(); if (note) note.textContent = 'Tu equipo iba lento: se quitaron los reflejos y el brillo (bloom).'; }
+  else { applyStyle('liviano', true); if (note) note.textContent = 'Tu equipo no alcanzaba 30 cuadros por segundo en Moderno: se cambió a Liviano. Puedes volver a elegirlo.'; }
+}
+function renderStyleRow(){
+  const row = document.getElementById('styleRow'); if (!row) return;
+  row.innerHTML = '';
+  for (const [id, label] of STYLES){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.textContent = label;
+    b.setAttribute('aria-pressed', GFX.mode === id);
+    b.addEventListener('click', () => { GFX.level = 0; try { localStorage.setItem(STYLE_KEY, id); } catch(e){} document.getElementById('styleNote').textContent = ''; applyStyle(id); });
+    row.append(b);
+  }
+}
+
 function resize(){
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / Math.max(1,h); camera.updateProjectionMatrix();
+  if (typeof gfxResize === 'function') gfxResize(w, h);
 }
 new ResizeObserver(resize).observe(stage); resize();
 
@@ -3180,6 +3384,10 @@ hudName.textContent = myDef().name;
 camTarget.set(chars[sel].x, 1, chars[sel].z);
 renderCount(); renderRoster(); renderCustom(); renderItems(); save();
 window.__djInfo = () => { const v = new THREE.Vector4(); renderer.getCurrentViewport(v); return {calls: renderer.info.render.calls, tris: renderer.info.render.triangles, dpr: renderer.getPixelRatio(), vp:[v.x,v.y,v.z,v.w], size:[renderer.domElement.width, renderer.domElement.height]}; };
+// estilo visual guardado (por defecto: Moderno en computador, Liviano en celular)
+{ let st = null; try { st = localStorage.getItem(STYLE_KEY); } catch(e){}
+  applyStyle(STYLES.some(([id]) => id === st) ? st : (IS_TOUCH ? 'liviano' : 'moderno')); }
+window.__gfx = () => ({mode: GFX.mode, fps: Math.round(GFX.fps*10)/10, level: GFX.level, dpr: renderer.getPixelRatio(), reflector: !!GFX.reflector, bloom: !!GFX.bloom});
 requestAnimationFrame(tick);
 })();
 </script>
