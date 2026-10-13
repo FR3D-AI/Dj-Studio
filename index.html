@@ -506,7 +506,8 @@ DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', h
   model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
-  model:'models/valknuz.glb', ear:[0.78, 0.09], modelScale:0.95, modelLift:0.951, pose:'poder', poseAdj:[-0.45, -0.75], signature:true, tag:'Modelo 3D · DJ'});
+  model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:['Walking_Drug', 12],
+  dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Silly_Dancing','Silly']], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
   model:'models/greenroll.glb', ear:[0.78, 0.125, 0.15], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
@@ -1179,8 +1180,9 @@ const ANIM_DANCES = [['Dancing','Free style'], ['Dancing_Running_Man','Running M
 const MIXAMO_MAP = {thighR:'RightUpLeg', thighL:'LeftUpLeg', shinR:'RightLeg', shinL:'LeftLeg', footR:'RightFoot', footL:'LeftFoot',
   upperarmR:'RightArm', upperarmL:'LeftArm', forearmR:'RightForeArm', forearmL:'LeftForeArm', hips:'Hips', spine:'Spine1', head:'Head'};
 const ANIM_CLIPS = new WeakMap();
+const dancesOf = d => (d && d.dances) || ANIM_DANCES;
 // Prepara una sola vez los clips de un modelo: deja el cuerpo en su lugar (sin avanzar solo) y arma el "parado".
-function animClips(gltf){
+function animClips(gltf, d){
   if (ANIM_CLIPS.has(gltf)) return ANIM_CLIPS.get(gltf);
   const out = {};
   let hips = null; gltf.scene.traverse(o => { if (o.isBone && /Hips$/.test(o.name)) hips = o; });
@@ -1194,8 +1196,12 @@ function animClips(gltf){
     out[c.name] = c;
   }
   // algunos bailes parten desde la pose en T: se recortan los primeros cuadros
-  for (const [n] of ANIM_DANCES) if (out[n]) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);
-  if (out.Gangnam_Style) out.Idle = THREE.AnimationUtils.subclip(gltf.animations.find(a => a.name === 'Gangnam_Style'), 'Idle', 0, 2, 30);
+  for (const [n] of dancesOf(d)) if (out[n]) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);
+  // "parado": una postura tranquila tomada de uno de sus clips
+  const [ic, ifr] = (d && d.idle) || ['Gangnam_Style', 0];
+  const src = gltf.animations.find(a => a.name === ic);
+  if (src){ out.Idle = THREE.AnimationUtils.subclip(src, 'Idle', ifr, ifr + 2, 30);
+    for (const tr of out.Idle.tracks) if (/Hips\.position$/.test(tr.name)){ const v = tr.values; for (let i = 3; i < v.length; i++) v[i] = v[i % 3]; } }
   ANIM_CLIPS.set(gltf, out); return out;
 }
 function buildModelCharacter(d){
@@ -1242,7 +1248,7 @@ function buildModelCharacter(d){
     inst.traverse(o => { o.userData.ci = g.userData.ci; });
     if (gltf.animations && gltf.animations.length){
       rig.mixer = new THREE.AnimationMixer(inst);
-      const clips = animClips(gltf);
+      const clips = animClips(gltf, d);
       for (const n in clips){ const a = rig.mixer.clipAction(clips[n]); a.setLoop(THREE.LoopRepeat); rig.actions[n] = a; }
       g.userData.anim = true;
     }
@@ -2222,8 +2228,8 @@ function animDrive(c, ud, dt, d, def, t){
     if (spd > 3.2){ name = 'Running'; speed = Math.max(0.75, Math.min(1.35, spd / 4.2)); }
     else { name = 'Walking'; speed = Math.max(0.6, Math.min(1.7, spd / 1.45)); }
   } else if (c.dance > 0.3){
-    const k = c.danceSel ? (c.danceSel - 1) % ANIM_DANCES.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % ANIM_DANCES.length;
-    name = ANIM_DANCES[k][0];
+    const L = dancesOf(def), k = c.danceSel ? (c.danceSel - 1) % L.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % L.length;
+    name = L[k][0];
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
   }
   ud.play(name, 0.35, speed);
@@ -3009,7 +3015,7 @@ async function connect(){
     for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
     const md = DEFAULTS.find(x => x.model && x.model === d.model); // solo modelos de la propia página
-    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear, rig: md.rig, armFix: md.armFix});
+    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear, rig: md.rig, armFix: md.armFix, dances: md.dances, idle: md.idle});
     if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
     const isNew = !r.def;
     r.def = clean; buildRemote(r); renderNet(); renderAgenda();
@@ -3441,7 +3447,7 @@ viewBtn.addEventListener('click', toggleView);
 const danceBtn = document.getElementById('danceBtn'), dancePanel = document.getElementById('dancePanel'), danceToast = document.getElementById('danceToast');
 function danceList(){
   const me = chars[sel];
-  if (me && me.group && me.group.userData.anim) return ANIM_DANCES.map(([, l]) => l);
+  if (me && me.group && me.group.userData.anim) return dancesOf(me.def || defs[me.i]).map(([, l]) => l);
   return DANCE_IDS.slice(0, 8).map(id => labelOf('danceA', id));
 }
 let toastT = 0;
