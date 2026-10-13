@@ -506,7 +506,7 @@ DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', h
   model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
-  model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc',
+  model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35,
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Silly_Dancing','Silly']], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
   model:'models/greenroll.glb', ear:[0.78, 0.125, 0.15], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
@@ -544,7 +544,7 @@ defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
 // lo que define el modelo 3D (archivo, tamaño, esqueleto, animaciones, pose) siempre viene del juego, nunca de lo guardado:
 // así, cuando un personaje se actualiza, todos lo ven con la versión nueva
-const MODEL_KEYS = ['model','modelScale','modelLift','rig','ear','dances','idle','armFix','pose','poseAdj','gait','legend','bio','tag','signature'];
+const MODEL_KEYS = ['model','modelScale','modelLift','rig','ear','dances','idle','armFix','pose','poseAdj','gait','legend','bio','tag','signature','djLean','djArm','djElb'];
 defs.forEach((d,i) => { for (const k of MODEL_KEYS){ if (DEFAULTS[i][k] === undefined) delete d[k]; else d[k] = DEFAULTS[i][k]; } });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || ![4,6,10,15].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
@@ -868,22 +868,24 @@ item('tarima','Tarima DJ',true,(g)=>{
 }, STAGE_DX);
 item('dj','Cabina DJ',true,(g0,solid)=>{
   const g = new THREE.Group(); g0.add(g);
+  // mesa más baja, angosta y más cerca del DJ (calza con las manos de los personajes animados)
+  const desk = new THREE.Group(); desk.position.set(0.28, -0.14, 0); g.add(desk);
   // mesa de la cabina, el frente mira hacia la sala (oeste)
-  box(0.8,0.95,2.0,'#1d1a26',3.6,0.475,0,g);
-  box(0.84,0.04,2.04,'#4a2f1d',3.6,0.97,0,g);   // cubierta de madera
-  const led = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,1.9), new THREE.MeshBasicMaterial({color:'#ff6fb0'}));
-  led.position.set(3.19,0.62,0); g.add(led);
-  const led2 = led.clone(); led2.material = led.material; led2.position.y = 0.3; g.add(led2);
+  box(0.8,0.95,1.5,'#1d1a26',3.6,0.475,0,desk);
+  box(0.84,0.04,1.54,'#4a2f1d',3.6,0.97,0,desk);   // cubierta de madera
+  const led = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,1.4), new THREE.MeshBasicMaterial({color:'#ff6fb0'}));
+  led.position.set(3.19,0.62,0); desk.add(led);
+  const led2 = led.clone(); led2.material = led.material; led2.position.y = 0.3; desk.add(led2);
   // ---- controlador DJ (dos platos con jog, mixer al centro y pads), mirando al DJ (+x) ----
   const silver = new THREE.MeshPhongMaterial({color:'#c9ccd4', shininess:90, specular:'#ffffff'});
   const dark = new THREE.MeshPhongMaterial({color:'#15151a', shininess:40});
-  box(0.47,0.05,1.36,'#121216',3.74,1.015,0,g);                 // cuerpo
-  box(0.48,0.008,1.37,'#2a2a32',3.74,0.993,0,g);                // canto
+  box(0.47,0.05,1.36,'#121216',3.74,1.015,0,desk);                 // cuerpo
+  box(0.48,0.008,1.37,'#2a2a32',3.74,0.993,0,desk);                // canto
   const discs = [], pads = [], vu = [], faders = [], knobs = [];
   for (const s of [-1,1]){
     // jog: aro, plato plateado que gira y centro oscuro
-    mesh(new THREE.CylinderGeometry(0.158,0.158,0.012,40), M('#33333b'), 3.69,1.046,s*0.42, g);
-    const disc = mesh(new THREE.CylinderGeometry(0.142,0.146,0.02,40), silver, 3.69,1.058,s*0.42, g);
+    mesh(new THREE.CylinderGeometry(0.158,0.158,0.012,40), M('#33333b'), 3.69,1.046,s*0.42, desk);
+    const disc = mesh(new THREE.CylinderGeometry(0.142,0.146,0.02,40), silver, 3.69,1.058,s*0.42, desk);
     mesh(new THREE.CylinderGeometry(0.06,0.06,0.022,28), dark, 0,0.002,0, disc);
     mesh(new THREE.CylinderGeometry(0.03,0.03,0.024,20), M('#5a5d66'), 0,0.003,0, disc);
     box(0.012,0.024,0.05,'#e8e8ee',0,0.003,0.085,disc);          // marca para ver el giro
@@ -893,37 +895,39 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     for (let row = 0; row < 2; row++) for (let j = 0; j < 4; j++){
       const pm = new THREE.MeshBasicMaterial({color:'#26262e'});
       const pd = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.012,0.052), pm);
-      pd.position.set(3.865 + row*0.06, 1.044, s*(0.285 + j*0.064)); g.add(pd); pads.push({m: pm, s, row, j});
+      pd.position.set(3.865 + row*0.06, 1.044, s*(0.285 + j*0.064)); desk.add(pd); pads.push({m: pm, s, row, j});
     }
     // fader de pitch en el borde
-    box(0.2,0.004,0.012,'#050507',3.69,1.042,s*0.625,g);
+    box(0.2,0.004,0.012,'#050507',3.69,1.042,s*0.625,desk);
     faders.push(box(0.03,0.018,0.04,'#d9d9de',3.69,1.05,s*0.625,g));
     // play y cue
-    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#39d86b'}), 3.905,1.046,s*0.62, g);
-    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#ffa83a'}), 3.85,1.046,s*0.62, g);
+    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#39d86b'}), 3.905,1.046,s*0.62, desk);
+    mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#ffa83a'}), 3.85,1.046,s*0.62, desk);
     // brazo del canal en el mixer: 4 perillas (gain, agudos, medios, graves), fader de canal
     for (let r = 0; r < 4; r++){
-      const kb = mesh(new THREE.CylinderGeometry(0.013,0.015,0.02,14), dark, 3.55 + r*0.052, 1.05, s*0.07, g);
+      const kb = mesh(new THREE.CylinderGeometry(0.013,0.015,0.02,14), dark, 3.55 + r*0.052, 1.05, s*0.07, desk);
       box(0.012,0.004,0.003,'#f2f2f2',0,0.011,0,kb).position.x = 0.007; knobs.push(kb);
     }
-    box(0.1,0.004,0.01,'#050507',3.8,1.042,s*0.07,g);
+    box(0.1,0.004,0.01,'#050507',3.8,1.042,s*0.07,desk);
     faders.push(box(0.025,0.02,0.032,'#d9d9de',3.8,1.05,s*0.07,g));
     // vúmetro: 8 luces
     for (let q = 0; q < 8; q++){
       const vm = new THREE.MeshBasicMaterial({color:'#111'});
-      const v = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.004,0.01), vm); v.position.set(3.72 - q*0.016, 1.042, s*0.018); g.add(v); vu.push({m: vm, q, s});
+      const v = new THREE.Mesh(new THREE.BoxGeometry(0.008,0.004,0.01), vm); v.position.set(3.72 - q*0.016, 1.042, s*0.018); desk.add(v); vu.push({m: vm, q, s});
     }
   }
   // crossfader y perillas maestras
-  box(0.012,0.004,0.13,'#050507',3.915,1.042,0,g);
-  const xf = box(0.032,0.02,0.026,'#d9d9de',3.915,1.05,0,g);
+  box(0.012,0.004,0.13,'#050507',3.915,1.042,0,desk);
+  const xf = box(0.032,0.02,0.026,'#d9d9de',3.915,1.05,0,desk);
   for (const zz of [-0.03, 0.03]) knobs.push(mesh(new THREE.CylinderGeometry(0.012,0.014,0.02,14), dark, 3.51, 1.05, zz, g));
   // pantallita central y cable al computador
-  mesh(new THREE.BoxGeometry(0.05,0.004,0.1), new THREE.MeshBasicMaterial({color:'#2f7fff'}), 3.48,1.042,0, g);
-  const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(3.52,1.03,-0.66), new THREE.Vector3(3.48,1.0,-0.72), new THREE.Vector3(3.55,0.995,-0.8)]), 10, 0.006, 5, false), M('#0d0d10'));
-  g.add(cable);
+  mesh(new THREE.BoxGeometry(0.05,0.004,0.1), new THREE.MeshBasicMaterial({color:'#2f7fff'}), 3.48,1.042,0, desk);
+  const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(3.52,1.03,-0.66), new THREE.Vector3(3.45,0.99,-0.76), new THREE.Vector3(3.5,0.9,-0.98), new THREE.Vector3(3.6,0.97,-1.2)]), 10, 0.006, 5, false), M('#0d0d10'));
+  desk.add(cable);
   // ---- computador al costado (derecha del DJ), con teclado, mirando hacia el DJ ----
-  const lap = new THREE.Group(); lap.position.set(3.62,0.995,-0.8); lap.rotation.y = -0.5; lap.scale.setScalar(1.25); g.add(lap);
+  // mesita propia para el computador, separada de la mesa del DJ
+  box(0.46,0.83,0.5,'#1d1a26',3.72,0.415,-1.32,g); box(0.5,0.03,0.54,'#4a2f1d',3.72,0.845,-1.32,g);
+  const lap = new THREE.Group(); lap.position.set(3.66,0.86,-1.32); lap.rotation.y = -0.55; lap.scale.setScalar(1.25); g.add(lap);
   const kbCv = document.createElement('canvas'); kbCv.width = 256; kbCv.height = 176;
   { const x = kbCv.getContext('2d'); x.fillStyle = '#8f909a'; x.fillRect(0,0,256,176); x.fillStyle = '#1d1d22';
     for (let r = 0; r < 5; r++) for (let c = 0; c < 13; c++) x.fillRect(10 + c*18.2, 12 + r*20, 15, 16);
@@ -950,7 +954,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     const tw = mesh(new THREE.CylinderGeometry(0.07,0.07,0.03,16), M('#2c2a33'), 4.29,1.0,s*2.0, g); tw.rotation.z = Math.PI/2;
     cones.push(woof, tw);
   }
-  solid(3.18,4.02,-1.02,1.02); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
+  solid(3.28,4.12,-1.6,0.79); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
   return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, lidBox, lapBase: base, silver, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
@@ -2161,7 +2165,12 @@ function tick(){
         mix(arms[i], 'x', Q.a[i]); mix(arms[i], 'z', Q.z[i]);
         if (elbows){ mix(elbows[i], 'x', Q.e[i]); mix(elbows[i], 'z', Q.ez[i]); }
       }
-      mix(body, 'y', Q.twist); mix(body, 'x', Q.lean); mix(body, 'z', 0);
+      // djLean / djArm: ajuste por modelo para que las manos lleguen a la mesa (brazos más largos o más altos)
+      const dl = (def && def.djLean) || 0, da = (def && def.djArm) || 0;
+      const de = (def && def.djElb) || 0;
+      if (da){ for (let i = 0; i < 2; i++) arms[i].rotation.x += da * d; }
+      if (de && elbows){ for (let i = 0; i < 2; i++) elbows[i].rotation.x += de * d; }
+      mix(body, 'y', Q.twist); mix(body, 'x', Q.lean + dl); mix(body, 'z', 0);
       mix(head, 'x', Q.head); mix(head, 'y', Q.headY); mix(head, 'z', Q.headZ);
       g.position.y += Q.bounce * d;
     }
