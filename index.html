@@ -506,7 +506,7 @@ DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', h
   model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
-  model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:['Walking_Drug', 12],
+  model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc',
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Silly_Dancing','Silly']], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
   model:'models/greenroll.glb', ear:[0.78, 0.125, 0.15], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
@@ -1211,7 +1211,7 @@ function animClips(gltf, d){
   // algunos bailes parten desde la pose en T: se recortan los primeros cuadros
   for (const [n] of dancesOf(d)) if (out[n]) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);
   // "parado": una postura tranquila tomada de uno de sus clips
-  const [ic, ifr] = (d && d.idle) || ['Gangnam_Style', 0];
+  const [ic, ifr] = (d && Array.isArray(d.idle) && d.idle) || ['Gangnam_Style', 0];
   const src = gltf.animations.find(a => a.name === ic);
   if (src){ out.Idle = THREE.AnimationUtils.subclip(src, 'Idle', ifr, ifr + 2, 30);
     for (const tr of out.Idle.tracks) if (/Hips\.position$/.test(tr.name)){ const v = tr.values; for (let i = 3; i < v.length; i++) v[i] = v[i % 3]; } }
@@ -1229,13 +1229,16 @@ function buildModelCharacter(d){
   const FIX = MX ? {upperarmR: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, d.armFix || 0.72)), upperarmL: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -(d.armFix || 0.72)))} : {};
   const rig = {bones: null, mixer: null, actions: {}, cur: null, curName: ''};
   const e = new THREE.Euler(), dq = new THREE.Quaternion();
-  g.userData = {legs, arms, knees, elbows, feet, head, body, hips, model: true, rig, sync(){
+  const tq = new THREE.Quaternion();
+  g.userData = {legs, arms, knees, elbows, feet, head, body, hips, model: true, rig, sync(w = 1){
+    // w < 1: mezcla la pose hecha a mano con lo que dejó la animación (transición suave)
     if (!rig.bones) return;
     for (const [name, o, key] of map){
       const k = rig.bones[name]; if (!k) continue;
       e.set(o.rotation.x, o.rotation.y, o.rotation.z, 'XYZ'); dq.setFromEuler(e);
       if (FIX[key]) dq.multiply(FIX[key]);
-      k.b.quaternion.copy(k.P0i).multiply(dq).multiply(k.P0).multiply(k.L0);
+      tq.copy(k.P0i).multiply(dq).multiply(k.P0).multiply(k.L0);
+      if (w >= 1) k.b.quaternion.copy(tq); else k.b.quaternion.slerp(tq, w);
     }
   }, play(name, fade = 0.35, speed = 1){
     // cambia de animación con una mezcla suave
@@ -2236,7 +2239,9 @@ let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
 // elige y mezcla la animación capturada según lo que hace el personaje
 function animDrive(c, ud, dt, d, def, t){
   const rig = ud.rig; if (!rig.mixer) return;
-  if (d > 0.5){ ud.stopAnim(0.25); rig.mixer.update(dt); ud.sync(); return; }   // en la cabina: manos sobre el controlador
+  // pose hecha a mano (cabina, o "parado" para quien no trae una postura tranquila): entra mezclándose de a poco
+  const proc = w => { ud.stopAnim(0.3); rig.mixer.update(dt); c.procW = Math.min(1, (c.procW || 0) + dt * 3.5); ud.sync(c.procW); };
+  if (d > 0.5){ proc(); return; }   // en la cabina: manos sobre el controlador
   const spd = c.spd || 0;
   let name = 'Idle', speed = 1;
   if (c.move > 0.3 && spd > 0.15){
@@ -2249,6 +2254,8 @@ function animDrive(c, ud, dt, d, def, t){
     name = L[k][0];
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
   }
+  if (name === 'Idle' && def && def.idle === 'proc'){ proc(); return; }
+  c.procW = 0;
   ud.play(name, 0.35, speed);
   rig.mixer.update(dt);
 }
