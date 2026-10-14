@@ -285,7 +285,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     </ol>
     <p class="note" id="djTurnNote"></p>
     <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
-    <button class="btn" id="djTurnChat" type="button">💬 Abrir chat flotante (queda encima de Rekordbox)</button>
+    <button class="btn" id="djTurnChat" type="button">🎬 Abrir vista flotante: cinemática + chat (queda encima de Rekordbox)</button>
     <button class="btn" id="djTurnLater" type="button">Ahora no</button>
   </div>
 </div>
@@ -329,7 +329,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
         <span class="cinename" id="cineName"></span>
         <button class="opt" id="cineNext" type="button" aria-label="Toma siguiente">▶</button>
       </div>
-      <button class="opt" id="djChatPip" type="button" title="Ventana flotante con el chat, siempre encima de Rekordbox">💬 Chat flotante</button>
+      <button class="opt" id="djChatPip" type="button" title="Ventana flotante con la cinemática y el chat, siempre encima de Rekordbox">🎬 Vista flotante</button>
       <button class="btn live" id="djBarStop" type="button">Terminar</button>
     </div>
     <div class="drop" id="drop" hidden>Suelta tus pistas para ponerlas en la sala</div>
@@ -2241,8 +2241,18 @@ function tick(){
   if (frameNo % 2 === 0) renderer.shadowMap.needsUpdate = true;
   updateBubbles(dt);
   gfxFrame(t, dt, live.concat(remotes));
-  requestAnimationFrame(tick);
+  pipFrame();
+  schedTick();
 }
+// Con Rekordbox delante, la pestaña del juego queda oculta y el navegador pausa su requestAnimationFrame.
+// Mientras la ventana flotante del DJ está abierta (y se ve), el juego sigue animándose al ritmo de esa ventana.
+let tickGen = 0;
+function schedTick(){
+  const g = ++tickGen, run = () => { if (g === tickGen) tick(); };
+  const w = document.hidden && djPip && !djPip.closed && djPip.requestAnimationFrame ? djPip : window;
+  try { w.requestAnimationFrame(run); } catch(e){ requestAnimationFrame(run); }
+}
+document.addEventListener('visibilitychange', () => schedTick());
 
 let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
 // elige y mezcla la animación capturada según lo que hace el personaje
@@ -3360,51 +3370,75 @@ document.addEventListener('pointerdown', e => { if (!gifPick.hidden && !gifPick.
 // Usa la ventana flotante del navegador (Document Picture-in-Picture, Chrome/Edge 116+), que se mantiene encima
 // de cualquier programa. Si el navegador no la tiene, abre una ventanita normal.
 var djPip = null;   // var: addChat puede llamarse antes de llegar aquí
-const PIP_CSS = `*{box-sizing:border-box}html,body{margin:0;height:100%;background:#17141f;color:#f2ece0;font:500 14px/1.3 "Barlow Semi Condensed",Arial,sans-serif}
-body{display:flex;flex-direction:column}
-header{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#221d2e;border-bottom:1px solid #3a3350;font-weight:800;font-size:13px;letter-spacing:.4px}
+const PIP_CSS = `*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0c0a12;color:#f2ece0;font:500 14px/1.3 "Barlow Semi Condensed",Arial,sans-serif;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;background:#0c0a12}
+body.solo #cv{display:none}
+header{position:absolute;top:6px;left:6px;right:6px;display:flex;align-items:center;gap:7px;pointer-events:none}
+header .tag{display:flex;align-items:center;gap:6px;padding:3px 8px;border-radius:6px;background:rgba(12,10,18,.72);font-weight:800;font-size:12px;letter-spacing:.4px}
 header i{width:8px;height:8px;border-radius:50%;background:#ff4f6d;box-shadow:0 0 8px #ff4f6d}
-header span{margin-left:auto;font-weight:600;color:#a89fbd}
-#log{flex:1;overflow:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px}
-.m{animation:in .25s ease-out;padding:3px 7px;border-radius:7px}
-.m.nuevo{background:#2d2640}
+header .tag span{font-weight:600;color:#a89fbd}
+header button{pointer-events:auto;margin-left:auto;background:rgba(12,10,18,.72);color:#f2ece0;border:1px solid #3a3350;border-radius:6px;padding:3px 8px;font:700 12px inherit;font-family:inherit;cursor:pointer}
+#chat{position:absolute;right:6px;bottom:6px;width:min(250px,48%);max-height:68%;display:flex;flex-direction:column;background:rgba(12,10,18,.66);border:1px solid rgba(255,255,255,.08);border-radius:10px;backdrop-filter:blur(3px)}
+body.solo #chat{inset:38px 6px 6px 6px;width:auto;max-height:none;background:#17141f}
+#log{flex:1;min-height:0;overflow:auto;padding:6px 8px;display:flex;flex-direction:column;gap:3px;font-size:13px;scrollbar-width:thin}
+.m{animation:in .25s ease-out;padding:2px 6px;border-radius:6px;text-shadow:0 1px 2px #000;overflow-wrap:anywhere}
+.m.nuevo{background:rgba(255,179,71,.18)}
 .m b{color:#ffb347;margin-right:4px}.m.bot b{color:#5fe0a0}.m.me b{color:#ff8a3c}.m.system{color:#a89fbd;font-style:italic}
 @keyframes in{from{opacity:0;transform:translateY(6px)}}
-form{display:flex;gap:6px;padding:6px;border-top:1px solid #3a3350}
-input{flex:1;min-width:0;background:#0f0d15;border:1px solid #3a3350;color:#f2ece0;border-radius:8px;padding:6px 8px;font:inherit}
-button{background:#ffb347;border:0;border-radius:8px;padding:6px 10px;font-family:inherit;font-weight:700;font-size:13px;color:#17141f;cursor:pointer}`;
+form{display:flex;gap:5px;padding:5px;border-top:1px solid rgba(255,255,255,.08)}
+input{flex:1;min-width:0;background:rgba(0,0,0,.55);border:1px solid #3a3350;color:#f2ece0;border-radius:7px;padding:5px 7px;font:inherit;font-size:13px}
+form button{background:#ffb347;border:0;border-radius:7px;padding:5px 9px;font-family:inherit;font-weight:700;font-size:12px;color:#17141f;cursor:pointer}`;
 function pipAdd(kind, who, text, gif){
   if (!djPip || djPip.closed) return;
   const d = djPip.document, log = d.getElementById('log'); if (!log) return;
   const row = d.createElement('div'); row.className = 'm nuevo ' + kind;
   if (who){ const b = d.createElement('b'); b.textContent = who; row.append(b); }
   row.append(text);
-  if (gif){ const im = d.createElement('img'); im.src = 'https://media.giphy.com/media/' + gif + '/200.gif'; im.style.cssText = 'display:block;max-width:150px;max-height:100px;border-radius:6px;margin-top:3px'; im.onload = () => { log.scrollTop = log.scrollHeight; }; row.append(im); }
+  if (gif){ const im = d.createElement('img'); im.src = 'https://media.giphy.com/media/' + gif + '/200.gif'; im.style.cssText = 'display:block;max-width:120px;max-height:80px;border-radius:6px;margin-top:3px'; im.onload = () => { log.scrollTop = log.scrollHeight; }; row.append(im); }
   log.append(row);
   setTimeout(() => row.classList.remove('nuevo'), 2500);
   while (log.children.length > 60) log.firstChild.remove();
   log.scrollTop = log.scrollHeight;
-  const cnt = d.getElementById('cnt'); if (cnt) cnt.textContent = (net.peers ? net.peers.size + 1 : 1) + ' en la sala';
+  const cnt = d.getElementById('cnt'); if (cnt) cnt.textContent = '· ' + (net.peers ? net.peers.size + 1 : 1) + ' en la sala';
+}
+// La ventana muestra la cinemática del juego (copia de cada cuadro) y el chat del público en su esquina.
+let pipCv = null, pipCtx = null, pipVideo = true;
+try { pipVideo = localStorage.getItem('dj-pip-video') !== '0'; } catch(e){}
+function pipFrame(){
+  if (!pipCtx || !pipVideo || !djPip || djPip.closed) return;
+  if ((frameNo & 1) && !document.hidden) return;          // con la pestaña a la vista basta con 30 cuadros por segundo
+  const src = renderer.domElement, W = pipCv.clientWidth || 480, H = pipCv.clientHeight || 270;
+  const r = Math.min(1.5, djPip.devicePixelRatio || 1), w = Math.round(W * r), h = Math.round(H * r);
+  if (pipCv.width !== w || pipCv.height !== h){ pipCv.width = w; pipCv.height = h; }
+  // recorte tipo "cover": llena la ventana sin deformar la imagen
+  const sw = src.width, sh = src.height, k = Math.max(w / sw, h / sh), cw = w / k, ch = h / k;
+  try { pipCtx.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, w, h); } catch(e){}
 }
 async function openDjChat(){
   if (djPip && !djPip.closed){ djPip.focus && djPip.focus(); return; }
   let w = null;
   try {
-    if ('documentPictureInPicture' in window) w = await documentPictureInPicture.requestWindow({width: 330, height: 260});
+    if ('documentPictureInPicture' in window) w = await documentPictureInPicture.requestWindow({width: 480, height: 300});
   } catch(e){ w = null; }
-  if (!w) w = window.open('', 'djchat', 'width=340,height=300');
+  if (!w) w = window.open('', 'djchat', 'width=480,height=300');
   if (!w){ addChat({kind:'system', text:'El navegador bloqueó la ventana flotante: permite las ventanas emergentes para este sitio.'}); return; }
   djPip = w;
   const d = w.document;
-  d.title = 'Chat de la sala';
+  d.title = 'Vista del DJ';
   const st = d.createElement('style'); st.textContent = PIP_CSS; d.head.append(st);
-  d.body.innerHTML = '<header><i></i>CHAT DE LA SALA<span id="cnt"></span></header><div id="log"></div><form id="f"><input id="t" maxlength="200" placeholder="Responde al público…" autocomplete="off"><button>Enviar</button></form>';
+  d.body.innerHTML = '<canvas id="cv"></canvas><header><div class="tag"><i></i>EN VIVO<span id="cnt"></span></div><button id="vid" type="button"></button></header>'
+    + '<div id="chat"><div id="log"></div><form id="f"><input id="t" maxlength="200" placeholder="Responde al público…" autocomplete="off"><button>Enviar</button></form></div>';
+  pipCv = d.getElementById('cv'); pipCtx = pipCv.getContext('2d', {alpha:false});
+  const vid = d.getElementById('vid');
+  const setVid = on => { pipVideo = on; d.body.classList.toggle('solo', !on); vid.textContent = on ? '💬 Solo chat' : '🎬 Ver cinemática'; try { localStorage.setItem('dj-pip-video', on ? '1' : '0'); } catch(e){} };
+  vid.addEventListener('click', () => setVid(!pipVideo)); setVid(pipVideo);
   // los últimos mensajes que ya estaban
   [...chatLog.children].slice(-12).forEach(r => { const b = r.querySelector('b'); pipAdd(r.className.replace('msg ', ''), b ? b.textContent : '', b ? r.textContent.slice(b.textContent.length).trim() : r.textContent); });
   d.getElementById('f').addEventListener('submit', e => { e.preventDefault(); const t = d.getElementById('t'); if (sendChat(t.value)) t.value = ''; });
-  w.addEventListener('pagehide', () => { if (djPip === w) djPip = null; });
+  w.addEventListener('pagehide', () => { if (djPip === w){ djPip = null; pipCtx = null; pipCv = null; schedTick(); } });
+  schedTick();
 }
-function closeDjChat(){ if (djPip && !djPip.closed) djPip.close(); djPip = null; }
+function closeDjChat(){ if (djPip && !djPip.closed) djPip.close(); djPip = null; pipCtx = null; pipCv = null; schedTick(); }
 document.getElementById('djChatPip').addEventListener('click', openDjChat);
 document.getElementById('djTurnChat').addEventListener('click', openDjChat);
 chatBtn.addEventListener('click', () => {
@@ -3706,7 +3740,7 @@ window.__djInfo = () => { const v = new THREE.Vector4(); renderer.getCurrentView
 { let st = null; try { st = localStorage.getItem(STYLE_KEY); } catch(e){}
   applyStyle(STYLES.some(([id]) => id === st) ? st : (IS_TOUCH ? 'liviano' : 'moderno')); }
 window.__gfx = () => ({mode: GFX.mode, fps: Math.round(GFX.fps*10)/10, level: GFX.level, dpr: renderer.getPixelRatio(), reflector: !!GFX.reflector, bloom: !!GFX.bloom});
-requestAnimationFrame(tick);
+schedTick();
 })();
 </script>
 
