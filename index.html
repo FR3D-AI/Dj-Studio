@@ -905,7 +905,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     }
     // fader de pitch en el borde
     box(0.2,0.004,0.012,'#050507',3.69,1.042,s*0.625,desk);
-    faders.push(box(0.03,0.018,0.04,'#d9d9de',3.69,1.05,s*0.625,g));
+    faders.push(box(0.03,0.018,0.04,'#d9d9de',3.69,1.05,s*0.625,desk));
     // play y cue
     mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#39d86b'}), 3.905,1.046,s*0.62, desk);
     mesh(new THREE.CylinderGeometry(0.016,0.016,0.012,16), new THREE.MeshBasicMaterial({color:'#ffa83a'}), 3.85,1.046,s*0.62, desk);
@@ -915,7 +915,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
       box(0.012,0.004,0.003,'#f2f2f2',0,0.011,0,kb).position.x = 0.007; knobs.push(kb);
     }
     box(0.1,0.004,0.01,'#050507',3.8,1.042,s*0.07,desk);
-    faders.push(box(0.025,0.02,0.032,'#d9d9de',3.8,1.05,s*0.07,g));
+    faders.push(box(0.025,0.02,0.032,'#d9d9de',3.8,1.05,s*0.07,desk));
     // vúmetro: 8 luces
     for (let q = 0; q < 8; q++){
       const vm = new THREE.MeshBasicMaterial({color:'#111'});
@@ -925,7 +925,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   // crossfader y perillas maestras
   box(0.012,0.004,0.13,'#050507',3.915,1.042,0,desk);
   const xf = box(0.032,0.02,0.026,'#d9d9de',3.915,1.05,0,desk);
-  for (const zz of [-0.03, 0.03]) knobs.push(mesh(new THREE.CylinderGeometry(0.012,0.014,0.02,14), dark, 3.51, 1.05, zz, g));
+  for (const zz of [-0.03, 0.03]) knobs.push(mesh(new THREE.CylinderGeometry(0.012,0.014,0.02,14), dark, 3.51, 1.05, zz, desk));
   // pantallita central y cable al computador
   mesh(new THREE.BoxGeometry(0.05,0.004,0.1), new THREE.MeshBasicMaterial({color:'#2f7fff'}), 3.48,1.042,0, desk);
   const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(3.52,1.03,-0.66), new THREE.Vector3(3.45,0.99,-0.76), new THREE.Vector3(3.5,0.9,-0.98), new THREE.Vector3(3.6,0.97,-1.2)]), 10, 0.006, 5, false), M('#0d0d10'));
