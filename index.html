@@ -1614,12 +1614,16 @@ function cineCamera(){
   // las tomas de un bailarín necesitan a alguien en la pista; si no hay, plano general
   const shot = (cine.shot === 'bailarin' || cine.shot === 'seguir') && f === me ? 'grua' : cine.shot;
   const fov = shotPose(shot, e, k, sd, me, f, t);
-  // cámara en mano muy suave y un golpe de zoom en cada beat del drop
-  const sh = 0.025;
-  cineV.x += Math.sin(t*1.3 + k*9)*sh; cineV.y += Math.sin(t*1.7 + k*5)*sh; cineV.z += Math.cos(t*1.1 + k*7)*sh;
-  camera.position.copy(clampRoom(cineV)); camera.lookAt(cineL);
-  const fv = fov - (music.drop ? 4*music.pulse : 0);
-  if (Math.abs(camera.fov - fv) > 0.05){ camera.fov = fv; camera.updateProjectionMatrix(); }
+  // movimiento de cámara de cine: nada sigue el ritmo (sin rebotes ni golpes de zoom); solo una deriva lenta
+  // y un suavizado que absorbe los saltos de los personajes que baila. En cada corte la cámara salta a la nueva toma.
+  const sh = 0.012;
+  cineV.x += Math.sin(t*0.31 + k*9)*sh; cineV.y += Math.sin(t*0.23 + k*5)*sh*0.6; cineV.z += Math.cos(t*0.27 + k*7)*sh;
+  clampRoom(cineV);
+  const cut = cine.sStart !== cine.start || !cine.sV;
+  if (cut){ cine.sStart = cine.start; cine.sV = cineV.clone(); cine.sL = cineL.clone(); cine.sT = t; }
+  else { const a = 1 - Math.exp(-Math.min(0.1, t - cine.sT) * 5); cine.sT = t; cine.sV.lerp(cineV, a); cine.sL.lerp(cineL, a); }
+  camera.position.copy(cine.sV); camera.lookAt(cine.sL);
+  if (Math.abs(camera.fov - fov) > 0.05){ camera.fov = fov; camera.updateProjectionMatrix(); }
   for (const w of walls) for (const m of w.userData.mats){ m.opacity += (1 - m.opacity) * 0.2; m.depthWrite = m.opacity > 0.9; m.transparent = m.opacity < 0.99; }
 }
 function renderCine(){
