@@ -22,6 +22,11 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .app{height:100%;display:flex;flex-direction:column}
 .stage{position:relative;flex:1 1 auto;min-height:280px;background:#0f0d15;overflow:hidden;touch-action:none}
 .stage canvas{display:block;width:100%;height:100%}
+.ecopause{position:absolute;inset:0;z-index:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;background:radial-gradient(circle at 50% 45%,#221a33,#0c0a12 70%);color:#f2ece0;pointer-events:none}
+.ecopause[hidden]{display:none}
+.ecopause b{font-size:22px;letter-spacing:.3px}
+.ecopause span{color:#a89fbd;max-width:420px;font-size:15px}
+.ecopause i{font-style:normal;font-size:40px;animation:ecob 2.4s ease-in-out infinite}@keyframes ecob{50%{opacity:.45}}
 .bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
 .bubble{position:absolute;left:0;top:0;max-width:240px;padding:5px 10px 6px;background:#fbf8f1;color:#17141f;border:2px solid #17141f;
   border-radius:10px;font:600 14px/1.25 "Barlow Semi Condensed",Arial,sans-serif;box-shadow:2px 3px 0 rgba(0,0,0,.35);transform-origin:50% 100%;
@@ -307,6 +312,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 </div>
 <div class="app">
   <div class="stage" id="stage">
+    <div class="ecopause" id="ecoPause" hidden><i>⏸</i><b>Gráficos en pausa mientras mezclas</b><span>La cinemática sigue en la ventana flotante. Vuelve a esta ventana (haz clic aquí) y todo se reactiva.</span></div>
     <div class="hud"><b id="hudName">—</b><span id="hudPos">x 0.0 m · z 0.0 m</span><span id="hudMusic" class="hm" hidden></span></div>
     <div class="livebanner" id="liveBanner" hidden></div>
     <button class="chatbtn" id="chatBtn" type="button" aria-label="Chat" aria-expanded="true" aria-controls="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><i id="chatBadge" hidden></i></button>
@@ -2031,9 +2037,9 @@ function tick(){
     if (GFX.mode !== 'clasico'){
       if (fps < 50 && dpr > DPR_MIN) nd = Math.max(DPR_MIN, dpr - 0.2);
       else if (fps > 58 && dpr < DPR_MAX) nd = Math.min(DPR_MAX, dpr + 0.1);
-      if (nd !== dpr){ dpr = nd; renderer.setPixelRatio(dpr); resize(); }
+      if (nd !== dpr && !ECO.on){ dpr = nd; renderer.setPixelRatio(dpr); resize(); }
     }
-    gfxCheckFps(fps);
+    if (!ECO.on) gfxCheckFps(fps);
     const fn = document.getElementById('fpsNote'); if (fn) fn.textContent = 'Rendimiento ahora: ' + Math.round(fps) + ' cuadros por segundo · resolución ' + Math.round(renderer.getPixelRatio() / (window.devicePixelRatio || 1) * 100) + '%';
     perfT = 0; perfN = 0;
   }
@@ -2238,11 +2244,36 @@ function tick(){
     updateMeter(lvl);
   }
   updateVisuals(t, dt, hueBase);
-  if (frameNo % 2 === 0) renderer.shadowMap.needsUpdate = true;
+  ecoSet(ecoWanted());
+  if (frameNo % (ECO.on ? 8 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   updateBubbles(dt);
-  gfxFrame(t, dt, live.concat(remotes));
-  pipFrame();
+  if (ECO.on) ecoFrame();
+  else { gfxFrame(t, dt, live.concat(remotes)); pipFrame(); }
   schedTick();
+}
+/* ---------- modo ahorro del DJ ---------- */
+// Con la vista flotante abierta y el DJ en otro programa (Rekordbox), la ventana grande deja de dibujarse:
+// solo se dibuja la cinemática chiquita (resolución de la ventana flotante, sin postproceso, ~30 cuadros por segundo).
+// Al volver a la ventana del juego todo se reactiva solo.
+const ECO = {on:false, n:0, w:0, h:0};
+const ecoEl = document.getElementById('ecoPause');
+function ecoWanted(){ return !!(djPip && !djPip.closed) && !document.hasFocus(); }
+function ecoSet(on){
+  if (ECO.on === on) return;
+  ECO.on = on; ECO.w = ECO.h = 0; ecoEl.hidden = !on;
+  { const bb = document.getElementById('bubbles'); if (bb) bb.style.visibility = on ? 'hidden' : ''; }
+  if (!on){ renderer.setPixelRatio(dpr); resize(); renderer.shadowMap.needsUpdate = true; }
+  else renderer.setPixelRatio(1);
+}
+function ecoFrame(){
+  if (++ECO.n % 2) return;
+  if (!pipVideo || !pipCtx) return;                       // "solo chat": no se dibuja nada
+  const r = Math.min(1.25, djPip.devicePixelRatio || 1);
+  const w = Math.max(64, Math.round((pipCv.clientWidth || 480) * r)), h = Math.max(36, Math.round((pipCv.clientHeight || 270) * r));
+  if (w !== ECO.w || h !== ECO.h){ ECO.w = w; ECO.h = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  renderer.render(scene, camera);
+  if (pipCv.width !== w || pipCv.height !== h){ pipCv.width = w; pipCv.height = h; }
+  try { pipCtx.drawImage(renderer.domElement, 0, 0, w, h); } catch(e){}
 }
 // Con Rekordbox delante, la pestaña del juego queda oculta y el navegador pausa su requestAnimationFrame.
 // Mientras la ventana flotante del DJ está abierta (y se ve), el juego sigue animándose al ritmo de esa ventana.
@@ -2468,6 +2499,7 @@ function renderStyleRow(){
 }
 
 function resize(){
+  if (ECO.on){ ECO.w = 0; return; }   // en modo ahorro el tamaño lo manda la ventana flotante
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / Math.max(1,h); camera.updateProjectionMatrix();
   if (typeof gfxResize === 'function') gfxResize(w, h);
