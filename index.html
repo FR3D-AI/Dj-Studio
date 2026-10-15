@@ -345,7 +345,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
     <div class="hint" id="hint"></div>
     <div class="bubbles" id="bubbles" aria-hidden="true"></div>
  <button class="viewbtn" id="viewBtn" type="button" aria-pressed="false" title="Cambiar cámara (tecla V)">3ª persona</button>
- <button class="viewbtn dancebtn" id="danceBtn" type="button" aria-expanded="false" aria-controls="dancePanel" title="Bailes (teclas 1 a 8)">💃</button>
+ <button class="viewbtn dancebtn" id="danceBtn" type="button" aria-expanded="false" aria-controls="dancePanel" title="Bailes (teclas 1 a 9)">💃</button>
  <div class="dancepanel" id="dancePanel" hidden role="group" aria-label="Bailes"></div>
  <div class="dancetoast" id="danceToast" aria-live="polite"></div>
     <button class="gear" id="gearBtn" type="button" aria-label="Abrir configuración" aria-expanded="false" aria-controls="panel">
@@ -509,7 +509,8 @@ DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', h
   model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35,
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Silly_Dancing','Silly']], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
-  model:'models/greenroll_anim.glb', rig:'mixamo', ear:[1.52, 0.125, 0.15], djLean:0.2, modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
+  model:'models/greenroll_anim.glb', rig:'mixamo', ear:[1.52, 0.125, 0.15], idle:'proc', armFix:1.45, djLean:0.2, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, pose:'poder',
+  dances:[['Hip_Hop_Dancing','Hip Hop'], ['House_Dancing','House'], ['Snake_Hip_Hop_Dance','Snake'], ['Step_Hip_Hop_Dance','Step'], ['Dancing','Free style'], ['Swing_Dancing','Swing'], ['Macarena_Dance','Macarena'], ['Ymca_Dance','YMCA'], ['Walking_Drug','Borracho'], ['Drunk_Walking_Turn','Borracho con giro']], signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
@@ -3159,7 +3160,7 @@ async function connect(){
     const id = meta && meta.peerId || meta; if (!Array.isArray(p)) return;
     const r = ensurePeer(id);
     r.tx = Math.max(-HX, Math.min(HX, +p[0] || 0)); r.tz = Math.max(-HZ, Math.min(HZ, +p[1] || 0)); r.trot = +p[2] || 0;
-    r.danceSel = Math.max(0, Math.min(9, Math.floor(+p[3] || 0))); r.emote = !!p[4];
+    r.danceSel = Math.max(0, Math.min(12, Math.floor(+p[3] || 0))); r.emote = !!p[4];
     if (p.length > 5){ r.netPd = p[5] | 0; r.netAd = p[6] | 0; r.netAt = performance.now(); }
     if (r.ci < 0) return;   // todavía eligiendo personaje
     if (!r.seen){ r.seen = true; r.x = r.tx; r.z = r.tz; r.rot = r.trot; if (r.group) scene.add(r.group); }
@@ -3627,7 +3628,7 @@ function renderDancePanel(){
   const me = chars[sel], cur = me && me.danceSel || 0;
   danceList().forEach((l, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', cur === i + 1);
-    const k = document.createElement('kbd'); k.textContent = i + 1; b.append(k, l);
+    const k = document.createElement('kbd'); k.textContent = i < 9 ? i + 1 : '·'; b.append(k, l);
     b.addEventListener('click', () => setDance(i + 1)); dancePanel.append(b);
   });
   const b0 = document.createElement('button'); b0.type = 'button'; b0.setAttribute('aria-pressed', cur === 0);
@@ -3637,7 +3638,7 @@ danceBtn.addEventListener('click', () => { const open = dancePanel.hidden; dance
 addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || !gate.hidden || !cselEl.hidden) return;
   const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code); if (!m) return;
-  const n = +m[1]; if (n > 8) return;
+  const n = +m[1]; if (n > danceList().length) return;
   setDance(n); e.preventDefault();
 });
 addEventListener('keydown', e => { if (e.code === 'KeyV' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && gate.hidden && cselEl.hidden) toggleView(); });
