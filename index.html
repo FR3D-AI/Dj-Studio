@@ -249,6 +249,9 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .ccard.sig{background:linear-gradient(165deg,#4a1218,#211a2c 70%)}
 .ccard.sig::after{content:"★";position:absolute;top:8px;right:9px;width:22px;height:22px;border-radius:50%;background:#d3121f;color:#fff;font-size:12px;display:grid;place-items:center}
 .ccard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ccard.taken img{filter:grayscale(1) brightness(.55)}
+.ccard.taken{opacity:.75}
+.ccard .lock{font-size:11px;font-weight:600;color:#ff9a9a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cselgo{padding:14px 18px;font-size:17px}
 @media (max-width:780px){
   .cselmain{grid-template-columns:1fr}
@@ -435,7 +438,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <p class="note" id="styleNote"></p>
       <p class="note" id="fpsNote" aria-live="off"></p>
     </div>
-    <div class="group">
+    <div class="group" hidden>
       <span class="lbl" id="countLbl">Personajes en la sala</span>
       <div class="row" id="countRow" role="group" aria-labelledby="countLbl"></div>
     </div>
@@ -490,18 +493,8 @@ const FIELDS = [
   {k:'danceB', label:'Baile en el drop', type:'opt', opts:DANCES}
 ];
 
-const DEFAULTS = [
-  {name:'Darío', build:'normal', skin:SKINS[3], hair:'rapado', hairColor:HAIRC[0], top:'tirantes', topColor:CLOTH[0], pants:'largo', pantsColor:PANTS[0], shoes:SHOES[0], danceA:'rebote', danceB:'salto'},
-  {name:'Lupe', build:'delgado', skin:SKINS[1], hair:'coleta', hairColor:HAIRC[1], top:'camiseta', topColor:CLOTH[7], pants:'short', pantsColor:PANTS[0], shoes:SHOES[0], danceA:'balanceo', danceB:'manos'},
-  {name:'Tavo', build:'fornido', skin:SKINS[2], hair:'gorra', hairColor:HAIRC[0], top:'camiseta', topColor:CLOTH[2], pants:'largo', pantsColor:PANTS[5], shoes:SHOES[1], danceA:'puno', danceB:'headbang'},
-  {name:'Kiara', build:'normal', skin:SKINS[4], hair:'afro', hairColor:HAIRC[0], top:'chaqueta', topColor:CLOTH[6], pants:'largo', pantsColor:PANTS[1], shoes:SHOES[0], danceA:'running', danceB:'salto'},
-  {name:'Memo', build:'normal', skin:SKINS[0], hair:'cresta', hairColor:HAIRC[4], top:'chaqueta', topColor:CLOTH[1], pants:'largo', pantsColor:PANTS[3], shoes:SHOES[2], danceA:'robot', danceB:'giro'},
-  {name:'Nadia', build:'delgado', skin:SKINS[2], hair:'trenzas', hairColor:HAIRC[0], top:'sudadera', topColor:CLOTH[4], pants:'largo', pantsColor:PANTS[1], shoes:SHOES[0], danceA:'balanceo', danceB:'rebote'},
-  {name:'Rocco', build:'fornido', skin:SKINS[1], hair:'calvo', hairColor:HAIRC[0], top:'tirantes', topColor:CLOTH[1], pants:'largo', pantsColor:PANTS[2], shoes:SHOES[5], danceA:'headbang', danceB:'puno'},
-  {name:'Yesi', build:'normal', skin:SKINS[1], hair:'coleta', hairColor:HAIRC[3], top:'camiseta', topColor:CLOTH[9], pants:'short', pantsColor:PANTS[5], shoes:SHOES[0], danceA:'manos', danceB:'salto'},
-  {name:'Benji', build:'delgado', skin:SKINS[5], hair:'gorra', hairColor:HAIRC[6], top:'sudadera', topColor:CLOTH[5], pants:'largo', pantsColor:PANTS[1], shoes:SHOES[0], danceA:'running', danceB:'giro'},
-  {name:'Sol', build:'normal', skin:SKINS[0], hair:'afro', hairColor:HAIRC[2], top:'camiseta', topColor:CLOTH[3], pants:'short', pantsColor:PANTS[4], shoes:SHOES[3], danceA:'rebote', danceB:'manos'},
-];
+// solo los personajes propios de la sala (los 10 hechos por código se quitaron)
+const DEFAULTS = [];
 DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hairColor:'#8a3a1a', top:'tirantes', topColor:'#f2efe8', pants:'short', pantsColor:'#2c3fa8', shoes:'#1d1c21', danceA:'balanceo', danceB:'manos',
   model:'models/nika.glb', ear:[0.8, 0.085], modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
@@ -518,16 +511,6 @@ DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calv
   model:'models/greenroll.glb', ear:[0.78, 0.125, 0.15], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
- "Darío": "Dicen que aprendió a hacer beatbox imitando los frenos del metro. En los 2000 ganó una batalla de b-boys con los ojos vendados y desde entonces nadie le pide la revancha: su rebote hace temblar el piso.",
- "Lupe": "La voz de las azoteas. Cantaba sobre los techos del barrio hasta que una noche su eco se coló en una radio pirata y la ciudad entera se detuvo a escucharla. Nunca firmó con nadie: canta para quien suba a buscarla.",
- "Tavo": "Cien batallas de freestyle y ni una derrota. Rima con lo que ve: tu gorra, tus zapatillas, el clima. Cuentan que un rival se quedó sin palabras tan rápido que todavía lo están buscando.",
- "Kiara": "La reina del cypher. Bajó a la pista de un club de house a los quince y no la dejaron salir hasta el amanecer. Su footwork es tan rápido que las cámaras lo graban borroso.",
- "Memo": "Arma sintetizadores con chatarra de electrónica y los hace sonar como naves espaciales. Su cresta es una antena: dicen que capta frecuencias que nadie más oye y las convierte en bajos.",
- "Nadia": "Sus murales aparecen de un día para otro en los muros más altos de la ciudad. Nadie la ha visto pintar. Lo único que deja es su firma en spray y el ritmo que se queda en el aire.",
- "Rocco": "Fue el guardia de la puerta del club más duro de la ciudad hasta que el baterista no llegó una noche. Tomó las baquetas \"por mientras\" y nunca más volvió a la puerta. Le dicen El Muro.",
- "Yesi": "Reina del perreo de la vieja escuela. Su primer tema lo grabó en un celular dentro de una micro y hoy suena en cada fiesta de fin de año. Si ella está en la pista, nadie se queda sentado.",
- "Benji": "Skater de día y locutor de una radio pirata de noche. Transmitía desde una van estacionada en el skatepark y su señal llegaba justo hasta donde terminaba la ciudad. Inventó un giro que lleva su nombre.",
- "Sol": "Cazador de vinilos. Encontró en una feria un disco de funk sin nombre y lo sampleó en un beat que dio la vuelta al mundo. Todavía busca a la banda para darles las gracias.",
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
  "DJ FR3D": "Se considera un eterno aprendiz. En una libreta anota lo que le enseña cada noche: el espíritu de las primeras fiestas de barrio del Bronx, el pulso del house de Chicago, la precisión del techno de Detroit y el sabor de los vinilos de cumbia de su abuelo. Por eso ningún set suyo suena igual al anterior.",
  "DJ Valknuz": "Creció entre vinilos de metal nórdico y casetes de hip hop de la vieja escuela. Antes de cada set estudia a los pioneros de un género distinto, porque dice que un DJ es un cronista: en una sola noche cuenta la historia de la música, del primer breakbeat al último drop.",
@@ -538,13 +521,10 @@ DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
 DEFAULTS.forEach(d => { if (d.beard === undefined) d.beard = 'no'; if (d.acc === undefined) d.acc = 'no'; if (d.shoeAccent === undefined) d.shoeAccent = d.shoes; });
 const NCH = DEFAULTS.length;
 
-const KEY = 'habitacion10-v1', ROOMKEY = 'habitacion10-sala-v2';
+const KEY = 'dj-personajes-v2', ROOMKEY = 'dj-sala-v3';
 let defs, room;
 try { defs = JSON.parse(localStorage.getItem(KEY)); } catch(e) { defs = null; }
-if (!Array.isArray(defs) || defs.length < 10) defs = DEFAULTS.map(d => ({...d}));
-// se quitó a "Fred" (el personaje hecho por código, que estaba en la posición 10): se saca de lo guardado
-let fredQuitado = false;
-if (defs.length > 10 && defs[10] && !defs[10].model && defs[10].hair === 'gorraTrenzas'){ defs.splice(10, 1); fredQuitado = true; }
+if (!Array.isArray(defs) || defs.length !== DEFAULTS.length || defs.some((d, i) => !d || d.model !== DEFAULTS[i].model)) defs = DEFAULTS.map(d => ({...d}));
 while (defs.length < NCH) defs.push({...DEFAULTS[defs.length]});
 defs.length = NCH;
 defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k] = DEFAULTS[i][k]; });
@@ -553,11 +533,12 @@ defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k
 const MODEL_KEYS = ['model','modelScale','modelLift','rig','ear','dances','idle','armFix','pose','poseAdj','gait','legend','bio','tag','signature','djLean','djArm','djElb'];
 defs.forEach((d,i) => { for (const k of MODEL_KEYS){ if (DEFAULTS[i][k] === undefined) delete d[k]; else d[k] = DEFAULTS[i][k]; } });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
-if (!room || ![4,6,10,15].includes(room.count) || !Array.isArray(room.active)) room = {count:6, active:[0,1,2,3,4,5], items:{}};
+if (!room || typeof room !== 'object') room = {items:{}};
+// los 5 personajes están siempre en la sala: los que no maneja una persona son bots
+room.count = NCH; room.active = DEFAULTS.map((_, i) => i);
 // el nombre del jugador va aparte: los personajes conservan el suyo (antes se escribía encima y quedaban repetidos)
 let playerName = ''; try { playerName = localStorage.getItem('dj-studio-nombre') || ''; } catch(e){}
 defs.forEach((d, i) => { if (playerName && d.name === playerName && DEFAULTS[i].name !== playerName) d.name = DEFAULTS[i].name; });
-if (fredQuitado) room.active = room.active.filter(v => v !== 10).map(v => v > 10 ? v - 1 : v);
 room.active = room.active.filter((v,i,a) => v>=0 && v<NCH && a.indexOf(v)===i).slice(0, room.count);
 for (let i=0; room.active.length < room.count && i<NCH; i++) if (!room.active.includes(i)) room.active.push(i);
 room.items = room.items || {};
@@ -2070,8 +2051,9 @@ function tick(){
   let iz = (keys.KeyS||keys.ArrowDown?1:0) - (keys.KeyW||keys.ArrowUp?1:0) + joyVec.y;
   const il = Math.hypot(ix, iz);
   if (il > 1){ ix /= il; iz /= il; }
+  const hostNow = isHost(), nowMs = performance.now();
   for (const c of live){
-    let vx = 0, vz = 0, speed = 0;
+    let vx = 0, vz = 0, speed = 0, follow = false;
     if (c === me){
       if (il > 0.08){
         const run = keys.ShiftLeft || keys.ShiftRight || Math.hypot(joyVec.x, joyVec.y) > 0.92;
@@ -2081,6 +2063,12 @@ function tick(){
         // con animaciones capturadas se camina a paso real (si no, los pies no alcanzan y el personaje "flota")
         speed = (run ? 4.4 : (c.group && c.group.userData.anim ? 1.6 : 2.4)) * Math.min(1, il);
       }
+    } else if (!hostNow && c.netAt && nowMs - c.netAt < 1500){
+      // bot manejado por el anfitrión de la sala: va hacia la posición que él envía
+      follow = true;
+      const dx = c.tx - c.x, dz = c.tz - c.z;
+      if (Math.hypot(dx, dz) > 3){ c.x = c.tx; c.z = c.tz; } else { const k = Math.min(1, dt*8); c.x += dx*k; c.z += dz*k; }
+      c.target = null;
     } else {
       if (c.wait > 0) c.wait -= dt;
       else {
@@ -2097,13 +2085,14 @@ function tick(){
     if (!isFinite(c.x) || !isFinite(c.z)){ const p = freeSpot(); c.x = p.x; c.z = p.z; }
     const moved = Math.hypot(c.x-ox, c.z-oz) / dt || 0;
     if (c !== me && speed > 0 && moved < 0.3) c.stuck += dt;
-    const djNow = speed === 0 && inDJZone(c);
+    const djNow = speed === 0 && (!follow || moved < 0.25) && inDJZone(c);
     c.dj += ((djNow ? 1 : 0) - c.dj) * Math.min(1, dt*6);
     if (djNow) wantRot = -Math.PI/2;
     else if (speed === 0 && groove > 0 && c !== me && room.items.dj) wantRot = Math.atan2(8.6 - c.x, 0 - c.z); // miran a la cabina
     if (c === me && firstPerson && !djNow) wantRot = yaw + Math.PI; // en primera persona el cuerpo mira hacia donde miras
-    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||(c===me&&firstPerson)?12:3)); }
-    c.move += ((speed > 0 ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
+    if (follow) wantRot = c.trot;
+    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||follow||(c===me&&firstPerson)?12:3)); }
+    c.move += ((speed > 0 || (follow && moved > 0.25) ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
     c.spd = (c.spd || 0) + (moved - (c.spd || 0)) * Math.min(1, dt*8);
     c.phase += dt * 2*Math.PI * gaitCad(c.spd, gaitFem(c.def || defs[c.i]));
     c.y += (floorY(c.x, c.z) - c.y) * Math.min(1, dt*14);
@@ -2124,7 +2113,7 @@ function tick(){
     const dn = c.dance, d = c.dj, off = c.i * 0.7;
     const def = c.def || defs[c.i] || {};
     // en el drop cambian al segundo baile; en partes tranquilas, balanceo suave
-    const move = c.danceSel ? DANCE_IDS[(c.danceSel - 1) % DANCE_IDS.length] : (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
+    const move = danceMoveOf(c, def, bot);
     if (!c.pose){ c.pose = {}; POSE_KEYS.forEach(k => c.pose[k] = 0); c.spinA = 0; }
     if (dn > 0.01){
       dancePose(move, P, pulse, off, tmpPose);
@@ -2291,6 +2280,17 @@ document.addEventListener('visibilitychange', () => schedTick());
 
 let perfT = 0, perfN = 0, frameNo = 0, party = 0, lightAng = 0;
 // elige y mezcla la animación capturada según lo que hace el personaje
+// El baile que se ve lo decide quien maneja al personaje (la persona, o el anfitrión si es un bot) y viaja por la red:
+// así todos ven el mismo paso al mismo tiempo.
+const netFresh = c => c !== chars[sel] && c.netAt && performance.now() - c.netAt < 1500;
+function danceMoveOf(c, def, bot){
+  if (netFresh(c) && c.netPd >= 0) return DANCE_IDS[c.netPd % DANCE_IDS.length];
+  return c.danceSel ? DANCE_IDS[(c.danceSel - 1) % DANCE_IDS.length] : (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
+}
+function animDanceIdx(c, def, L, t){
+  if (netFresh(c) && c.netAd >= 0) return c.netAd % L.length;
+  return c.danceSel ? (c.danceSel - 1) % L.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % L.length;
+}
 function animDrive(c, ud, dt, d, def, t){
   const rig = ud.rig; if (!rig.mixer) return;
   // pose hecha a mano (cabina, o "parado" para quien no trae una postura tranquila): entra mezclándose de a poco
@@ -2304,7 +2304,7 @@ function animDrive(c, ud, dt, d, def, t){
     if (spd > 2.6){ name = 'Running'; speed = Math.max(0.6, Math.min(1.4, spd / vRun)); }
     else { name = 'Walking'; speed = Math.max(0.55, Math.min(1.5, spd / vWalk)); }
   } else if (c.dance > 0.3){
-    const L = dancesOf(def), k = c.danceSel ? (c.danceSel - 1) % L.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % L.length;
+    const L = dancesOf(def), k = animDanceIdx(c, def, L, t);
     name = L[k][0];
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
   }
@@ -2537,7 +2537,9 @@ function setCount(n){
 function renderRoster(){
   roster.innerHTML = '';
   defs.forEach((d,i) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'who' + (room.active.includes(i) ? ' in' : '');
+    const h = typeof heldBy === 'function' ? heldBy(i) : null;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'who' + (room.active.includes(i) ? ' in' : ''); b.disabled = !!h;
+    if (h) b.title = 'Lo está usando ' + (h.def ? h.def.name : 'otra persona');
     b.setAttribute('aria-pressed', i === sel);
     b.setAttribute('aria-label', (d.name || 'Personaje') + (room.active.includes(i) ? ', en la sala' : ', fuera de la sala'));
     b.innerHTML = `<span class="av" style="background:linear-gradient(${d.hair==='calvo'?d.skin:d.hairColor} 0 22%, ${d.skin} 22% 52%, ${d.topColor} 52%)"></span>`;
@@ -2600,7 +2602,7 @@ function setField(k, v, quiet){
   renderRoster(); if (!quiet) renderCustom();
 }
 function select(i){
-  if (i === sel) return;
+  if (i === sel || heldBy(i)) return;
   if (!room.active.includes(i)){
     // entra a la sala en lugar del que lleva más tiempo (nunca el que controlas)
     const out = room.active.find(j => j !== sel);
@@ -2883,6 +2885,33 @@ function nameTag(text){
   return sp;
 }
 function myDef(){ return {...defs[sel], name: playerName || 'Invitado'}; }
+/* ---------- personajes únicos y bots compartidos ---------- */
+// Cada personaje lo puede manejar una sola persona a la vez. Los que nadie maneja son bots, y los mueve el
+// "anfitrión" (quien tenga el id más bajo de la sala): él manda sus posiciones y bailes, y los demás los copian.
+let chosen = false, choseAt = 0;
+function heldBy(i){ for (const r of net.peers.values()) if (r.ci === i) return r; return null; }
+function hostId(){ let h = net.selfId; for (const id of net.peers.keys()) if (!h || id < h) h = id; return h; }
+function isHost(){ return !net.room || hostId() === net.selfId; }
+function syncBotsOn(){
+  chars.forEach((c, i) => { const want = (i === sel && chosen) || !heldBy(i); if (c.on !== want){ setOn(c, want); c.netAt = 0; } });
+}
+function locksChanged(){ syncBotsOn(); renderRoster(); if (typeof refreshCselLocks === 'function') refreshCselLocks(); }
+function sendBots(){
+  if (!net.room || net.peers.size === 0 || !isHost()) return;
+  const t = clock.elapsedTime, a = [];
+  for (const c of chars){
+    if (!c.on || (c.i === sel && chosen)) continue;
+    const def = defs[c.i], bot = c.i !== sel;
+    a.push([c.i, +c.x.toFixed(2), +c.z.toFixed(2), +c.rot.toFixed(2), +(c.like ?? 0.5).toFixed(2),
+      DANCE_IDS.indexOf(danceMoveOf(c, def, bot)), def.model ? animDanceIdx(c, def, dancesOf(def), t) : -1]);
+  }
+  net.actions.bots.send(a);
+}
+function lostChar(r){
+  chosen = false; netSendLook();
+  addChat({kind:'system', text: (r.def ? r.def.name : 'Otra persona') + ' ya tenía a ' + DEFAULTS[sel].name + '. Elige otro personaje.'});
+  openCharSelect(true);
+}
 function ensurePeer(id){
   let r = net.peers.get(id);
   if (!r){
@@ -2902,7 +2931,8 @@ function removePeer(id){
   if (r.group) scene.remove(r.group);
   net.peers.delete(id); net.pending.delete(id);
   if (net.djPeer === id) endRemoteDJ();
-  renderNet();
+  if (r.ci >= 0) addChat({kind:'system', text: (r.def ? r.def.name : 'Alguien') + ' salió: ' + DEFAULTS[r.ci].name + ' queda libre'});
+  locksChanged(); renderNet();
 }
 function netRemotes(){ const a = []; for (const r of net.peers.values()) if (r.group && r.seen) a.push(r); return a; }
 function updateRemotes(dt){
@@ -3036,15 +3066,16 @@ netEl.cast.addEventListener('click', () => net.casting ? stopCast() : startCast(
 
 let lastPose = '', lastPoseAt = 0;
 function sendPose(){
-  if (!net.room || net.peers.size === 0) return;
-  const me = chars[sel];
-  const p = [+me.x.toFixed(2), +me.z.toFixed(2), +me.rot.toFixed(2), me.danceSel || 0, me.emote ? 1 : 0], key = p.join(',');
+  if (!net.room || net.peers.size === 0 || !chosen) return;
+  const me = chars[sel], def = defs[sel];
+  const p = [+me.x.toFixed(2), +me.z.toFixed(2), +me.rot.toFixed(2), me.danceSel || 0, me.emote ? 1 : 0,
+    DANCE_IDS.indexOf(danceMoveOf(me, def, false)), def.model ? animDanceIdx(me, def, dancesOf(def), clock.elapsedTime) : -1], key = p.join(',');
   const now = performance.now();
   if (key === lastPose && now - lastPoseAt < 1000) return;
   lastPose = key; lastPoseAt = now; net.actions.pose.send(p);
 }
 let lookTimer = 0;
-function lookPayload(){ return {...myDef(), pub: ident.pub}; }
+function lookPayload(){ return {...myDef(), pub: ident.pub, v: 2, ci: chosen ? sel : -1, at: choseAt}; }
 function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { if (net.room) net.actions.look.send(lookPayload()); remember(ident.pub, myDef().name); renderNet(); renderAgenda(); }, 150); }
 
 // Servidor TURN público y gratuito (Open Relay de metered.ca): hace de puente cuando la conexión directa no pasa,
@@ -3070,7 +3101,23 @@ async function connect(){
   net.room = roomObj; net.selfId = mod.selfId; net.online = true;
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
   const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat'), logoA = roomObj.makeAction('logo');
-  net.actions = {pose, look, dj, sched: schedA, chat, logo: logoA};
+  const botsA = roomObj.makeAction('bots'), botchat = roomObj.makeAction('botchat');
+  net.actions = {pose, look, dj, sched: schedA, chat, logo: logoA, bots: botsA, botchat};
+  botsA.onMessage = (arr, meta) => {
+    const id = meta && meta.peerId || meta; if (!Array.isArray(arr) || id !== hostId()) return;
+    const now = performance.now();
+    for (const b of arr){
+      if (!Array.isArray(b)) continue;
+      const c = chars[b[0] | 0]; if (!c || !c.on || (c.i === sel && chosen)) continue;
+      c.tx = Math.max(-HX, Math.min(HX, +b[1] || 0)); c.tz = Math.max(-HZ, Math.min(HZ, +b[2] || 0)); c.trot = +b[3] || 0;
+      c.like = Math.max(0, Math.min(1, +b[4] || 0)); c.netPd = b[5] | 0; c.netAd = b[6] | 0; c.netAt = now;
+    }
+  };
+  botchat.onMessage = (d, meta) => {
+    const id = meta && meta.peerId || meta; if (!d || id !== hostId() || typeof d.text !== 'string') return;
+    const c = chars[d.i | 0]; if (!c || !c.on) return;
+    addChat({kind:'bot', who: defs[c.i].name, text: d.text.slice(0, 40), char: c});
+  };
   logoA.onMessage = (d, meta) => {
     const id = meta && meta.peerId || meta;
     const data = d && typeof d.data === 'string' && d.data.startsWith('data:image/') && d.data.length < 120000 ? d.data : null;
@@ -3090,21 +3137,30 @@ async function connect(){
   look.onMessage = (d, meta) => {
     const id = meta && meta.peerId || meta; if (!d || typeof d !== 'object') return;
     const r = ensurePeer(id);
-    const clean = {...DEFAULTS[0]};
-    for (const f of FIELDS) if (typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
+    // qué personaje maneja (−1 = todavía eligiendo); las versiones antiguas no lo mandan y se reconoce por el modelo
+    let ci = d.v === 2 ? (Number.isInteger(d.ci) && d.ci >= 0 && d.ci < NCH ? d.ci : -1) : DEFAULTS.findIndex(x => x.model === d.model);
+    const clean = {...DEFAULTS[Math.max(0, ci)]};
+    for (const f of FIELDS) if (/^dance/.test(f.k) && typeof d[f.k] === 'string' && d[f.k].length < 20) clean[f.k] = d[f.k];
     clean.name = String(d.name || 'Invitado').slice(0, 14);
-    const md = DEFAULTS.find(x => x.model && x.model === d.model); // solo modelos de la propia página
-    if (md) Object.assign(clean, {model: md.model, modelScale: md.modelScale, modelLift: md.modelLift, gait: md.gait, ear: md.ear, rig: md.rig, armFix: md.armFix, dances: md.dances, idle: md.idle});
     if (typeof d.pub === 'string' && d.pub.length < 200){ r.pub = d.pub; remember(d.pub, clean.name); }
-    const isNew = !r.def;
-    r.def = clean; buildRemote(r); renderNet(); renderAgenda();
-    if (isNew) addChat({kind:'system', text: clean.name + ' entró a la sala'});
+    const prevCi = r.ci ?? -1, prevModel = r.def && r.def.model;
+    r.ci = ci; r.at = +d.at || 0;
+    r.def = clean;
+    if (!r.group || prevModel !== clean.model || prevCi !== ci) buildRemote(r);
+    else { if (r.tag) r.group.remove(r.tag); r.tag = nameTag(clean.name); r.group.add(r.tag); }
+    if (ci < 0){ r.seen = false; if (r.group) scene.remove(r.group); }
+    if (ci >= 0 && prevCi < 0) addChat({kind:'system', text: clean.name + ' entró a la sala con ' + DEFAULTS[ci].name});
+    // dos personas eligieron el mismo personaje casi al mismo tiempo: se lo queda quien lo eligió primero
+    if (ci >= 0 && ci === sel && chosen && (r.at < choseAt || (r.at === choseAt && id < net.selfId))) lostChar(r);
+    locksChanged(); renderNet(); renderAgenda();
   };
   pose.onMessage = (p, meta) => {
     const id = meta && meta.peerId || meta; if (!Array.isArray(p)) return;
     const r = ensurePeer(id);
     r.tx = Math.max(-HX, Math.min(HX, +p[0] || 0)); r.tz = Math.max(-HZ, Math.min(HZ, +p[1] || 0)); r.trot = +p[2] || 0;
     r.danceSel = Math.max(0, Math.min(9, Math.floor(+p[3] || 0))); r.emote = !!p[4];
+    if (p.length > 5){ r.netPd = p[5] | 0; r.netAd = p[6] | 0; r.netAt = performance.now(); }
+    if (r.ci < 0) return;   // todavía eligiendo personaje
     if (!r.seen){ r.seen = true; r.x = r.tx; r.z = r.tz; r.rot = r.trot; if (r.group) scene.add(r.group); }
   };
   schedA.onMessage = d => { adoptSchedule(d, true); };
@@ -3137,7 +3193,7 @@ async function connect(){
     if (id === net.djPeer) playRemote(stream);
     renderNet();
   };
-  setInterval(sendPose, 100);
+  setInterval(() => { sendPose(); sendBots(); }, 100);
   setInterval(() => {
     if (net.casting){ if (!canCast()){ stopCast(); addChat({kind:'system', text:'Tu turno terminó. ¡Gracias por tocar!'}); } else dj.send(djPayload()); }
     // si el turno del DJ que suena terminó, se deja de escuchar
@@ -3490,6 +3546,7 @@ const pick = a => a[Math.floor(Math.random()*a.length)];
 function tasteOf(i){ const lo = 96 + (i*13) % 36; return {lo, hi: lo + 18 + (i*7) % 16, bass: (i % 3)/2, react: 4 + Math.random()*26}; }
 let tasteT = 0;
 function botsUpdate(dt, bots){
+  if (net.room && !isHost()) return;   // los gustos y comentarios de los bots los decide el anfitrión
   if (!music.sounding){ for (const c of bots) c.like += (0.5 - c.like) * Math.min(1, dt*0.2); return; }
   tasteT += dt;
   const bpm = music.bpm || 122;
@@ -3506,7 +3563,9 @@ function botsUpdate(dt, bots){
     const dropHype = music.dropStart && c.like > 0.6 && Math.random() < 0.45 && t.react < 20;
     if (t.react <= 0 || dropHype){
       const set = c.like > 0.68 ? LOVE : c.like > 0.42 ? OK : MEH;
-      addChat({kind:'bot', who: defs[c.i].name, text: pick(set) + (Math.random() < 0.3 ? pick(set) : ''), char: c});
+      const txt = pick(set) + (Math.random() < 0.3 ? pick(set) : '');
+      addChat({kind:'bot', who: defs[c.i].name, text: txt, char: c});
+      if (net.actions && net.actions.botchat && net.peers.size) net.actions.botchat.send({i: c.i, text: txt});
       t.react = 20 + Math.random()*35;
     }
   }
@@ -3606,6 +3665,7 @@ gateForm.addEventListener('submit', e => {
   gate.hidden = true;
   // el clic de "Entrar" desbloquea el audio: así se escucha al DJ sin tocar nada más
   ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
+  enterRoom();   // se conecta antes de elegir: así se ve qué personajes ya están ocupados
   openCharSelect(true);
 });
 let entered = false;
@@ -3664,6 +3724,8 @@ function renderCselGrid(){
     b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === csel.pick);
     const img = document.createElement('img'); img.alt = ''; img.src = csel.portraits[i] || '';
     b.append(img, DEFAULTS[i].name);
+    const h = heldBy(i);
+    if (h){ b.classList.add('taken'); const l = document.createElement('span'); l.className = 'lock'; l.textContent = '🔒 ' + (h.def ? h.def.name : 'Ocupado'); b.append(l); b.setAttribute('aria-label', DEFAULTS[i].name + ', ocupado'); }
     b.addEventListener('click', () => cselPick(i));
     b.addEventListener('dblclick', () => { cselPick(i); cselConfirm(); });
     cselGrid.append(b);
@@ -3676,7 +3738,9 @@ function cselPick(i){
   const D = DEFAULTS[i];
   cselName.textContent = D.name; cselBio.textContent = bioOf(i);
   cselTag.textContent = D.tag || 'Personaje de la sala'; cselTag.classList.toggle('sig', !!D.signature);
-  cselGo.textContent = 'Entrar con ' + D.name;
+  const h = heldBy(i);
+  cselGo.disabled = !!h;
+  cselGo.textContent = h ? '🔒 Ocupado por ' + (h.def ? h.def.name : 'otra persona') : 'Entrar con ' + D.name;
   [...cselGrid.children].forEach((b, k) => b.setAttribute('aria-selected', cselOrder()[k] === i));
 }
 function cselResize(){
@@ -3733,8 +3797,8 @@ function openCharSelect(first){
   document.getElementById('cselStep').textContent = first ? 'Paso 2 de 2' : 'Cambiar personaje';
   cselEl.hidden = false;
   cselSetup(); cselGrid.innerHTML = '<p class="note">Cargando personajes…</p>';
+  csel.pick = heldBy(sel) ? (firstFree() ?? sel) : sel;
   makePortraits().then(() => { renderCselGrid(); cselResize(); cselPick(csel.pick ?? sel); });
-  csel.pick = sel;
   setTimeout(() => cselGrid.querySelector('[aria-selected="true"]')?.focus(), 50);
   if (!csel.raf){ csel.last = 0; csel.raf = requestAnimationFrame(cselLoop); }
 }
@@ -3744,16 +3808,23 @@ function closeCharSelect(){
   if (csel.r){ csel.r.dispose(); csel.r.forceContextLoss(); csel.r = null; } // libera la GPU para el juego
   requestAnimationFrame(resize);
 }
+function firstFree(){ for (const i of cselOrder()) if (!heldBy(i)) return i; return null; }
+function refreshCselLocks(){
+  if (cselEl.hidden || !csel.portraits.length) return;
+  renderCselGrid(); cselPick(csel.pick);
+}
 function cselConfirm(){
   const i = csel.pick;
+  if (heldBy(i)){ cselPick(i); return; }   // alguien lo tomó: hay que elegir otro
   if (i !== sel) select(i);
+  chosen = true; choseAt = Date.now(); locksChanged();
   nameInput.value = playerName; hudName.textContent = myDef().name;
   save(); renderRoster(); renderCustom(); netSendLook();
   closeCharSelect();
   enterRoom();
 }
 cselGo.addEventListener('click', cselConfirm);
-cselEl.addEventListener('keydown', e => { if (e.key === 'Escape' && !csel.first) closeCharSelect(); });
+cselEl.addEventListener('keydown', e => { if (e.key === 'Escape' && !csel.first && chosen) closeCharSelect(); });
 addEventListener('resize', () => { if (!cselEl.hidden) cselResize(); });
 document.getElementById('openCsel').addEventListener('click', () => { setPanel(false); openCharSelect(false); });
 
