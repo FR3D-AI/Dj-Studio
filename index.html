@@ -66,6 +66,30 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .viewbtn:hover,.viewbtn[aria-pressed="true"]{border-color:var(--accent)}
 .viewbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .dancebtn{right:auto;left:auto;top:66px;right:12px;width:46px;padding:0;font-size:22px}
+.radiobtn{right:12px;top:120px;width:46px;padding:0;display:grid;place-items:center}
+.radiobtn i{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle,#ffb347 0 3px,#17141f 3.5px 6px,#3a3350 6.5px 7px,#17141f 7.5px 10px,#3a3350 10.5px 11px,#111 11.5px);box-shadow:0 0 0 1px #000 inset}
+.radiobtn.on i{animation:vinilo 1.8s linear infinite}
+@keyframes vinilo{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.radiobtn.on i{animation:none}}
+.radiocard{position:absolute;right:68px;top:120px;z-index:7;width:min(300px,calc(100% - 90px));padding:12px;border-radius:12px;background:rgba(23,20,31,.96);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.radiocard .rtop{display:flex;gap:10px;align-items:center}
+.radiocard img{width:64px;height:64px;border-radius:8px;object-fit:cover;flex:none}
+.radiocard .rtx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.radiocard small{color:var(--accent);font:700 11px var(--body);text-transform:uppercase;letter-spacing:.5px}
+.radiocard b{font:700 15px/1.2 var(--body);overflow-wrap:anywhere}
+.radiocard .rtx span{color:#a89fbd;font-size:13px}
+.radiocard .rrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.radiocard .rrow button{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:5px 9px;font:600 13px var(--body);cursor:pointer}
+.radiocard .rrow button:disabled{opacity:.6;cursor:default}
+.radiocard .rlink{display:inline-block;margin-top:8px;color:#ff8a3c;font:600 12px var(--body)}
+.radiotoast{position:absolute;right:68px;top:128px;z-index:6;max-width:min(360px,60%);padding:6px 12px;border-radius:999px;background:rgba(23,20,31,.88);color:var(--fg);font:600 13px var(--body);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translateX(8px);transition:opacity .35s,transform .35s;pointer-events:none}
+.radiotoast.on{opacity:1;transform:none}
+.radioask{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:6;display:flex;gap:8px;align-items:center;padding:5px 6px 5px 12px;border-radius:999px;
+  background:rgba(23,20,31,.85);border:1px solid var(--line);font:600 13px var(--body);color:#d8d0ea;max-width:calc(100% - 140px);animation:askin .5s ease-out}
+.radioask span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.radioask button{border:0;border-radius:999px;background:var(--accent);color:#17141f;font:700 13px var(--body);padding:4px 10px;cursor:pointer;flex:none}
+@keyframes askin{from{opacity:0;transform:translate(-50%,-8px)}}
 .dancepanel{position:absolute;right:12px;top:120px;z-index:6;display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;
   background:rgba(23,20,31,.94);border:1px solid var(--line);max-height:calc(100% - 140px);overflow-y:auto}
 .dancepanel button{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:transparent;color:var(--fg);
@@ -348,6 +372,10 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
  <button class="viewbtn dancebtn" id="danceBtn" type="button" aria-expanded="false" aria-controls="dancePanel" title="Bailes (teclas 1 a 9)">💃</button>
  <div class="dancepanel" id="dancePanel" hidden role="group" aria-label="Bailes"></div>
  <div class="dancetoast" id="danceToast" aria-live="polite"></div>
+ <button class="viewbtn radiobtn" id="radioBtn" type="button" hidden aria-expanded="false" aria-controls="radioCard" title="Radio de la sala"><i aria-hidden="true"></i></button>
+ <div class="radiocard" id="radioCard" hidden role="dialog" aria-label="Tema que suena"></div>
+ <div class="radiotoast" id="radioToast" aria-live="polite"></div>
+ <div class="radioask" id="radioAsk" hidden><span></span><button type="button">👍 Sí</button></div>
     <button class="gear" id="gearBtn" type="button" aria-label="Abrir configuración" aria-expanded="false" aria-controls="panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -465,6 +493,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 <script src="vendor/GLTFLoader.js"></script>
 <script src="vendor/SkeletonUtils.js"></script>
 <script src="vendor/post.js"></script>
+<script src="vendor/nostr-lite.js"></script>
 <script>
 (function(){
 const HX = 10, HZ = 5, HALF = 5, WALL_H = 3, R = 0.3; // sala de 20 m (x) por 10 m (z)
@@ -3107,7 +3136,10 @@ async function connect(){
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
   const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat'), logoA = roomObj.makeAction('logo');
   const botsA = roomObj.makeAction('bots'), botchat = roomObj.makeAction('botchat');
-  net.actions = {pose, look, dj, sched: schedA, chat, logo: logoA, bots: botsA, botchat};
+  const radioA = roomObj.makeAction('radio'), skipA = roomObj.makeAction('skip');
+  net.actions = {pose, look, dj, sched: schedA, chat, logo: logoA, bots: botsA, botchat, radio: radioA, skip: skipA};
+  radioA.onMessage = (d, meta) => { const id = meta && meta.peerId || meta; if (!d || typeof d !== 'object') return; if (id !== hostId() && Date.now() - radio.stateAt < 20000) return; radioApply(d); };
+  skipA.onMessage = (d, meta) => { const id = meta && meta.peerId || meta; if (!d || !radio.cur || +d.id !== radio.cur.id) return; radio.skip.set(id, radio.cur.id); radioCheckSkip(); renderRadio(true); };
   botsA.onMessage = (arr, meta) => {
     const id = meta && meta.peerId || meta; if (!Array.isArray(arr) || id !== hostId()) return;
     const now = performance.now();
@@ -3135,6 +3167,7 @@ async function connect(){
     look.send(lookPayload(), {target: id});
     if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
+    if (radio.cur && isHost()) radioA.send(radio.cur, {target: id});
     if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); logoA.send({data: myLogo || ''}, {target: id}); }
     renderNet();
   };
@@ -3416,6 +3449,7 @@ function sendChat(raw, gif){
   const text = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 200);
   if (gif && !isGifId(gif)) gif = null;
   if (!text && !gif) return false;
+  if (/^\/?evaluar$/i.test(text)){ if (isAdmin()) radioEvaluate(); else addChat({kind:'system', text:'Solo el administrador puede usar «evaluar».'}); return true; }
   const now = performance.now(); if (now - lastSend < 700) return false; lastSend = now;
   addChat({kind:'me', who: myDef().name, text, char: chars[sel], gif});
   if (net.actions.chat) net.actions.chat.send(gif ? {text, gif, name: myDef().name} : {text, name: myDef().name});
@@ -3677,6 +3711,7 @@ let entered = false;
 function enterRoom(){
   if (entered) return; entered = true;
   identityReady.then(() => { connect(); checkMyTurn(); });
+  radioInit();
   setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = '0'; }, 12000);
 }
 
@@ -3872,6 +3907,310 @@ window.__djInfo = () => { const v = new THREE.Vector4(); renderer.getCurrentView
 { let st = null; try { st = localStorage.getItem(STYLE_KEY); } catch(e){}
   applyStyle(STYLES.some(([id]) => id === st) ? st : (IS_TOUCH ? 'liviano' : 'moderno')); }
 window.__gfx = () => ({mode: GFX.mode, fps: Math.round(GFX.fps*10)/10, level: GFX.level, dpr: renderer.getPixelRatio(), reflector: !!GFX.reflector, bloom: !!GFX.bloom});
+/* ---------- radio de la sala (SoundCloud de fondo cuando no toca ningún DJ) ---------- */
+// Suena al 30 % con el reproductor oficial de SoundCloud escondido. Las fuentes son los perfiles y listas de sellos y
+// canales de cada género: se renuevan solos con cada lanzamiento. Cada tema sale de un género distinto, en orden
+// aleatorio, uno tras otro (sin mezclar). Todos escuchan el mismo tema en el mismo segundo: el anfitrión de la sala
+// lleva el reloj y avisa qué suena; el tema lo elige el azar (y los más votados con 👍), no el anfitrión.
+const RADIO_GENRES = [
+  {k:'techno', l:'Techno', src:['drumcode/tracks', 'rekids/tracks', 'second-state/tracks']},
+  {k:'hardtechno', l:'Hard Techno', src:['g8official/sets/top-100-hard-techno-chart', 'g8official/tracks', 'filthonacid/tracks']},
+  {k:'house', l:'House', src:['toolroomrecords/tracks', 'repopulatemars/tracks', 'dirtybirdrecords/tracks']},
+  {k:'deephouse', l:'Deep House', src:['selectedbase/tracks']},
+  {k:'electronica', l:'Electrónica', src:['mrsuicidesheep/tracks', 'monstercat/tracks']},
+  {k:'edm', l:'Dance / EDM', src:['spinninrecords/tracks']},
+  {k:'dnb', l:'Drum & Bass', src:['ukf/tracks', 'viperrecordings/tracks']},
+  {k:'trance', l:'Trance', src:['anjunabeats/tracks', 'blackholerecordings/tracks']},
+  {k:'psytrance', l:'Psytrance', src:['blue-tunes-records/tracks', 'nanorecords/tracks']},
+  {k:'dubstep', l:'Dubstep', src:['wakaan/tracks']},
+  {k:'bounce', l:'Bounce', src:['mandatorybounce/tracks']}
+];
+const RADIO_VOL = 30, RADIO_SILENCE_MS = 30000, RADIO_FADE_MS = 20000, RADIO_TOP_EVERY = 4;
+const radio = {api:null, w:null, ready:false, cur:null, loadedId:null, vol:0, sentVol:-1, playing:false, lastHeard:0, stateAt:0, startedAt:Date.now(),
+  pools:{}, loading:{}, played:[], lastGenre:null, count:0, top:[], topAt:0, skip:new Map(), liked:new Set(), prompted:null, info:null, picking:false};
+try { radio.liked = new Set(JSON.parse(localStorage.getItem('dj-radio-likes') || '[]')); } catch(e){}
+let radioMuted = false; try { radioMuted = localStorage.getItem('dj-radio-mute') === '1'; } catch(e){}
+const genreOf = k => RADIO_GENRES.find(g => g.k === k) || {k, l:k};
+function loadScApi(){
+  if (radio.api) return radio.api;
+  radio.api = new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://w.soundcloud.com/player/api.js'; s.onload = () => window.SC ? ok(window.SC) : bad(new Error('sin SC')); s.onerror = bad; document.head.append(s); });
+  radio.api.catch(() => setTimeout(() => { radio.api = null; }, 30000));
+  return radio.api;
+}
+function scFrame(url){
+  const f = document.createElement('iframe'); f.allow = 'autoplay'; f.title = 'Radio de la sala'; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+  f.style.cssText = 'position:fixed;left:-20px;top:-20px;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
+  f.src = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=false&show_artwork=false&visual=false';
+  document.body.append(f); return f;
+}
+// lee una fuente (perfil o lista) y devuelve sus temas: solo canciones (2 a 9 min) que se pueden escuchar completas
+function scList(path){
+  return loadScApi().then(SC => new Promise(res => {
+    const f = scFrame('https://soundcloud.com/' + path), w = SC.Widget(f); let done = false;
+    const fin = v => { if (!done){ done = true; setTimeout(() => f.remove(), 50); res(v); } };
+    w.bind(SC.Widget.Events.READY, () => w.getSounds(s => fin((s || []).filter(x => x && x.id && x.duration > 120000 && x.duration < 540000 && x.policy !== 'SNIP' && x.policy !== 'BLOCK')
+      .map(x => ({id: x.id, t: x.title || '', a: (x.user && x.user.username) || '', d: x.duration})))));
+    w.bind(SC.Widget.Events.ERROR, () => fin([]));
+    setTimeout(() => fin([]), 15000);
+  }));
+}
+async function genrePool(k){
+  try { await loadScApi(); } catch(e){ return []; }
+  if (radio.pools[k] && radio.pools[k].length) return radio.pools[k];
+  if (!radio.loading[k]){
+    const g = genreOf(k);
+    radio.loading[k] = (async () => { const all = []; for (const p of g.src){ all.push(...await scList(p)); } radio.pools[k] = all; radio.loading[k] = null; return all; })();
+  }
+  return radio.loading[k];
+}
+// ¿le toca a este computador llevar el reloj de la radio? (el anfitrión; si el anfitrión no tiene radio, el primero que note el silencio)
+function radioConductor(){ return isHost() || (Date.now() - radio.stateAt > 20000 && Date.now() - radio.startedAt > 12000); }
+function recentlyPlayed(id){ return radio.played.includes(id); }
+async function radioPickNext(reason){
+  if (radio.picking) return; radio.picking = true;
+  try {
+    radio.count++;
+    let pick = null;
+    // cada cierto tiempo suena uno de los más votados (de este mes o del anterior)
+    if (radio.count % RADIO_TOP_EVERY === 0 && radio.top.length){
+      const opts = radio.top.filter(x => !recentlyPlayed(x.id) && x.d > 0).slice(0, 15);
+      if (opts.length){ const x = opts[Math.floor(Math.random() * opts.length)]; pick = {id: x.id, g: x.g || 'top', t: x.t, a: x.a, d: x.d, top: true}; }
+    }
+    for (let tries = 0; !pick && tries < 6; tries++){
+      const gs = RADIO_GENRES.filter(g => g.k !== radio.lastGenre);
+      const g = gs[Math.floor(Math.random() * gs.length)];
+      const pool = (await genrePool(g.k)).filter(x => !recentlyPlayed(x.id));
+      if (!pool.length) continue;
+      const x = pool[Math.floor(Math.random() * Math.min(pool.length, 12))];   // los más nuevos de cada fuente tienen más chance
+      pick = {id: x.id, g: g.k, t: x.t, a: x.a, d: x.d};
+    }
+    if (!pick) return;
+    radio.lastGenre = pick.g;
+    const st = {...pick, at: Date.now() + 1500, v: 1};
+    radioApply(st, true);
+    if (net.actions && net.actions.radio && net.peers.size) net.actions.radio.send(st);
+    if (reason === 'skip') addChat({kind:'system', text: '⏭ La sala saltó el tema'});
+  } finally { radio.picking = false; }
+}
+function radioApply(st, mine){
+  if (!st || !st.id) return;
+  if (radio.cur && radio.cur.id === st.id && radio.cur.at === st.at) return;
+  radio.cur = {id: +st.id, g: String(st.g || ''), t: String(st.t || '').slice(0, 140), a: String(st.a || '').slice(0, 80), d: +st.d || 0, at: +st.at || Date.now(), top: !!st.top};
+  radio.stateAt = Date.now();
+  radio.played.push(radio.cur.id); if (radio.played.length > 40) radio.played.shift();
+  radio.skip = new Map(); radio.prompted = null; radio.info = null;
+  radioLoadCur();
+  renderRadio(true);
+}
+function radioLoadCur(){
+  if (!radio.w || !radio.ready || !radio.cur || radio.loadedId === radio.cur.id) return;
+  const id = radio.cur.id; radio.loadedId = id; radio.playing = false;
+  radio.w.load('https://api.soundcloud.com/tracks/' + id, {auto_play:false, show_artwork:false, visual:false, callback: () => {
+    radio.w.getCurrentSound(s => {
+      if (!s || radio.loadedId !== id) return;
+      radio.info = {t: s.title, a: (s.user && s.user.username) || '', art: s.artwork_url || (s.user && s.user.avatar_url) || '', link: s.permalink_url, d: s.duration};
+      if (radio.cur && radio.cur.id === id){ if (!radio.cur.d) radio.cur.d = s.duration; if (!radio.cur.t) radio.cur.t = s.title; if (!radio.cur.a) radio.cur.a = radio.info.a; }
+      // un tema que solo se puede escuchar 30 s se salta
+      if ((s.policy === 'SNIP' || s.policy === 'BLOCK') && radioConductor()) radioPickNext();
+      radio.sentVol = -1; renderRadio();
+    });
+  }});
+}
+function radioInit(){
+  if (radio.w) return;
+  loadScApi().then(SC => {
+    const f = scFrame('https://api.soundcloud.com/tracks/505933032');
+    radio.w = SC.Widget(f);
+    radio.w.bind(SC.Widget.Events.READY, () => { radio.ready = true; radioLoadCur(); });
+    radio.w.bind(SC.Widget.Events.FINISH, () => { radio.playing = false; if (radioConductor()) radioPickNext(); });
+    radio.w.bind(SC.Widget.Events.ERROR, () => { if (radioConductor()) setTimeout(() => radioPickNext(), 1500); });
+  }).catch(() => {});
+  radioRefreshTop();
+  // deja listos un par de géneros para que el primer tema parta rápido
+  const gs = RADIO_GENRES.slice().sort(() => Math.random() - 0.5); genrePool(gs[0].k).then(() => genrePool(gs[1].k));
+}
+// ¿cuánto debe sonar la radio ahora? 1 = 30 %, 0 = callada
+function radioTarget(now){
+  if (net.casting) return 0;                                   // el DJ que transmite no la escucha (y no se cuela en su transmisión)
+  const a = activeSlot(now), live = !!net.djPeer;
+  if (live || a){
+    if (music.source === 'remote' && music.sounding) radio.lastHeard = now;
+    const since = Math.max(radio.lastHeard, live && net.dj && net.dj.since ? net.dj.since : 0, a ? a.start : 0);
+    return now - since >= RADIO_SILENCE_MS ? 1 : 0;           // 30 s sin sonido del DJ: vuelve la radio hasta que se escuche algo
+  }
+  const nx = nextSlot(now);
+  if (nx && nx.start - now <= RADIO_FADE_MS) return Math.max(0, (nx.start - now) / RADIO_FADE_MS);   // últimos 20 s: baja de 30 % a 0 %
+  return 1;
+}
+function djTimeNow(){ return !!net.djPeer || net.casting || !!activeSlot(); }
+let radioLast = 0;
+function radioTick(){
+  if (!entered) return;
+  const now = Date.now(), dt = Math.min(1, (now - (radioLast || now)) / 1000); radioLast = now;
+  const target = radioTarget(now) * RADIO_VOL;
+  const fadeRate = RADIO_VOL / 2;                              // subidas y bajadas normales en 2 segundos
+  const nx = nextSlot(now), countdown = nx && nx.start - now <= RADIO_FADE_MS && !djTimeNow();
+  if (countdown) radio.vol = target; else radio.vol += Math.max(-fadeRate*dt, Math.min(fadeRate*dt, target - radio.vol));
+  // el que lleva el reloj elige el siguiente tema cuando el actual terminó (o no hay ninguno)
+  if (radio.ready && target > 0 && radioConductor()){
+    if (!radio.cur || (radio.cur.d && now > radio.cur.at + radio.cur.d + 2500)) radioPickNext();
+  }
+  if (radio.w && radio.ready && radio.cur && radio.loadedId === radio.cur.id){
+    const v = Math.round(radioMuted ? 0 : radio.vol);
+    if (v !== radio.sentVol){ radio.w.setVolume(v); radio.sentVol = v; }
+    const pos = now - radio.cur.at;
+    if (radio.vol > 0.3 && pos >= 0 && (!radio.cur.d || pos < radio.cur.d)){
+      if (!radio.playing){ radio.w.seekTo(Math.max(0, pos)); radio.w.play(); radio.playing = true; radio.syncAt = now; }
+      else if (now - (radio.syncAt || 0) > 6000){ radio.syncAt = now; radio.w.getPosition(p => { if (Math.abs(p - (Date.now() - radio.cur.at)) > 3000) radio.w.seekTo(Math.max(0, Date.now() - radio.cur.at)); }); }
+    } else if (radio.playing && radio.vol <= 0.3){ radio.w.pause(); radio.playing = false; }
+  }
+  renderRadio();
+}
+setInterval(radioTick, 200);
+
+/* ---- likes: guardados en relays Nostr (red pública y gratuita), un voto por persona y tema ---- */
+const NOSTR_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net', 'wss://nostr.mom'];
+const nostrSk = (() => { let k = null; try { k = localStorage.getItem('dj-nostr-sk'); } catch(e){}
+  if (!k && window.NostrLite){ k = NostrLite.genKey(); try { localStorage.setItem('dj-nostr-sk', k); } catch(e){} } return k; })();
+const monthKey = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+function nostrPublish(ev){
+  for (const u of NOSTR_RELAYS){
+    try { const ws = new WebSocket(u); const t = setTimeout(() => ws.close(), 6000);
+      ws.onopen = () => ws.send(JSON.stringify(['EVENT', ev]));
+      ws.onmessage = m => { try { if (JSON.parse(m.data)[0] === 'OK'){ clearTimeout(t); ws.close(); } } catch(e){} };
+      ws.onerror = () => clearTimeout(t); } catch(e){}
+  }
+}
+function nostrQuery(filter, ms = 7000){
+  return new Promise(res => {
+    const got = new Map(); let open = NOSTR_RELAYS.length;
+    const end = () => { if (--open <= 0) res([...got.values()]); };
+    for (const u of NOSTR_RELAYS){
+      let ws, closed = false; const sid = 'dj' + Math.random().toString(36).slice(2, 8);
+      const fin = () => { if (closed) return; closed = true; try { ws.close(); } catch(e){} end(); };
+      const t = setTimeout(fin, ms);
+      try { ws = new WebSocket(u); } catch(e){ clearTimeout(t); fin(); continue; }
+      ws.onopen = () => ws.send(JSON.stringify(['REQ', sid, filter]));
+      ws.onmessage = m => { try { const d = JSON.parse(m.data); if (d[0] === 'EVENT' && d[2] && d[2].id) got.set(d[2].id, d[2]); else if (d[0] === 'EOSE'){ clearTimeout(t); fin(); } } catch(e){} };
+      ws.onerror = () => { clearTimeout(t); fin(); };
+    }
+  });
+}
+function radioLike(){
+  const c = radio.cur; if (!c || radio.liked.has(c.id) || !window.NostrLite || !nostrSk) return;
+  radio.liked.add(c.id); try { localStorage.setItem('dj-radio-likes', JSON.stringify([...radio.liked].slice(-500))); } catch(e){}
+  const info = radio.info || {};
+  const ev = NostrLite.finish({kind: 30078, created_at: Math.floor(Date.now() / 1000), content: JSON.stringify({t: c.t || info.t, a: c.a || info.a, l: info.link || '', g: c.g, d: c.d}),
+    tags: [['d', 'djstudio-like:' + c.id], ['t', 'djstudio-like'], ['track', String(c.id)], ['m', monthKey()], ['g', c.g]]}, nostrSk);
+  nostrPublish(ev);
+  const x = radio.top.find(y => y.id === c.id); if (x) x.n++; else radio.top.push({id: c.id, n: 1, t: c.t, a: c.a, g: c.g, d: c.d});
+  renderRadio(true);
+}
+// junta los 👍 del mes actual y del anterior; cada persona cuenta una vez por tema
+async function radioLikes(sinceMonths = 1){
+  const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); d.setMonth(d.getMonth() - sinceMonths);
+  const evs = await nostrQuery({kinds: [30078], '#t': ['djstudio-like'], since: Math.floor(d / 1000), limit: 5000});
+  const by = new Map();
+  for (const e of evs){
+    if (!window.NostrLite || !NostrLite.verify(e)) continue;
+    const tag = k => (e.tags.find(t => t[0] === k) || [])[1];
+    const id = +tag('track'), m = tag('m') || monthKey(new Date(e.created_at * 1000)); if (!id) continue;
+    let c = {}; try { c = JSON.parse(e.content); } catch(x){}
+    const key = m + '|' + id;
+    if (!by.has(key)) by.set(key, {m, id, t: c.t || '', a: c.a || '', l: c.l || '', g: c.g || tag('g') || '', d: +c.d || 0, who: new Set()});
+    by.get(key).who.add(e.pubkey);
+  }
+  return [...by.values()].map(x => ({...x, n: x.who.size, who: undefined})).sort((p, q) => q.n - p.n);
+}
+async function radioRefreshTop(){
+  if (Date.now() - radio.topAt < 10 * 60000) return; radio.topAt = Date.now();
+  try {
+    const list = await radioLikes(1), merged = new Map();
+    for (const x of list){ const y = merged.get(x.id); if (y) y.n += x.n; else merged.set(x.id, {...x}); }
+    radio.top = [...merged.values()].sort((p, q) => q.n - p.n);
+  } catch(e){}
+}
+setInterval(radioRefreshTop, 60000);
+
+/* ---- skip por votación: 2 de 2, 4 de 5, 8 de 10... (al menos el 80 % de la sala) ---- */
+function skipNeeded(){ const n = net.peers.size + 1; return n <= 2 ? n : Math.ceil(n * 0.8); }
+function skipCount(){ if (!radio.cur) return 0; let k = 0; for (const [who, id] of radio.skip) if (id === radio.cur.id && (who === 'yo' || net.peers.has(who))) k++; return k; }
+function radioVoteSkip(){
+  if (!radio.cur || djTimeNow()) return;
+  radio.skip.set('yo', radio.cur.id);
+  if (net.actions && net.actions.skip) net.actions.skip.send({id: radio.cur.id});
+  radioCheckSkip(); renderRadio(true);
+}
+function radioCheckSkip(){
+  if (!radio.cur || djTimeNow()) return;
+  if (skipCount() >= skipNeeded() && radioConductor()) radioPickNext('skip');
+}
+
+/* ---- interfaz: disco girando, tarjeta del tema, aviso de 👍 al final ---- */
+const radioBtn = document.getElementById('radioBtn'), radioCard = document.getElementById('radioCard'), radioToast = document.getElementById('radioToast'), radioAsk = document.getElementById('radioAsk');
+let radioToastT = 0, radioShownId = null;
+function radioTitle(){ const c = radio.cur || {}, i = radio.info || {}; return {t: i.t || c.t || 'Cargando…', a: i.a || c.a || '', art: i.art || '', link: i.link || ''}; }
+function renderRadio(force){
+  const audible = radio.vol > 0.5 && !!radio.cur;
+  radioBtn.hidden = !radio.cur;
+  radioBtn.classList.toggle('on', audible);
+  radioBtn.setAttribute('aria-label', audible ? 'Radio de la sala: ' + radioTitle().t : 'Radio de la sala (en pausa)');
+  // aviso del tema nuevo
+  if (radio.cur && radio.info && radioShownId !== radio.cur.id && audible){
+    radioShownId = radio.cur.id; const T = radioTitle();
+    radioToast.textContent = '♪ ' + T.t + (T.a ? ' — ' + T.a : ''); radioToast.classList.add('on');
+    clearTimeout(radioToastT); radioToastT = setTimeout(() => radioToast.classList.remove('on'), 4500);
+  }
+  // ¿te gustó? en los últimos 25 s del tema
+  const c = radio.cur, left = c && c.d ? c.at + c.d - Date.now() : Infinity;
+  const ask = audible && left < 25000 && left > 0 && !radio.liked.has(c.id);
+  if (ask !== !radioAsk.hidden){ radioAsk.hidden = !ask; if (ask) radioAsk.querySelector('span').textContent = '¿Te gustó «' + radioTitle().t.slice(0, 48) + '»?'; }
+  if (radioCard.hidden && !force) return;
+  if (radioCard.hidden) return;
+  const T = radioTitle(), g = c ? (c.top ? '⭐ Más votados' : 'Radio · ' + genreOf(c.g).l) : '';
+  const key = [c && c.id, T.t, T.art, radio.liked.has(c && c.id), skipCount(), skipNeeded(), djTimeNow(), radioMuted, audible].join('|');
+  if (key === radioCard.dataset.key) return; radioCard.dataset.key = key;
+  radioCard.innerHTML = '';
+  const top = document.createElement('div'); top.className = 'rtop';
+  if (T.art){ const im = document.createElement('img'); im.src = T.art.replace('-large', '-t200x200'); im.alt = ''; top.append(im); }
+  const tx = document.createElement('div'); tx.className = 'rtx';
+  const gg = document.createElement('small'); gg.textContent = g + (audible ? '' : ' · en pausa');
+  const tt = document.createElement('b'); tt.textContent = T.t;
+  const aa = document.createElement('span'); aa.textContent = T.a;
+  tx.append(gg, tt, aa); top.append(tx); radioCard.append(top);
+  const row = document.createElement('div'); row.className = 'rrow';
+  const like = document.createElement('button'); like.type = 'button'; const liked = c && radio.liked.has(c.id);
+  like.textContent = liked ? '👍 Te gustó' : '👍 Me gusta'; like.disabled = !!liked; like.addEventListener('click', radioLike);
+  row.append(like);
+  if (!djTimeNow()){
+    const sk = document.createElement('button'); sk.type = 'button'; const mine = c && radio.skip.get('yo') === c.id;
+    sk.textContent = '⏭ Skip ' + skipCount() + '/' + skipNeeded(); sk.disabled = !!mine; sk.title = 'Se salta si vota al menos el 80 % de la sala';
+    sk.addEventListener('click', radioVoteSkip); row.append(sk);
+  }
+  const mu = document.createElement('button'); mu.type = 'button'; mu.textContent = radioMuted ? '🔈 Activar' : '🔇 Silenciar';
+  mu.title = 'Solo en tu computador'; mu.addEventListener('click', () => { radioMuted = !radioMuted; try { localStorage.setItem('dj-radio-mute', radioMuted ? '1' : '0'); } catch(e){} radio.sentVol = -1; renderRadio(true); });
+  row.append(mu); radioCard.append(row);
+  if (T.link){ const a = document.createElement('a'); a.href = T.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Escuchar en SoundCloud ↗'; a.className = 'rlink'; radioCard.append(a); }
+}
+radioBtn.addEventListener('click', () => { radioCard.hidden = !radioCard.hidden; radioBtn.setAttribute('aria-expanded', !radioCard.hidden); radioCard.dataset.key = ''; renderRadio(true); });
+radioAsk.querySelector('button').addEventListener('click', () => { radioLike(); radioAsk.hidden = true; });
+document.addEventListener('pointerdown', e => { if (!radioCard.hidden && !radioCard.contains(e.target) && !radioBtn.contains(e.target)) radioCard.hidden = true; });
+
+/* ---- "evaluar": ranking mensual de los temas con más 👍 (solo el administrador) ---- */
+async function radioEvaluate(){
+  addChat({kind:'system', text:'📊 Evaluando los 👍 de la radio…'});
+  const list = await radioLikes(1), mNow = monthKey(), d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const mPrev = monthKey(d);
+  const pick = m => list.filter(x => x.m === m).slice(0, 20);
+  const res = {evaluado: new Date().toISOString(), [mNow]: pick(mNow), [mPrev]: pick(mPrev)};
+  try { localStorage.setItem('dj-radio-eval-' + mNow, JSON.stringify(res)); } catch(e){}
+  const line = (m, arr) => arr.length ? m + ': ' + arr.slice(0, 5).map((x, i) => (i + 1) + '. ' + x.t + ' (' + x.n + ' 👍)').join(' · ') : m + ': sin votos todavía';
+  addChat({kind:'system', text: '🏆 ' + line(mNow, res[mNow])});
+  addChat({kind:'system', text: '🏆 ' + line(mPrev, res[mPrev])});
+  const blob = new Blob([JSON.stringify(res, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'evaluacion-radio-' + mNow + '.json'; document.body.append(a); a.click(); a.remove();
+  radio.topAt = 0; radioRefreshTop();
+}
+
 schedTick();
 })();
 </script>
