@@ -499,7 +499,9 @@ DEFAULTS.push({name:'Nika', build:'delgado', skin:'#e8b896', hair:'coleta', hair
   model:'models/nika.glb', ear:[0.8, 0.085], modelScale:0.93, modelLift:0.952, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D',
   bio:'Modelo 3D con esqueleto propio: camina, baila y pincha. Basado en «Teal-Haired Anime Girl» de Zara Petrov (CC BY 4.0), con pelo recoloreado, malla reducida y esqueleto nuevo.'});
 DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenzas', hairColor:'#b8141e', top:'oversize', topColor:'#d3121f', pants:'cargo', pantsColor:'#1d1c21', shoes:'#f2efe8', shoeAccent:'#c8102e', beard:'corta', acc:'expansiones', danceA:'headbang', danceB:'puno',
-  model:'models/fr3d_anim.glb', rig:'mixamo', ear:[1.53, 0.095, 0.16], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  model:'models/fr3d_anim.glb', rig:'mixamo', ear:[1.52, 0.1, 0.16], idle:'proc', armFix:1.45, djLean:0.3, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, pose:'poder',
+  /* 'Walking_Drug' queda guardado para una función futura */
+  dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['Hip_Hop_Dancing_3','Hip Hop 3'], ['Breakdance_1990','Breakdance 1990'], ['Breakdance_Freezes','Breakdance Freezes']], signature:true, tag:'Modelo 3D · DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
   model:'models/wishi_anim.glb', rig:'mixamo', ear:[1.54, 0.09], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35, modelScale:1, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
@@ -1203,7 +1205,7 @@ function animClips(gltf, d){
     out[c.name] = c;
   }
   // algunos bailes parten desde la pose en T: se recortan los primeros cuadros
-  for (const [n] of dancesOf(d)) if (out[n]) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);
+  for (const [n] of dancesOf(d)) if (out[n] && out[n].duration > 2) out[n] = THREE.AnimationUtils.subclip(out[n], n, 12, Math.round(out[n].duration * 30), 30);   // los clips cortos (loops) se dejan enteros
   // "parado": una postura tranquila tomada de uno de sus clips
   const [ic, ifr] = (d && Array.isArray(d.idle) && d.idle) || ['Gangnam_Style', 0];
   const src = gltf.animations.find(a => a.name === ic);
