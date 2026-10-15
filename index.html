@@ -503,14 +503,15 @@ DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenz
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
   model:'models/wishi_anim.glb', rig:'mixamo', ear:[1.54, 0.09], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35, modelScale:1, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
-  dances:[['Bboy_Uprock','B-boy Uprock'], ['Dancing','Free style'], ['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['Party','Party'], ['Silly_Dancing','Silly'], ['Drugs','Vaivén']],
+  // 'Drugs' (vaivén) queda guardado en el modelo para una función futura; no está en la lista de bailes
+  dances:[['Dancing','Free style'], ['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['Party','Party'], ['Silly_Dancing','Silly']],
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
   model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35,
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Silly_Dancing','Silly']], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ'});
 DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calvo', hairColor:'#141417', top:'camiseta', topColor:'#141417', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'no', danceA:'headbang', danceB:'puno',
   model:'models/greenroll_anim.glb', rig:'mixamo', ear:[1.52, 0.125, 0.15], idle:'proc', armFix:1.45, djLean:0.2, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, pose:'poder',
-  dances:[['Hip_Hop_Dancing','Hip Hop'], ['House_Dancing','House'], ['Snake_Hip_Hop_Dance','Snake'], ['Step_Hip_Hop_Dance','Step'], ['Dancing','Free style'], ['Swing_Dancing','Swing'], ['Macarena_Dance','Macarena'], ['Ymca_Dance','YMCA'], ['Walking_Drug','Borracho'], ['Drunk_Walking_Turn','Borracho con giro']], signature:true, tag:'Modelo 3D · DJ'});
+  dances:[['Hip_Hop_Dancing','Hip Hop'], ['House_Dancing','House'], ['Snake_Hip_Hop_Dance','Snake'], ['Step_Hip_Hop_Dance','Step'], ['Dancing','Free style'], ['Swing_Dancing','Swing'], ['Macarena_Dance','Macarena'], ['Ymca_Dance','YMCA'], ['Drunk_Walking_Turn','Borracho con giro']],   // 'Walking_Drug' queda guardado para una función futura signature:true, tag:'Modelo 3D · DJ'});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
