@@ -502,7 +502,8 @@ DEFAULTS.push({name:'DJ FR3D', build:'fornido', skin:'#cf9b70', hair:'gorraTrenz
   model:'models/fr3d_anim.glb', rig:'mixamo', ear:[1.53, 0.095, 0.16], modelScale:1.03, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   bio:'El DJ de la casa en 3D realista: gorra roja, trenzas rojas, polera oversize y cargo. Generado con Meshy a partir de su foto, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Wishi', build:'normal', skin:'#d9a27c', hair:'rapado', hairColor:'#3a2618', top:'sudadera', topColor:'#2fa7c4', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'puno',
-  model:'models/wishi.glb', ear:[0.79, 0.092], modelScale:0.95, modelLift:0.951, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  model:'models/wishi_anim.glb', rig:'mixamo', ear:[1.54, 0.09], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35, modelScale:1, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  dances:[['Bboy_Uprock','B-boy Uprock'], ['Dancing','Free style'], ['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['Party','Party'], ['Silly_Dancing','Silly'], ['Drugs','Vaivén']],
   bio:'DJ Wishi en 3D realista: lentes oscuros, polerón estampado turquesa, cargo negro y tatuajes en los brazos. Generado con Meshy, con malla reducida y esqueleto propio para caminar, bailar y pinchar.'});
 DEFAULTS.push({name:'DJ Valknuz', build:'normal', skin:'#e2b48f', hair:'afro', hairColor:'#1d1714', top:'camiseta', topColor:'#173a5e', pants:'cargo', pantsColor:'#141417', shoes:'#f2efe8', shoeAccent:'#141417', beard:'corta', danceA:'rebote', danceB:'salto',
   model:'models/valknuz_anim.glb', rig:'mixamo', ear:[1.59, 0.086], idle:'proc', djLean:0.25, djArm:-0.1, djElb:0.35,
@@ -3732,6 +3733,7 @@ function renderCselGrid(){
   }
 }
 function cselPick(i){
+  if (csel.leaving) return;
   csel.pick = i;
   if (csel.char){ csel.scene.remove(csel.char); disposeTree(csel.char); }
   csel.char = buildCharacter(defs[i]); csel.char.rotation.y = 0.5; csel.scene.add(csel.char);
@@ -3772,6 +3774,13 @@ function cselLoop(now){
   if (cselEl.hidden){ csel.raf = 0; return; }
   const dt = Math.min(0.05, (now - (csel.last || now)) / 1000); csel.last = now;
   const g = csel.char;
+  // personajes con animación propia de selección: "in" mientras eliges y "out" al confirmar
+  const ar = g && g.userData.rig;
+  if (ar && ar.mixer && ar.actions.Sel_In){
+    if (!csel.leaving) g.userData.play('Sel_In', 0.3);
+    g.rotation.y = 0.28; ar.mixer.update(dt);
+    csel.r.render(csel.scene, csel.cam); csel.raf = requestAnimationFrame(cselLoop); return;
+  }
   if (g){
     const D = DEFAULTS[csel.pick];
     if (POSE_FN[D.pose]){ cselPower(g, now / 1000, D.poseAdj ? (t, o) => poseAdjust(POSE_FN[D.pose](t, o), D.poseAdj) : POSE_FN[D.pose]); csel.r.render(csel.scene, csel.cam); csel.raf = requestAnimationFrame(cselLoop); return; }
@@ -3816,6 +3825,18 @@ function refreshCselLocks(){
 function cselConfirm(){
   const i = csel.pick;
   if (heldBy(i)){ cselPick(i); return; }   // alguien lo tomó: hay que elegir otro
+  if (csel.leaving) return;
+  const ud = csel.char && csel.char.userData, out = ud && ud.rig && ud.rig.actions && ud.rig.actions.Sel_Out;
+  if (out){
+    // anima la salida del selector y recién entonces pasa a la sala
+    csel.leaving = true; cselGo.disabled = true;
+    out.setLoop(THREE.LoopOnce, 1); out.clampWhenFinished = true; ud.play('Sel_Out', 0.25);
+    setTimeout(() => { csel.leaving = false; cselGo.disabled = false; if (heldBy(i)){ cselPick(i); return; } cselFinish(i); }, out.getClip().duration * 1000 + 120);
+    return;
+  }
+  cselFinish(i);
+}
+function cselFinish(i){
   if (i !== sel) select(i);
   chosen = true; choseAt = Date.now(); locksChanged();
   nameInput.value = playerName; hudName.textContent = myDef().name;

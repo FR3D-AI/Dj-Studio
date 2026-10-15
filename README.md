@@ -20,5 +20,5 @@ Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
 ## Créditos
 - Modelo de **Nika** (`models/nika.glb`): basado en [«Teal-Haired Anime Girl»](https://sketchfab.com/3d-models/teal-haired-anime-girl-png-to-stl-supavoxel-aec3ed6d87d24586b17ce3d1b9b9c82b) de Zara Petrov, licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Cambios: pelo recoloreado, malla reducida de 647 mil a 45 mil triángulos, textura horneada de nuevo y esqueleto de 19 huesos con pesos propios.
 - Modelo de **DJ FR3D** (`models/fr3d.glb`): generado con Meshy AI a partir de una foto propia; malla reducida, textura horneada y esqueleto hechos para este juego. Animaciones capturadas de [Mixamo](https://www.mixamo.com) (Adobe).
-- Modelo de **DJ Wishi** (`models/wishi.glb`): generado con Meshy AI; malla reducida, textura horneada, esqueleto propio y brazos bajados desde la pose en T, hechos para este juego.
+- Modelo de **DJ Wishi** (`models/wishi_anim.glb`): generado con Meshy AI y animado con Mixamo (caminar, correr, 7 bailes y las animaciones de entrada y salida del selector).
 - Modelos de **DJ Valknuz** (`models/valknuz.glb`) y **DJ Green Roll** (`models/greenroll.glb`): generados con Meshy AI; malla reducida, textura horneada y esqueleto propio, con los brazos llevados a reposo, hechos para este juego. DJ Valknuz usa animaciones capturadas de Mixamo (Adobe).
