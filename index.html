@@ -4044,7 +4044,8 @@ async function radioPickNext(reason){
     }
     if (!pick) return;
     radio.lastGenre = pick.g;
-    const st = {...pick, at: Date.now() + 1500, v: 1};
+    const sk = reason === 'skip';
+    const st = {...pick, at: Date.now() + (sk ? 3200 : 1500), v: 1, sk};
     radioApply(st, true);
     if (net.actions && net.actions.radio && net.peers.size) net.actions.radio.send(st);
     if (reason === 'skip') addChat({kind:'system', text: '⏭ La sala saltó el tema'});
@@ -4053,11 +4054,14 @@ async function radioPickNext(reason){
 function radioApply(st, mine){
   if (!st || !st.id) return;
   if (radio.cur && radio.cur.id === st.id && radio.cur.at === st.at) return;
-  radio.cur = {id: +st.id, g: String(st.g || ''), t: String(st.t || '').slice(0, 140), a: String(st.a || '').slice(0, 80), d: +st.d || 0, at: +st.at || Date.now(), top: !!st.top};
+  const wasPlaying = radio.playing;
+  radio.cur = {id: +st.id, g: String(st.g || ''), t: String(st.t || '').slice(0, 140), a: String(st.a || '').slice(0, 80), d: +st.d || 0, at: +st.at || Date.now(), top: !!st.top, sk: !!st.sk};
   radio.stateAt = Date.now();
   radio.played.push(radio.cur.id); if (radio.played.length > 40) radio.played.shift();
   radio.skip = new Map(); radio.prompted = null; radio.info = null;
-  radioLoadCur();
+  // skip: el tema que sonaba se apaga en 1,2 s, queda un silencio y el siguiente parte desde el segundo 0 subiendo suave
+  if (radio.cur.sk && wasPlaying){ radio.duckAt = Date.now(); setTimeout(radioLoadCur, 1300); }
+  else radioLoadCur();
   renderRadio(true);
 }
 function radioLoadCur(){
@@ -4113,8 +4117,12 @@ function radioTick(){
   if (radio.ready && target > 0 && radioConductor()){
     if (!radio.cur || (radio.cur.d && now > radio.cur.at + radio.cur.d + 2500)) radioPickNext();
   }
-  if (radio.w && radio.ready && radio.cur && radio.loadedId === radio.cur.id){
-    const v = Math.round(radioMuted ? 0 : radio.vol);
+  if (radio.duckAt && now - radio.duckAt < 1300 && radio.w && radio.ready){ const v = Math.round(radioMuted ? 0 : radio.vol * Math.max(0, 1 - (now - radio.duckAt) / 1200)); if (v !== radio.sentVol){ radio.w.setVolume(v); radio.sentVol = v; } }
+  else if (radio.w && radio.ready && radio.cur && radio.loadedId === radio.cur.id){
+    let env = 1;
+    if (radio.duckAt && now - radio.duckAt < 1300) env = Math.max(0, 1 - (now - radio.duckAt) / 1200);
+    else if (radio.cur.sk) env = Math.max(0, Math.min(1, (now - radio.cur.at) / 1500));
+    const v = Math.round(radioMuted ? 0 : radio.vol * env);
     if (v !== radio.sentVol){ radio.w.setVolume(v); radio.sentVol = v; }
     const pos = now - radio.cur.at;
     if (radio.vol > 0.3 && pos >= 0 && (!radio.cur.d || pos < radio.cur.d)){
