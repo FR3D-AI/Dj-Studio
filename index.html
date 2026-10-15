@@ -1021,11 +1021,30 @@ item('planta','Macetas',true,(g,solid)=>{
     solid(-10,-8.95,zs > 0 ? 3.95 : -5, zs > 0 ? 5 : -3.95);
   }
 });
-item('alfombra','Alfombra',true,(g)=>{
-  const a = new THREE.Mesh(new THREE.PlaneGeometry(4.6,3.4,10,8), M('#5b3a7a')); a.rotation.x = -Math.PI/2; a.position.set(-5,0.005,0); a.receiveShadow = true; g.add(a);
-  const b = new THREE.Mesh(new THREE.PlaneGeometry(4.2,3.0,10,8), M('#7a4f9a')); b.rotation.x = -Math.PI/2; b.position.set(-5,0.008,0); b.receiveShadow = true; g.add(b);
-});
 item('pantallas','Pantallas de video',true,() => ({}));
+// máquinas de humo en las esquinas delanteras de la tarima: lanzan humo bajo hacia la pista, teñido por las luces
+const SMOKE_N = 520;
+item('humo','Máquina de humo',false,(g)=>{
+  const machines = [];
+  for (const zs of [-1, 1]){
+    box(0.42,0.24,0.3,'#1b1a20',8.05,STAGE_H+0.14,zs*2.15,g);
+    box(0.06,0.08,0.12,'#2c2a33',7.82,STAGE_H+0.14,zs*2.15,g);           // boquilla
+    machines.push({x:7.78, y:STAGE_H+0.15, z:zs*2.15, dir:-1, zs});
+  }
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(SMOKE_N*3), size = new Float32Array(SMOKE_N), alpha = new Float32Array(SMOKE_N), col = new Float32Array(SMOKE_N*3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1)); geo.setAttribute('aCol', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.ShaderMaterial({transparent:true, depthWrite:false, uniforms:{uScale:{value:400}},
+    vertexShader:`attribute float aSize; attribute float aAlpha; attribute vec3 aCol; varying float vA; varying vec3 vC; uniform float uScale;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = aSize * uScale / max(0.3, -mv.z); vA = aAlpha; vC = aCol; }`,
+    fragmentShader:`varying float vA; varying vec3 vC;
+      void main(){ vec2 p = gl_PointCoord - 0.5; float d = length(p); if (d > 0.5) discard;
+        float a = smoothstep(0.5, 0.0, d); a *= a * vA; gl_FragColor = vec4(vC, a); }`});
+  const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 3; g.add(pts);
+  const P = Array.from({length: SMOKE_N}, () => ({life: 0, max: 1, vx: 0, vy: 0, vz: 0, s0: 0.3}));
+  return {machines, pts, P, geo, mat, emit: 0, burst: 0, next: 2};
+});
 item('cama','Cama',false,(g,solid)=>{
   box(1.6,0.4,2.2,'#4a3a2c',3.95,0.2,3.75,g); box(1.5,0.14,2.1,'#e9e3d6',3.95,0.47,3.75,g);
   box(1.5,0.08,1.3,'#2c5aa8',3.95,0.56,4.1,g); box(0.6,0.14,0.35,'#f2ece0',3.95,0.6,2.9,g); box(1.6,0.8,0.1,'#4a3a2c',3.95,0.4,2.6,g);
@@ -2029,6 +2048,44 @@ function presetColor(k, t, out){
     default: out.set(PALETTE[(((b + k*2) % PALETTE.length) + PALETTE.length) % PALETTE.length]); return 1;
   }
 }
+// humo: sale en bocanadas (más seguido con DJ en vivo y en cada drop), avanza bajo y se esparce sobre la pista
+const SMOKE = ITEMS.find(i => i.id === 'humo'), smokeC = new THREE.Color(), smokeL = new THREE.Color();
+function smokeUpdate(t, dt, djActive){
+  if (!SMOKE || !room.items.humo) return;
+  const S = SMOKE.api, pos = S.geo.attributes.position.array, size = S.geo.attributes.aSize.array, al = S.geo.attributes.aAlpha.array, col = S.geo.attributes.aCol.array;
+  S.mat.uniforms.uScale.value = renderer.domElement.height * 0.55;
+  const live = djActive || music.sounding;
+  S.next -= dt;
+  if (S.next <= 0){ S.burst = live ? 2.2 + Math.random()*1.5 : 1.2; S.next = (live ? 9 : 22) + Math.random()*8; }
+  if (music.dropStart){ S.burst = Math.max(S.burst, 3.5); }
+  S.burst = Math.max(0, S.burst - dt);
+  let toEmit = S.burst > 0 ? dt * 95 : dt * (live ? 6 : 2);   // bocanadas + un hilo constante que mantiene la neblina
+  // color de las luces del momento, mezclado con gris humo
+  presetColor(Math.floor(t*0.5) % 3, t, smokeL);
+  const glow = live ? 0.65 + 0.35*music.lightPulse : 0.35;
+  for (let i = 0; i < SMOKE_N; i++){
+    const p = S.P[i];
+    if (p.life <= 0){
+      if (toEmit >= 1 || (toEmit > 0 && Math.random() < toEmit)){
+        toEmit -= 1; const m = S.machines[i % 2];
+        p.life = p.max = 8 + Math.random()*6; p.s0 = 0.35 + Math.random()*0.25;
+        p.vx = -(2.2 + Math.random()*1.8); p.vy = 0.05 + Math.random()*0.18; p.vz = -m.zs*(0.15 + Math.random()*0.5) + (Math.random()-0.5)*0.5;
+        pos[i*3] = m.x; pos[i*3+1] = m.y; pos[i*3+2] = m.z;
+      } else { al[i] = 0; continue; }
+    }
+    p.life -= dt;
+    const k = Math.exp(-dt*0.7);                       // el chorro pierde fuerza y el humo flota
+    p.vx *= k; p.vz *= k; p.vy = p.vy*k + dt*0.02;
+    pos[i*3] += p.vx*dt; pos[i*3+1] = Math.min(1.9, pos[i*3+1] + p.vy*dt); pos[i*3+2] += p.vz*dt;
+    pos[i*3] = Math.max(-HX + 0.3, pos[i*3]); pos[i*3+2] = Math.max(-HZ + 0.3, Math.min(HZ - 0.3, pos[i*3+2]));
+    const age = 1 - p.life / p.max;
+    size[i] = p.s0 + age * 3.6;
+    al[i] = Math.min(1, age * 5) * Math.pow(1 - age, 1.3) * 0.26;
+    smokeC.setRGB(0.55, 0.55, 0.6).lerp(smokeL, 0.55).multiplyScalar(glow);
+    col[i*3] = smokeC.r; col[i*3+1] = smokeC.g; col[i*3+2] = smokeC.b;
+  }
+  S.geo.attributes.position.needsUpdate = true; S.geo.attributes.aSize.needsUpdate = true; S.geo.attributes.aAlpha.needsUpdate = true; S.geo.attributes.aCol.needsUpdate = true;
+}
 function presetHue(t, hueBase){
   switch (lightPreset){
     case 'rojo': return 0.98;
@@ -2271,6 +2328,7 @@ function tick(){
     updateMeter(lvl);
   }
   updateVisuals(t, dt, hueBase);
+  smokeUpdate(t, dt, djActive);
   ecoSet(ecoWanted());
   if (frameNo % (ECO.on ? 8 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   updateBubbles(dt);
