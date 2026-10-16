@@ -3229,7 +3229,7 @@ async function connect(){
     look.send(lookPayload(), {target: id});
     if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
-    if (radio.cur && isHost()) radioA.send(radio.cur, {target: id});
+    if (isHost()) for (const t of radio.tracks) radioA.send({...t, info: undefined, deck: undefined, cutAt: undefined}, {target: id});
     if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); logoA.send({data: myLogo || ''}, {target: id}); }
     renderNet();
   };
@@ -3987,8 +3987,8 @@ const RADIO_GENRES = [
   {k:'dubstep', l:'Dubstep', src:['wakaan/tracks']},
   {k:'bounce', l:'Bounce', src:['mandatorybounce/tracks']}
 ];
-const RADIO_VOL = 30, RADIO_SILENCE_MS = 30000, RADIO_FADE_MS = 20000, RADIO_TOP_EVERY = 4;
-const radio = {api:null, w:null, ready:false, cur:null, loadedId:null, vol:0, sentVol:-1, playing:false, lastHeard:0, stateAt:0, startedAt:Date.now(),
+const RADIO_VOL = 10, RADIO_XF = 8000, RADIO_SILENCE_MS = 30000, RADIO_FADE_MS = 20000, RADIO_TOP_EVERY = 4;
+const radio = {api:null, decks:[], tracks:[], cur:null, vol:0, lastHeard:0, stateAt:0, startedAt:Date.now(),
   pools:{}, loading:{}, played:[], lastGenre:null, count:0, top:[], topAt:0, skip:new Map(), liked:new Set(), prompted:null, info:null, picking:false};
 try { radio.liked = new Set(JSON.parse(localStorage.getItem('dj-radio-likes') || '[]')); } catch(e){}
 let radioMuted = false; try { radioMuted = localStorage.getItem('dj-radio-mute') === '1'; } catch(e){}
@@ -4048,54 +4048,74 @@ async function radioPickNext(reason){
     }
     if (!pick) return;
     radio.lastGenre = pick.g;
-    const sk = reason === 'skip';
-    const st = {...pick, at: Date.now() + (sk ? 3200 : 1500), v: 1, sk};
+    const now = Date.now(), sk = reason === 'skip', c = radio.cur;
+    // crossfade: el siguiente entra cuando al actual le quedan RADIO_XF ms; con skip, silencio corto y parte desde 0
+    const xf = !sk && !!c && c.d && now < c.at + c.d - 500;
+    const at = sk ? now + 3200 : xf ? Math.max(now + 1500, c.at + c.d - RADIO_XF) : now + 1500;
+    const st = {...pick, at, v: 2, sk, xf};
     radioApply(st, true);
     if (net.actions && net.actions.radio && net.peers.size) net.actions.radio.send(st);
-    if (reason === 'skip') addChat({kind:'system', text: '⏭ La sala saltó el tema'});
+    if (sk) addChat({kind:'system', text: '⏭ La sala saltó el tema'});
   } finally { radio.picking = false; }
 }
-function radioApply(st, mine){
+// cada tema activo usa uno de los dos reproductores (así uno puede entrar mientras el otro sale)
+function radioNorm(st){ return {id: +st.id, g: String(st.g || ''), t: String(st.t || '').slice(0, 140), a: String(st.a || '').slice(0, 80), d: +st.d || 0, at: +st.at || Date.now(), top: !!st.top, sk: !!st.sk, xf: !!st.xf, info: null}; }
+function radioApply(st){
   if (!st || !st.id) return;
-  if (radio.cur && radio.cur.id === st.id && radio.cur.at === st.at) return;
-  const wasPlaying = radio.playing;
-  radio.cur = {id: +st.id, g: String(st.g || ''), t: String(st.t || '').slice(0, 140), a: String(st.a || '').slice(0, 80), d: +st.d || 0, at: +st.at || Date.now(), top: !!st.top, sk: !!st.sk};
-  radio.stateAt = Date.now();
-  radio.played.push(radio.cur.id); if (radio.played.length > 40) radio.played.shift();
-  radio.skip = new Map(); radio.prompted = null; radio.info = null;
-  // skip: el tema que sonaba se apaga en 1,2 s, queda un silencio y el siguiente parte desde el segundo 0 subiendo suave
-  if (radio.cur.sk && wasPlaying){ radio.duckAt = Date.now(); setTimeout(radioLoadCur, 1300); }
-  else radioLoadCur();
+  const n = radioNorm(st);
+  if (radio.tracks.some(t => t.id === n.id && t.at === n.at)) return;
+  const now = Date.now();
+  radio.stateAt = now;
+  radio.played.push(n.id); if (radio.played.length > 40) radio.played.shift();
+  // lo que estaba sonando: con crossfade sigue hasta terminar; con skip se apaga en 1,2 s; si no, se corta
+  for (const t of radio.tracks){ if (n.sk) t.cutAt = t.cutAt || now; else if (!n.xf) t.cutAt = now - 2000; }
+  radio.tracks = radio.tracks.filter(t => !(t.cutAt && now - t.cutAt > 1300)).slice(-1);
+  const used = radio.tracks.map(t => t.deck);
+  n.deck = [0, 1].find(i => !used.includes(i)) ?? 0;
+  radio.tracks.push(n);
+  radioLoadDeck(n);
+  radioPickCur(now);
   renderRadio(true);
 }
-function radioLoadCur(){
-  if (!radio.w || !radio.ready || !radio.cur || radio.loadedId === radio.cur.id) return;
-  const id = radio.cur.id; radio.loadedId = id; radio.playing = false;
-  radio.w.load('https://api.soundcloud.com/tracks/' + id, {auto_play:false, show_artwork:false, visual:false, callback: () => {
-    radio.w.getCurrentSound(s => {
-      if (!s || radio.loadedId !== id) return;
-      radio.info = {t: s.title, a: (s.user && s.user.username) || '', art: s.artwork_url || (s.user && s.user.avatar_url) || '', link: s.permalink_url, d: s.duration};
-      if (radio.cur && radio.cur.id === id){ if (!radio.cur.d) radio.cur.d = s.duration; if (!radio.cur.t) radio.cur.t = s.title; if (!radio.cur.a) radio.cur.a = radio.info.a; }
+// el tema "actual" (el que se muestra en el disco): el más nuevo que ya empezó
+function radioPickCur(now){
+  const started = radio.tracks.filter(t => t.at <= now + 200);
+  const c = started.length ? started[started.length - 1] : radio.tracks[radio.tracks.length - 1] || null;
+  if (c !== radio.cur){ radio.cur = c; radio.skip = new Map(); radio.prompted = null; radio.info = c ? c.info : null; }
+}
+function radioLoadDeck(t){
+  const dk = radio.decks[t.deck]; if (!dk || !dk.ready || dk.st === t) return;
+  dk.st = t; dk.playing = false; dk.sentVol = -1;
+  dk.w.load('https://api.soundcloud.com/tracks/' + t.id, {auto_play:false, show_artwork:false, visual:false, callback: () => {
+    dk.w.getCurrentSound(s => {
+      if (!s || dk.st !== t) return;
+      t.info = {t: s.title, a: (s.user && s.user.username) || '', art: s.artwork_url || (s.user && s.user.avatar_url) || '', link: s.permalink_url, d: s.duration};
+      if (!t.d) t.d = s.duration; if (!t.t) t.t = s.title; if (!t.a) t.a = t.info.a;
+      if (radio.cur === t) radio.info = t.info;
+      dk.w.setVolume(0); dk.sentVol = 0;
       // un tema que solo se puede escuchar 30 s se salta
-      if ((s.policy === 'SNIP' || s.policy === 'BLOCK') && radioConductor()) radioPickNext();
-      radio.sentVol = -1; renderRadio();
+      if ((s.policy === 'SNIP' || s.policy === 'BLOCK') && radioConductor() && radio.cur === t) radioPickNext();
+      renderRadio();
     });
   }});
 }
 function radioInit(){
-  if (radio.w) return;
+  if (radio.decks.length) return;
   loadScApi().then(SC => {
-    const f = scFrame('https://api.soundcloud.com/tracks/505933032');
-    radio.w = SC.Widget(f);
-    radio.w.bind(SC.Widget.Events.READY, () => { radio.ready = true; radioLoadCur(); });
-    radio.w.bind(SC.Widget.Events.FINISH, () => { radio.playing = false; if (radioConductor()) radioPickNext(); });
-    radio.w.bind(SC.Widget.Events.ERROR, () => { if (radioConductor()) setTimeout(() => radioPickNext(), 1500); });
+    for (let i = 0; i < 2; i++){
+      const f = scFrame('https://api.soundcloud.com/tracks/505933032'), dk = {w: SC.Widget(f), ready:false, st:null, playing:false, sentVol:-1, syncAt:0};
+      radio.decks.push(dk);
+      dk.w.bind(SC.Widget.Events.READY, () => { dk.ready = true; for (const t of radio.tracks) if (t.deck === i) radioLoadDeck(t); });
+      dk.w.bind(SC.Widget.Events.ERROR, () => { if (radioConductor() && dk.st && dk.st === radio.cur) setTimeout(() => radioPickNext(), 1500); });
+    }
   }).catch(() => {});
   radioRefreshTop();
   // deja listos un par de géneros para que el primer tema parta rápido
-  const gs = RADIO_GENRES.slice().sort(() => Math.random() - 0.5); genrePool(gs[0].k).then(() => genrePool(gs[1].k));
+  // y de a poco el resto, para que cada cambio de tema sea instantáneo
+  const gs = RADIO_GENRES.slice().sort(() => Math.random() - 0.5);
+  (async () => { for (const g of gs){ await genrePool(g.k); await new Promise(r => setTimeout(r, 1500)); } })();
 }
-// ¿cuánto debe sonar la radio ahora? 1 = 30 %, 0 = callada
+// ¿cuánto debe sonar la radio ahora? 1 = volumen de la radio, 0 = callada
 function radioTarget(now){
   if (net.casting) return 0;                                   // el DJ que transmite no la escucha (y no se cuela en su transmisión)
   const a = activeSlot(now), live = !!net.djPeer;
@@ -4105,10 +4125,19 @@ function radioTarget(now){
     return now - since >= RADIO_SILENCE_MS ? 1 : 0;           // 30 s sin sonido del DJ: vuelve la radio hasta que se escuche algo
   }
   const nx = nextSlot(now);
-  if (nx && nx.start - now <= RADIO_FADE_MS) return Math.max(0, (nx.start - now) / RADIO_FADE_MS);   // últimos 20 s: baja de 30 % a 0 %
+  if (nx && nx.start - now <= RADIO_FADE_MS) return Math.max(0, (nx.start - now) / RADIO_FADE_MS);   // últimos 20 s: baja hasta 0
   return 1;
 }
 function djTimeNow(){ return !!net.djPeer || net.casting || !!activeSlot(); }
+// volumen de cada tema: entra y sale en RADIO_XF ms (crossfade), sube suave tras un skip, se apaga en 1,2 s al saltarlo
+function radioEnv(t, now){
+  const cl = x => Math.max(0, Math.min(1, x));
+  let g = 1;
+  if (t.cutAt) g = Math.min(g, cl(1 - (now - t.cutAt) / 1200));
+  if (t.xf) g *= cl((now - t.at) / RADIO_XF); else if (t.sk) g *= cl((now - t.at) / 1500);
+  if (t.d) g *= cl((t.at + t.d - now) / RADIO_XF);
+  return g;
+}
 let radioLast = 0;
 function radioTick(){
   if (!entered) return;
@@ -4117,22 +4146,24 @@ function radioTick(){
   const fadeRate = RADIO_VOL / 2;                              // subidas y bajadas normales en 2 segundos
   const nx = nextSlot(now), countdown = nx && nx.start - now <= RADIO_FADE_MS && !djTimeNow();
   if (countdown) radio.vol = target; else radio.vol += Math.max(-fadeRate*dt, Math.min(fadeRate*dt, target - radio.vol));
-  // el que lleva el reloj elige el siguiente tema cuando el actual terminó (o no hay ninguno)
-  if (radio.ready && target > 0 && radioConductor()){
-    if (!radio.cur || (radio.cur.d && now > radio.cur.at + radio.cur.d + 2500)) radioPickNext();
+  radio.tracks = radio.tracks.filter(t => !(t.cutAt && now - t.cutAt > 1300) && !(t.d && now > t.at + t.d + 1000));
+  radioPickCur(now);
+  // el que lleva el reloj elige el siguiente un poco antes de que empiece el crossfade (o si no hay ninguno)
+  const last = radio.tracks[radio.tracks.length - 1];
+  if (radio.decks.some(d => d.ready) && target > 0 && radioConductor() && !radio.picking){
+    if (!last || (last.d && now > last.at + last.d - RADIO_XF - 25000)) radioPickNext();   // se elige con tiempo para que el crossfade parta justo
   }
-  if (radio.duckAt && now - radio.duckAt < 1300 && radio.w && radio.ready){ const v = Math.round(radioMuted ? 0 : radio.vol * Math.max(0, 1 - (now - radio.duckAt) / 1200)); if (v !== radio.sentVol){ radio.w.setVolume(v); radio.sentVol = v; } }
-  else if (radio.w && radio.ready && radio.cur && radio.loadedId === radio.cur.id){
-    let env = 1;
-    if (radio.duckAt && now - radio.duckAt < 1300) env = Math.max(0, 1 - (now - radio.duckAt) / 1200);
-    else if (radio.cur.sk) env = Math.max(0, Math.min(1, (now - radio.cur.at) / 1500));
+  for (const dk of radio.decks){
+    if (!dk.ready) continue;
+    const t = dk.st && radio.tracks.includes(dk.st) ? dk.st : null;
+    if (!t){ if (dk.playing){ dk.w.pause(); dk.playing = false; } continue; }
+    const pos = now - t.at, env = radioEnv(t, now);
     const v = Math.round(radioMuted ? 0 : radio.vol * env);
-    if (v !== radio.sentVol){ radio.w.setVolume(v); radio.sentVol = v; }
-    const pos = now - radio.cur.at;
-    if (radio.vol > 0.3 && pos >= 0 && (!radio.cur.d || pos < radio.cur.d)){
-      if (!radio.playing){ radio.w.seekTo(Math.max(0, pos)); radio.w.play(); radio.playing = true; radio.syncAt = now; }
-      else if (now - (radio.syncAt || 0) > 6000){ radio.syncAt = now; radio.w.getPosition(p => { if (Math.abs(p - (Date.now() - radio.cur.at)) > 3000) radio.w.seekTo(Math.max(0, Date.now() - radio.cur.at)); }); }
-    } else if (radio.playing && radio.vol <= 0.3){ radio.w.pause(); radio.playing = false; }
+    if (v !== dk.sentVol){ dk.w.setVolume(v); dk.sentVol = v; }
+    if (radio.vol > 0.1 && env > 0 && pos >= 0 && (!t.d || pos < t.d)){
+      if (!dk.playing){ dk.w.seekTo(Math.max(0, pos)); dk.w.play(); dk.playing = true; dk.syncAt = now; }
+      else if (now - dk.syncAt > 6000){ dk.syncAt = now; dk.w.getPosition(p => { if (Math.abs(p - (Date.now() - t.at)) > 3000) dk.w.seekTo(Math.max(0, Date.now() - t.at)); }); }
+    } else if (dk.playing && (radio.vol <= 0.1 || env <= 0)){ dk.w.pause(); dk.playing = false; }
   }
   renderRadio();
 }
@@ -4258,7 +4289,7 @@ function renderRadio(force){
     sk.addEventListener('click', radioVoteSkip); row.append(sk);
   }
   const mu = document.createElement('button'); mu.type = 'button'; mu.textContent = radioMuted ? '🔈 Activar' : '🔇 Silenciar';
-  mu.title = 'Solo en tu computador'; mu.addEventListener('click', () => { radioMuted = !radioMuted; try { localStorage.setItem('dj-radio-mute', radioMuted ? '1' : '0'); } catch(e){} radio.sentVol = -1; renderRadio(true); });
+  mu.title = 'Solo en tu computador'; mu.addEventListener('click', () => { radioMuted = !radioMuted; try { localStorage.setItem('dj-radio-mute', radioMuted ? '1' : '0'); } catch(e){} radio.decks.forEach(d => d.sentVol = -1); renderRadio(true); });
   row.append(mu); radioCard.append(row);
   if (T.link){ const a = document.createElement('a'); a.href = T.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Escuchar en SoundCloud ↗'; a.className = 'rlink'; radioCard.append(a); }
 }
