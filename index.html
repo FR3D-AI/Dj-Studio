@@ -2391,7 +2391,8 @@ function animDrive(c, ud, dt, d, def, t){
   const rig = ud.rig; if (!rig.mixer) return;
   // pose hecha a mano (cabina, o "parado" para quien no trae una postura tranquila): entra mezclándose de a poco
   const proc = w => { ud.stopAnim(0.3); rig.mixer.update(dt); c.procW = Math.min(1, (c.procW || 0) + dt * 3.5); ud.sync(c.procW); };
-  if (d > 0.5){ proc(); return; }   // en la cabina: manos sobre el controlador
+  // frente a la mesa: si el personaje tiene su loop de DJ capturado, lo usa; si no, las manos se mueven a mano
+  if (d > 0.5){ if (rig.actions.DJ_Loop){ c.procW = 0; ud.play('DJ_Loop', 0.6, 1); rig.mixer.update(dt); return; } proc(); return; }   // en la cabina: manos sobre el controlador
   const spd = c.spd || 0;
   let name = 'Idle', speed = 1;
   if (c.move > 0.3 && spd > 0.15){
