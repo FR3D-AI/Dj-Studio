@@ -1292,9 +1292,9 @@ function buildModelCharacter(d){
     // cambia de animación con una mezcla suave
     const a = rig.actions[name]; if (!a) return false;
     a.timeScale = speed;
-    if (rig.curName === name) return true;
-    a.enabled = true; a.reset().setEffectiveWeight(1).fadeIn(fade).play();
-    if (rig.cur) rig.cur.fadeOut(fade);
+    if (rig.curName === name){ a.paused = false; return true; }
+    a.enabled = true; a.paused = false; a.reset().setEffectiveWeight(1); if (fade > 0) a.fadeIn(fade); a.play();
+    if (rig.cur){ if (fade > 0) rig.cur.fadeOut(fade); else rig.cur.stop(); }
     rig.cur = a; rig.curName = name; return true;
   }, stopAnim(fade = 0.3){ if (rig.cur){ rig.cur.fadeOut(fade); rig.cur = null; rig.curName = ''; } }};
   const attach = gltf => {
@@ -2391,17 +2391,35 @@ const DJ_HYPE_MS = 10 * 60 * 1000;   // minutos seguidos en la mesa antes de ent
 function animDrive(c, ud, dt, d, def, t){
   const rig = ud.rig; if (!rig.mixer) return;
   // pose hecha a mano (cabina, o "parado" para quien no trae una postura tranquila): entra mezclándose de a poco
-  const proc = w => { ud.stopAnim(0.3); rig.mixer.update(dt); c.procW = Math.min(1, (c.procW || 0) + dt * 3.5); ud.sync(c.procW); };
+  // Ojo: si una animación se apaga "a fundido", el esqueleto se mezcla con su pose de origen (brazos en T) y se abren
+  // los brazos un instante. Por eso la última animación se congela y la pose a mano entra encima; y al volver a animar,
+  // la animación nueva parte entera y la pose a mano sale mezclándose.
+  const proc = () => { if (rig.cur) rig.cur.paused = true; else c.procW = 1; rig.mixer.update(dt); c.procW = Math.min(1, (c.procW || 0) + dt * 3.5); ud.sync(c.procW); };
+  const anim = (name, fade, speed) => {
+    const fromProc = (c.procW || 0) > 0.01;
+    ud.play(name, fromProc ? 0 : fade, speed); rig.mixer.update(dt);
+    if (fromProc){ c.procW = Math.max(0, c.procW - dt * 3); ud.sync(c.procW); } else c.procW = 0;
+  };
   // frente a la mesa: si el personaje tiene su loop de DJ capturado, lo usa; si no, las manos se mueven a mano
   // "DJ en su Sinergia": después de 10 minutos seguidos en la mesa cambia a su loop de euforia
   const nowMs = performance.now();
-  if (d > 0.5){ if (!c.djSince) c.djSince = nowMs; } else if (d < 0.2) c.djSince = 0;
+  if (d > 0.5){ if (!c.djSince) c.djSince = nowMs; } else if (d < 0.2){ c.djSince = 0; c.djClip = null; c.djHypeSaid = false; }
   if (d > 0.5){
-    const hype = rig.actions.DJ_Hype && nowMs - c.djSince > DJ_HYPE_MS;
-    if (hype && !c.djHypeSaid){ c.djHypeSaid = true; addChat({kind:'system', text:'🔥 ' + ((c.def && c.def.name) || (def && def.name) || 'El DJ') + ' entró en su Sinergia'}); }
-    if (!hype) c.djHypeSaid = false;
-    const L = hype ? 'DJ_Hype' : 'DJ_Loop';
-    if (rig.actions[L]){ c.procW = 0; ud.play(L, 1.2, 1); rig.mixer.update(dt); return; }
+    // se van alternando sus loops de DJ (al terminar cada uno parte otro, sin repetir el mismo); la Sinergia entra
+    // en la rotación después de 10 minutos seguidos en la mesa
+    const hypeOk = rig.actions.DJ_Hype && nowMs - c.djSince > DJ_HYPE_MS;
+    const opts = ['DJ_Loop', 'DJ_Pro'].concat(hypeOk ? ['DJ_Hype'] : []).filter(n => rig.actions[n]);
+    if (opts.length){
+      const curA = c.djClip && rig.actions[c.djClip], len = curA ? curA.getClip().duration : 0;
+      c.djClipT = (c.djClipT || 0) + dt;
+      if (!curA || !opts.includes(c.djClip) || c.djClipT >= len - 1.2 || (hypeOk && !c.djHypeSaid)){
+        let next;
+        if (hypeOk && !c.djHypeSaid){ next = 'DJ_Hype'; c.djHypeSaid = true; addChat({kind:'system', text:'🔥 ' + ((c.def && c.def.name) || (def && def.name) || 'El DJ') + ' entró en su Sinergia'}); }
+        else { const pool = opts.length > 1 ? opts.filter(n => n !== c.djClip) : opts; next = pool[Math.floor(Math.random() * pool.length)]; }
+        c.djClip = next; c.djClipT = 0;
+      }
+      anim(c.djClip, 1.2, 1); return;
+    }
     proc(); return;
   }   // en la cabina: manos sobre el controlador
   const spd = c.spd || 0;
@@ -2417,9 +2435,7 @@ function animDrive(c, ud, dt, d, def, t){
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
   }
   if (name === 'Idle' && def && def.idle === 'proc'){ proc(); return; }
-  c.procW = 0;
-  ud.play(name, 0.35, speed);
-  rig.mixer.update(dt);
+  anim(name, 0.35, speed);
 }
 
 /* ---------- estilos visuales: Liviano / Moderno / Clásico (estilo San Andreas) ---------- */
