@@ -23,6 +23,6 @@ Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
 - Modelo de **DJ Nacho** (`models/nacho_anim.glb`): generado con Meshy AI («Summer Swagger») y animado con Mixamo: caminar, correr, 7 bailes y selector.
 - Modelo de **DJ Nikita** (`models/nikita_anim.glb`): generado con Meshy AI («Midnight Frequency») y animado con Mixamo: caminar, correr, 7 bailes, entrada y salida del selector y sus loops de DJ.
 - Modelo de **DJ Powerpuff** (`models/powerpuff_anim.glb`): generado con Meshy AI («Urban Beat Style») y animado con Mixamo; caminar, correr, 7 bailes, entrada y salida del selector y sus loops de DJ.
-- Modelo de **DJ RastaGirl** (`models/rasta_anim.glb`): generado con Meshy AI («Rasta Warrior Pose») y animado con Mixamo; por ahora trae sus loops de DJ.
+- Modelo de **DJ RastaGirl** (`models/rasta_anim.glb`): generado con Meshy AI («Rasta Warrior Pose») y animado con Mixamo: caminar, correr, 6 bailes, entrada y salida del selector y sus loops de DJ.
 - Modelo de **DJ Wishi** (`models/wishi_anim.glb`): generado con Meshy AI y animado con Mixamo (caminar, correr, 7 bailes y las animaciones de entrada y salida del selector).
 - Modelos de **DJ Valknuz** (`models/valknuz_anim.glb`) y **DJ Green Roll** (`models/greenroll_anim.glb`): generados con Meshy AI; malla reducida, textura horneada y esqueleto propio, con los brazos llevados a reposo, hechos para este juego. Los dos usan el esqueleto de Mixamo (Adobe): Valknuz y Green Roll con caminata, bailes y animaciones del selector capturados (Green Roll con un modelo nuevo de Meshy, el «Masked Sentinel»).
