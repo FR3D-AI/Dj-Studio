@@ -552,7 +552,7 @@ DEFAULTS.push({name:'DJ Nikita', build:'delgado', skin:'#d9a77f', hair:'coleta',
 DEFAULTS.push({name:'DJ Powerpuff', build:'delgado', skin:'#e2b48f', hair:'coleta', hairColor:'#121014', top:'tirantes', topColor:'#f2efe8', pants:'cargo', pantsColor:'#3b5878', shoes:'#f2efe8', danceA:'balanceo', danceB:'manos',
   model:'models/powerpuff_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['Arms_Hip_Hop_Dance','Brazos Hip Hop'], ['Booty_Hip_Hop_Dance','Booty'], ['Snake_Hip_Hop_Dance','Snake'], ['Belly_Dance','Belly Dance'], ['Twerk','Twerk']]});
-DEFAULTS.push({name:'DJ Rasta', build:'delgado', skin:'#c99a72', hair:'trenzas', hairColor:'#8a6a45', top:'tirantes', topColor:'#1a1a1a', pants:'cargo', pantsColor:'#4a4f36', shoes:'#2a241c', danceA:'balanceo', danceB:'manos',
+DEFAULTS.push({name:'DJ RastaGirl', build:'delgado', skin:'#c99a72', hair:'trenzas', hairColor:'#8a6a45', top:'tirantes', topColor:'#1a1a1a', pants:'cargo', pantsColor:'#4a4f36', shoes:'#2a241c', danceA:'balanceo', danceB:'manos',
   model:'models/rasta_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   dances:[]});   /* por ahora solo trae sus loops de DJ */
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
@@ -564,7 +564,7 @@ const LEGENDS = {
   "DJ Nacho": "Sombrero de paja, camisa de verano y lentes oscuros a cualquier hora: su pista empieza donde termina la playa. Aprendió a mezclar en los bares de la costa, uniendo samba, house y los vinilos de salsa de su tío, y dice que un buen set debe oler a sal y terminar con el sol saliendo.",
   "DJ Nikita": "Audífonos puestos desde que suena la primera alarma y el pelo dorado como foco de escenario. Creció en los clubes de medianoche de la ciudad, aprendiendo a leer la pista desde la barra, y hoy sus sets van del techno oscuro al house más luminoso. Dicen que nunca mira la pantalla: mezcla de oído y con la mirada en el público.",
   "DJ Powerpuff": "Gorra rosada, audífonos gigantes y un cable que le cuelga hasta la cintura como si fuera parte del outfit. Empezó haciendo mixtapes en su pieza para sus amigas y terminó llenando bodegas: su arma secreta son los drops dulces que de pronto explotan en bajos que hacen temblar el piso.",
-  "DJ Rasta": "Rastas hasta la cintura, collares de semillas y los colores verde, amarillo y rojo siempre encima. Se crió entre sound systems de reggae y dub, cargando parlantes desde niña, y hoy mezcla raíces jamaicanas con dancehall y bajos electrónicos. Su lema: la música es para unir, nunca para separar.",
+  "DJ RastaGirl": "Rastas hasta la cintura, collares de semillas y los colores verde, amarillo y rojo siempre encima. Se crió entre sound systems de reggae y dub, cargando parlantes desde niña, y hoy mezcla raíces jamaicanas con dancehall y bajos electrónicos. Su lema: la música es para unir, nunca para separar.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
@@ -581,7 +581,7 @@ defs.forEach((d,i) => { for (const k in DEFAULTS[i]) if (d[k] === undefined) d[k
 // lo que define el modelo 3D (archivo, tamaño, esqueleto, animaciones, pose) siempre viene del juego, nunca de lo guardado:
 // así, cuando un personaje se actualiza, todos lo ven con la versión nueva
 const MODEL_KEYS = ['model','modelScale','modelLift','rig','ear','dances','idle','armFix','pose','poseAdj','gait','legend','bio','tag','signature','djLean','djArm','djElb'];
-defs.forEach((d,i) => { for (const k of MODEL_KEYS){ if (DEFAULTS[i][k] === undefined) delete d[k]; else d[k] = DEFAULTS[i][k]; } });
+defs.forEach((d,i) => { for (const k of MODEL_KEYS){ if (DEFAULTS[i][k] === undefined) delete d[k]; else d[k] = DEFAULTS[i][k]; } if (DEFAULTS[i].signature) d.name = DEFAULTS[i].name; });
 try { room = JSON.parse(localStorage.getItem(ROOMKEY)); } catch(e) { room = null; }
 if (!room || typeof room !== 'object') room = {items:{}};
 // los 5 personajes están siempre en la sala: los que no maneja una persona son bots
