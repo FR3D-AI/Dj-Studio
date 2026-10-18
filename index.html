@@ -549,6 +549,9 @@ DEFAULTS.push({name:'DJ Nacho', build:'normal', skin:'#b07a52', hair:'rapado', h
 DEFAULTS.push({name:'DJ Nikita', build:'delgado', skin:'#d9a77f', hair:'coleta', hairColor:'#e0c48f', top:'tirantes', topColor:'#141417', pants:'cargo', pantsColor:'#ece9e2', shoes:'#ece9e2', danceA:'balanceo', danceB:'manos',
   model:'models/nikita_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['Arms_Hip_Hop_Dance','Brazos Hip Hop'], ['House_Dancing','House'], ['Shuffling','Shuffle'], ['Snake_Hip_Hop_Dance','Snake'], ['Step_Hip_Hop_Dance','Step'], ['Dancing_Running_Man','Running Man']]});
+DEFAULTS.push({name:'DJ Powerpuff', build:'delgado', skin:'#e2b48f', hair:'coleta', hairColor:'#121014', top:'tirantes', topColor:'#f2efe8', pants:'cargo', pantsColor:'#3b5878', shoes:'#f2efe8', danceA:'balanceo', danceB:'manos',
+  model:'models/powerpuff_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  dances:[]});   /* por ahora solo trae sus loops de DJ */
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
@@ -557,6 +560,7 @@ const LEGENDS = {
  "DJ Green Roll": "Nadie conoce su cara: detrás de la máscara solo se escucha el ritmo. Aprendió en los raves de bodega, donde el sonido se armaba con lo que hubiera, y su saludo con los cuernos es un homenaje a las bandas de rock que le enseñaron que el volumen también es una emoción.",
   "DJ Nacho": "Sombrero de paja, camisa de verano y lentes oscuros a cualquier hora: su pista empieza donde termina la playa. Aprendió a mezclar en los bares de la costa, uniendo samba, house y los vinilos de salsa de su tío, y dice que un buen set debe oler a sal y terminar con el sol saliendo.",
   "DJ Nikita": "Audífonos puestos desde que suena la primera alarma y el pelo dorado como foco de escenario. Creció en los clubes de medianoche de la ciudad, aprendiendo a leer la pista desde la barra, y hoy sus sets van del techno oscuro al house más luminoso. Dicen que nunca mira la pantalla: mezcla de oído y con la mirada en el público.",
+  "DJ Powerpuff": "Gorra rosada, audífonos gigantes y un cable que le cuelga hasta la cintura como si fuera parte del outfit. Empezó haciendo mixtapes en su pieza para sus amigas y terminó llenando bodegas: su arma secreta son los drops dulces que de pronto explotan en bajos que hacen temblar el piso.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
@@ -2440,6 +2444,7 @@ function animDrive(c, ud, dt, d, def, t){
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
   }
   if (name === 'Idle' && def && def.idle === 'proc'){ proc(); return; }
+  if (!rig.actions[name]){ proc(); return; }   // personaje al que todavía le faltan animaciones
   anim(name, 0.35, speed);
 }
 
