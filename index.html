@@ -546,6 +546,9 @@ DEFAULTS.push({name:'DJ Green Roll', build:'fornido', skin:'#d9a27c', hair:'calv
 DEFAULTS.push({name:'DJ Nacho', build:'normal', skin:'#b07a52', hair:'rapado', hairColor:'#17110d', top:'camiseta', topColor:'#e9e3d6', pants:'cargo', pantsColor:'#141417', shoes:'#e9e3d6', shoeAccent:'#141417', beard:'no', danceA:'rebote', danceB:'manos',
   model:'models/nacho_anim.glb', rig:'mixamo', ear:[1.52, 0.1, 0.16], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   dances:[['Hip_Hop_Dancing','Hip Hop'], ['House_Dancing','House'], ['Step_Hip_Hop_Dance','Step'], ['Dancing_Running_Man','Running Man'], ['Maraschino_Step','Maraschino'], ['Samba_Dancing','Samba'], ['Twerk','Twerk']]});
+DEFAULTS.push({name:'DJ Nikita', build:'delgado', skin:'#d9a77f', hair:'coleta', hairColor:'#e0c48f', top:'tirantes', topColor:'#141417', pants:'cargo', pantsColor:'#ece9e2', shoes:'#ece9e2', danceA:'balanceo', danceB:'manos',
+  model:'models/nikita_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  dances:[]});   /* sus bailes llegan pronto */
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
@@ -553,6 +556,7 @@ const LEGENDS = {
  "DJ Valknuz": "Creció entre vinilos de metal nórdico y casetes de hip hop de la vieja escuela. Antes de cada set estudia a los pioneros de un género distinto, porque dice que un DJ es un cronista: en una sola noche cuenta la historia de la música, del primer breakbeat al último drop.",
  "DJ Green Roll": "Nadie conoce su cara: detrás de la máscara solo se escucha el ritmo. Aprendió en los raves de bodega, donde el sonido se armaba con lo que hubiera, y su saludo con los cuernos es un homenaje a las bandas de rock que le enseñaron que el volumen también es una emoción.",
   "DJ Nacho": "Sombrero de paja, camisa de verano y lentes oscuros a cualquier hora: su pista empieza donde termina la playa. Aprendió a mezclar en los bares de la costa, uniendo samba, house y los vinilos de salsa de su tío, y dice que un buen set debe oler a sal y terminar con el sol saliendo.",
+  "DJ Nikita": "Audífonos puestos desde que suena la primera alarma y el pelo dorado como foco de escenario. Creció en los clubes de medianoche de la ciudad, aprendiendo a leer la pista desde la barra, y hoy sus sets van del techno oscuro al house más luminoso. Dicen que nunca mira la pantalla: mezcla de oído y con la mirada en el público.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
@@ -2384,6 +2388,7 @@ function danceMoveOf(c, def, bot){
   return c.danceSel ? DANCE_IDS[(c.danceSel - 1) % DANCE_IDS.length] : (bot && c.like < 0.5) ? 'balanceo' : music.drop ? (def.danceB || 'salto') : (music.calm ? 'balanceo' : (def.danceA || DANCE_IDS[c.i % DANCE_IDS.length]));
 }
 function animDanceIdx(c, def, L, t){
+  if (!L.length) return -1;   // todavía sin bailes propios
   if (netFresh(c) && c.netAd >= 0) return c.netAd % L.length;
   return c.danceSel ? (c.danceSel - 1) % L.length : (c.i * 3 + (music.drop ? 5 : 0) + Math.floor(t / 32)) % L.length;
 }
@@ -2429,7 +2434,7 @@ function animDrive(c, ud, dt, d, def, t){
     const vWalk = (vs.Walking || 1.45) * sc, vRun = (vs.Running || 4.6) * sc;
     if (spd > 2.6){ name = 'Running'; speed = Math.max(0.6, Math.min(1.4, spd / vRun)); }
     else { name = 'Walking'; speed = Math.max(0.55, Math.min(1.5, spd / vWalk)); }
-  } else if (c.dance > 0.3){
+  } else if (c.dance > 0.3 && dancesOf(def).length){
     const L = dancesOf(def), k = animDanceIdx(c, def, L, t);
     name = L[k][0];
     speed = music.sounding ? Math.max(0.85, Math.min(1.2, (music.bpm || 120) / 120)) : 1;
