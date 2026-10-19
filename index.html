@@ -3924,7 +3924,7 @@ function cselLoop(now){
   // personajes con animación propia de selección: "in" mientras eliges y "out" al confirmar
   const ar = g && g.userData.rig;
   if (ar && ar.mixer && ar.actions.Sel_In){
-    if (!csel.leaving) g.userData.play('Sel_In', 0.3);
+    if (!csel.leaving) g.userData.play('Sel_In', 0);   // sin fundido: así no parte desde la pose en T
     g.rotation.y = 0.28; ar.mixer.update(dt);
     csel.r.render(csel.scene, csel.cam); csel.raf = requestAnimationFrame(cselLoop); return;
   }
