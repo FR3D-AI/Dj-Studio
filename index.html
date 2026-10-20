@@ -172,6 +172,15 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .plist button{width:100%;text-align:left;background:transparent;border:0;color:var(--muted);font:600 14px var(--body);padding:5px 6px;border-radius:6px;cursor:pointer;overflow-wrap:anywhere}
 .plist button[aria-current="true"]{color:var(--fg);background:var(--panel)}
 .plist button[aria-current="true"]::before{content:"▶ ";color:var(--accent)}
+.cromabox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.cromabox select{flex:1;min-width:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:600 14px var(--body)}
+.cromaprev{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#000;cursor:crosshair}
+.cromaprev video{width:100%;height:100%;object-fit:contain;display:block}
+.cromaprev i{position:absolute;left:6px;bottom:6px;font:600 11px var(--body);color:#fff;background:#0009;padding:2px 6px;border-radius:6px;font-style:normal;pointer-events:none}
+.cromasl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;font:600 13px var(--body)}
+.cromasl input[type=range]{width:100%}
+.cromakey{display:flex;gap:8px;align-items:center;font:600 13px var(--body)}
+.cromakey input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-radius:6px;background:none;padding:0}
 .livebox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 .livebox select{flex:1;min-width:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:600 14px var(--body)}
 .badge{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -457,6 +466,30 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
           </div>
           <p class="note" id="liveNote">Para mesas con tarjeta de sonido o un cable de audio virtual (BlackHole, iShowU Audio Capture).</p>
         </details>
+      </div>
+      <div class="cromabox">
+        <div class="mtop"><span class="lbl">Croma: toca tú en el escenario</span><span class="badge" id="cromaState">Apagado</span></div>
+        <p class="note">Ponte con tu mesa frente a un fondo verde (o azul) y conecta tu cámara. En la cabina, en vez de tu personaje y del controlador, la sala te ve a ti tocando.</p>
+        <div class="row">
+          <select id="cromaDev" aria-label="Cámara"><option value="">Cámara…</option></select>
+          <button class="btn primary" id="cromaBtn" type="button">Activar cámara</button>
+        </div>
+        <div id="cromaCtl" hidden>
+          <div class="cromaprev" id="cromaPrev" title="Haz clic sobre el fondo para elegir su color"><video id="cromaVid" muted playsinline autoplay></video><i>Clic en el fondo para elegir su color</i></div>
+          <div class="cromakey"><span>Color del fondo</span><input type="color" id="cromaKey" value="#00ff00" aria-label="Color del fondo"><button class="btn" id="cromaAuto" type="button">🎯 Detectar solo</button></div>
+          <div class="cromasl">
+            <label for="cromaTol">Tolerancia</label><input type="range" id="cromaTol" min="0" max="1" step="0.01">
+            <label for="cromaSoft">Bordes suaves</label><input type="range" id="cromaSoft" min="0" max="0.5" step="0.01">
+            <label for="cromaSpill">Quitar reflejo</label><input type="range" id="cromaSpill" min="0" max="1" step="0.01">
+            <label for="cromaSize">Tamaño</label><input type="range" id="cromaSize" min="0.6" max="2.4" step="0.01">
+            <label for="cromaLift">Altura</label><input type="range" id="cromaLift" min="0" max="1.6" step="0.01">
+            <label for="cromaCropX">Recortar lados</label><input type="range" id="cromaCropX" min="0" max="0.4" step="0.005">
+            <label for="cromaCropT">Recortar arriba</label><input type="range" id="cromaCropT" min="0" max="0.4" step="0.005">
+            <label for="cromaCropB">Recortar abajo</label><input type="range" id="cromaCropB" min="0" max="0.4" step="0.005">
+          </div>
+          <div class="row"><button class="btn" id="cromaLook" type="button">👀 Mirar la cabina</button><button class="btn" id="cromaReset" type="button">Valores de fábrica</button></div>
+          <p class="note" id="cromaNote">Tu mesa real queda sobre la mesa de la cabina: ajusta la altura para que calce. La sala ve tu cámara mientras transmites.</p>
+        </div>
       </div>
     </section>
 
@@ -912,7 +945,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
   // mesa más baja, angosta y más cerca del DJ (calza con las manos de los personajes animados)
   const desk = new THREE.Group(); desk.position.set(0.28, -0.14, 0); g.add(desk);
   // mesa de la cabina, el frente mira hacia la sala (oeste)
-  box(0.8,0.95,1.5,'#1d1a26',3.6,0.475,0,desk);
+  const deskBody = box(0.8,0.95,1.5,'#1d1a26',3.6,0.475,0,desk);
   box(0.84,0.04,1.54,'#4a2f1d',3.6,0.97,0,desk);   // cubierta de madera
   const led = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,1.4), new THREE.MeshBasicMaterial({color:'#ff6fb0'}));
   led.position.set(3.19,0.62,0); desk.add(led);
@@ -996,7 +1029,7 @@ item('dj','Cabina DJ',true,(g0,solid)=>{
     cones.push(woof, tw);
   }
   solid(3.28,4.12,-1.6,0.79); solid(4.28,5,-2.27,-1.73); solid(4.28,5,1.73,2.27);
-  return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, lidBox, lapBase: base, silver, rig:g, lapScreens:[front], lapMats, logoCv, logoTex};
+  return {led:led.material, discs, cones, knobs, pads, vu, faders, xf, lidBox, lapBase: base, silver, rig:g, lapScreens:[front], lapMats, logoCv, logoTex, desk, deskBody};
 }, STAGE_DX);
 item('luces','Luces de ambiente',true,(g)=>{
   // estructura (truss) sobre el borde de la tarima con 3 cabezas móviles
@@ -1595,6 +1628,7 @@ const camTarget = new THREE.Vector3(chars[sel].x, 1, chars[sel].z);
 // En la pantalla de quien está tocando, la cámara puede pasar a tomas cinematográficas que cortan al ritmo
 // (la mayoría sobre el propio DJ). Se activa o desactiva con el botón 🎬 y se navega con ◀ ▶.
 const CINE_DJ = ['orbita', 'heroe', 'manos', 'hombro', 'perfil', 'retrato', 'frontal', 'parlante'];
+const CINE_CROMA = ['frontal', 'heroe', 'orbita', 'retrato', 'parlante', 'publico', 'grua', 'bailarin', 'seguir', 'luces', 'pantallas', 'esquina', 'barrido'];
 const CINE_SALA = ['publico', 'grua', 'bailarin', 'luces', 'piso', 'pantallas', 'esquina', 'barrido', 'seguir'];
 const CINE_NAMES = {orbita:'Órbita', heroe:'Contrapicado', manos:'Manos', hombro:'Sobre el hombro', perfil:'Perfil', retrato:'Retrato',
   frontal:'Frontal', parlante:'Desde el parlante', publico:'Entre el público', grua:'Grúa', bailarin:'Bailarín', luces:'Luces',
@@ -1617,6 +1651,8 @@ function cineApply(entry, t, manual){
 function cineNew(t, manual){
   // dos de cada tres tomas son del DJ; nunca se repite la misma seguida
   let pool = Math.random() < 0.62 ? CINE_DJ : CINE_SALA, sh;
+  // con el croma el DJ es un video plano: solo las tomas que lo miran de frente o desde lejos
+  if (typeof cromaActive === 'function' && room.items.dj && cromaActive()){ const f = pool.filter(x => CINE_CROMA.includes(x)); pool = f.length > 1 ? f : CINE_CROMA; }
   do { sh = pool[Math.floor(Math.random()*pool.length)]; } while (sh === cine.last);
   const crowd = cineCrowd();
   const entry = {shot: sh, seed: Math.random(), focus: crowd.length ? crowd[Math.floor(Math.random()*crowd.length)] : null};
@@ -1687,7 +1723,13 @@ function renderCine(){
   document.getElementById('cineNext').disabled = !cine.enabled;
   document.getElementById('cineName').textContent = cine.enabled && cine.shot ? (CINE_NAMES[cine.shot] || '') : 'Cámara normal';
 }
+let cromaLookUntil = 0;
 function placeCamera(){
+  if (performance.now() < cromaLookUntil){   // vista de prueba del croma: de frente a la cabina
+    camera.position.set(5.6, 2.15, 1.1); camera.lookAt(9.2, 1.55, 0);
+    if (Math.abs(camera.fov - 40) > 0.05){ camera.fov = 40; camera.updateProjectionMatrix(); }
+    return;
+  }
   if (net.casting && room.items.dj && cine.enabled){ cineCamera(); return; }
   if (cine.on){ cine.on = false; renderView(); }   // vuelve la cámara normal
   if (firstPerson){
@@ -1948,6 +1990,83 @@ function setLaptopVideo(track){
   mats.forEach(m => { m.map = lapTex; m.color.set('#ffffff'); m.needsUpdate = true; });
 }
 
+/* ---------- modo croma: el DJ real en el escenario ---------- */
+// La cámara del DJ (con su mesa) se muestra sobre la tarima, en el lugar del personaje. El fondo verde o azul se
+// borra en la tarjeta gráfica (pixel a pixel, según cuánto domina el color del fondo), así que cada uno recibe el
+// video entero y lo recorta en su propio computador con los ajustes que eligió el DJ.
+const CROMA_DEF = {key:'#00ff00', tol:0.55, soft:0.18, spill:0.7, size:1.25, lift:0.66, cx:0, ct:0, cb:0, dev:''};
+const croma = {on:false, track:null, stream:null, src:null, tex:null, mesh:null, remote:null, remoteSrc:null, set:{...CROMA_DEF}};
+try { Object.assign(croma.set, JSON.parse(localStorage.getItem('dj-croma') || '{}')); } catch(e){}
+const cromaU = {cDom:{value:new THREE.Vector3(0,1,0)}, cK0:{value:1}, cThr:{value:0.45}, cSoft:{value:0.18}, cSpill:{value:0.7}, cCrop:{value:new THREE.Vector4()}};
+function cromaKeyParams(hex, U){
+  const c = new THREE.Color(hex), v = [c.r, c.g, c.b], d = v.indexOf(Math.max(...v)), o = v.filter((_, i) => i !== d);
+  U.cDom.value.set(d === 0 ? 1 : 0, d === 1 ? 1 : 0, d === 2 ? 1 : 0);
+  U.cK0.value = Math.max(0.12, (v[d] - Math.max(...o)) / Math.max(v[d], 0.05));
+}
+function cromaApply(S, U){
+  cromaKeyParams(S.key, U);
+  U.cThr.value = 1 - S.tol; U.cSoft.value = Math.max(0.01, S.soft); U.cSpill.value = S.spill;
+  U.cCrop.value.set(S.cx, S.cx, S.cb, S.ct);
+}
+function cromaMaterial(){
+  const m = new THREE.MeshBasicMaterial({color:'#ffffff', transparent:true, toneMapped:false, side:THREE.FrontSide});
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, cromaU);
+    sh.fragmentShader = 'uniform vec3 cDom; uniform float cK0, cThr, cSoft, cSpill; uniform vec4 cCrop;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      if (vUv.x < cCrop.x || vUv.x > 1.0 - cCrop.y || vUv.y < cCrop.z || vUv.y > 1.0 - cCrop.w) discard;
+      vec4 kr = texture2D(map, vUv);
+      float kd = dot(kr.rgb, cDom); vec3 ko = kr.rgb * (1.0 - cDom); float km = max(max(ko.r, ko.g), ko.b);
+      float ks = (kd - km) / max(kd, 0.05) / cK0 * smoothstep(0.03, 0.13, kd - km);   // lo oscuro (ropa negra con reflejo verde) no se borra
+      float ka = 1.0 - smoothstep(cThr - cSoft, cThr, ks);
+      if (ka < 0.04) discard;
+      vec3 lc = diffuseColor.rgb; float ld = dot(lc, cDom); vec3 lo = lc * (1.0 - cDom);
+      float lim = (lo.r + lo.g + lo.b) * 0.5 + 0.02;
+      diffuseColor.rgb = lc - cDom * max(0.0, ld - lim) * cSpill;
+      diffuseColor.a *= ka;`);
+  };
+  return m;
+}
+function cromaEnsureMesh(){
+  if (croma.mesh) return croma.mesh;
+  const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0);
+  croma.mesh = new THREE.Mesh(geo, cromaMaterial()); croma.mesh.visible = false; croma.mesh.renderOrder = 2;
+  scene.add(croma.mesh); return croma.mesh;
+}
+function cromaTexFrom(el){
+  const tex = el.tagName === 'VIDEO' ? new THREE.VideoTexture(el) : new THREE.CanvasTexture(el);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.encoding = THREE.sRGBEncoding;
+  return tex;
+}
+function cromaSize(el){ return el.tagName === 'VIDEO' ? [el.videoWidth || 1920, el.videoHeight || 1080] : [el.width || 1920, el.height || 1080]; }
+// quién se ve: tu cámara (si la activaste) o la del DJ que está tocando
+function cromaActive(){
+  if (net.djPeer) return net.dj && net.dj.msg && net.dj.msg.cr && croma.remoteSrc ? {src: croma.remoteSrc, set: cromaClean(net.dj.msg.cr), me: false} : null;
+  if (croma.on && croma.src) return {src: croma.src, set: croma.set, me: true};
+  return null;
+}
+function cromaClean(c){
+  const n = (v, a, b, d) => Number.isFinite(+v) ? Math.max(a, Math.min(b, +v)) : d;
+  return {key: /^#[0-9a-f]{6}$/i.test(c.key) ? c.key : '#00ff00', tol: n(c.tol, 0, 1, 0.55), soft: n(c.soft, 0, 0.5, 0.18), spill: n(c.spill, 0, 1, 0.7),
+    size: n(c.size, 0.6, 2.4, 1.25), lift: n(c.lift, 0, 1.6, 0.66), cx: n(c.cx, 0, 0.4, 0), ct: n(c.ct, 0, 0.4, 0), cb: n(c.cb, 0, 0.4, 0)};
+}
+let cromaLastSrc = null;
+function cromaUpdate(){
+  const A = room.items.dj ? cromaActive() : null, m = cromaEnsureMesh();
+  const parts = DJ.api.desk.children.filter(o => o !== DJ.api.deskBody);
+  if (!A){ if (m.visible){ m.visible = false; parts.forEach(o => o.visible = true); } return null; }
+  if (cromaLastSrc !== A.src){ if (m.material.map) m.material.map.dispose(); m.material.map = cromaTexFrom(A.src); m.material.needsUpdate = true; cromaLastSrc = A.src; }
+  if (A.src.tagName !== 'VIDEO' && m.material.map) m.material.map.needsUpdate = !!A.src.__dirty;
+  cromaApply(A.set, cromaU);
+  const [w, h] = cromaSize(A.src), S = A.set, base = (room.items.tarima ? STAGE_H : 0);
+  m.scale.set(S.size * w / h, S.size, 1);
+  // parado en medio de la mesa de la cabina (la mesa tapa lo que queda bajo la cubierta), mirando a la sala; gira un poco hacia la cámara para no verse plano de lado
+  m.position.set(8.9, base + S.lift, 0);
+  const a0 = -Math.PI / 2, dx = camera.position.x - m.position.x, dz = camera.position.z - m.position.z;
+  let da = Math.atan2(dx, dz) - a0; da = Math.atan2(Math.sin(da), Math.cos(da));
+  m.rotation.y = a0 + (Math.abs(da) < Math.PI / 2 ? Math.max(-0.45, Math.min(0.45, da)) : 0);
+  m.visible = true; parts.forEach(o => o.visible = false);
+  return A;
+}
 /* ---------- logo del DJ en la tapa del computador ---------- */
 let logoImgSrc = null;
 function drawLaptopLogo(src){
@@ -2336,6 +2455,7 @@ function tick(){
   camTarget.lerp(tmpV.set(me.x, 1 + me.y, me.z), Math.min(1, dt*6));
   me.group.visible = !firstPerson; // tu propio cuerpo no tapa la vista
   placeCamera();
+  { const A = cromaUpdate(); if (A){ if (A.me && inDJZone(me)) me.group.visible = false; else if (!A.me){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = false; } } else if (net.djPeer){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = true; } }
   ring.position.y = 0.015;
   ring.material.opacity = 0.6 + Math.sin(t*4)*0.3;
   if (t - lastHud > 0.1){
@@ -2875,6 +2995,106 @@ liveBtn.addEventListener('click', async () => {
     renderLive();
   }
 });
+
+/* ---------- croma: cámara del DJ ---------- */
+const cromaEl = {}; ['State','Dev','Btn','Ctl','Vid','Prev','Key','Auto','Tol','Soft','Spill','Size','Lift','CropX','CropT','CropB','Look','Reset','Note'].forEach(k => cromaEl[k] = document.getElementById('croma' + k));
+const CROMA_SL = [['Tol','tol'],['Soft','soft'],['Spill','spill'],['Size','size'],['Lift','lift'],['CropX','cx'],['CropT','ct'],['CropB','cb']];
+const cromaStreams = new Map();
+function cromaSave(){ try { localStorage.setItem('dj-croma', JSON.stringify(croma.set)); } catch(e){} }
+function cromaFill(){ for (const [id, k] of CROMA_SL) cromaEl[id].value = croma.set[k]; cromaEl.Key.value = croma.set.key; }
+let cromaPayT = 0;
+function cromaChanged(){ cromaSave(); if (net.casting && net.actions.dj){ clearTimeout(cromaPayT); cromaPayT = setTimeout(() => net.actions.dj.send(djPayload()), 350); } }
+function renderCroma(){
+  cromaEl.State.textContent = croma.on ? (net.casting ? 'En vivo' : 'Activa') : 'Apagado';
+  cromaEl.Btn.textContent = croma.on ? 'Apagar cámara' : 'Activar cámara';
+  cromaEl.Btn.classList.toggle('primary', !croma.on);
+  cromaEl.Ctl.hidden = !croma.on;
+}
+async function cromaDevices(){
+  try {
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'), cur = croma.set.dev;
+    cromaEl.Dev.innerHTML = '<option value="">Cámara…</option>' + list.map((d, i) => `<option value="${d.deviceId}">${(d.label || 'Cámara ' + (i + 1)).replace(/[<&"]/g, '')}</option>`).join('');
+    if (cur && list.some(d => d.deviceId === cur)) cromaEl.Dev.value = cur;
+  } catch(e){}
+}
+async function cromaStart(){
+  if (!navigator.mediaDevices?.getUserMedia){ cromaEl.Note.textContent = 'Este navegador no permite usar la cámara.'; return; }
+  const dev = cromaEl.Dev.value;
+  try {
+    croma.stream = await navigator.mediaDevices.getUserMedia({video:{deviceId: dev ? {exact: dev} : undefined, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30}}, audio:false});
+  } catch(e){ cromaEl.Note.textContent = 'No se pudo abrir la cámara: revisa que el navegador tenga permiso y que no la esté usando otro programa.'; cromaEl.Ctl.hidden = false; return; }
+  croma.track = croma.stream.getVideoTracks()[0];
+  const st = croma.track.getSettings ? croma.track.getSettings() : {};
+  if (st.deviceId){ croma.set.dev = st.deviceId; cromaSave(); }
+  croma.track.addEventListener('ended', () => cromaStop());
+  cromaEl.Vid.srcObject = croma.stream; cromaEl.Vid.play().catch(() => {});
+  croma.src = cromaEl.Vid; croma.on = true;
+  cromaEl.Vid.addEventListener('loadeddata', () => { if (!croma.set.picked) cromaAutoKey(); }, {once:true});
+  cromaEl.Note.textContent = `Cámara lista (${st.width || '?'}×${st.height || '?'}). Tu mesa real queda sobre la mesa de la cabina: ajusta la altura para que calce.`;
+  cromaDevices(); renderCroma(); cromaFill();
+  if (net.casting){ cromaSend(); net.actions.dj.send(djPayload()); }
+  cromaLookUntil = performance.now() + 6000;
+}
+function cromaStop(){
+  cromaUnsend();
+  if (croma.stream) croma.stream.getTracks().forEach(t => t.stop());
+  croma.stream = null; croma.track = null; croma.src = null; croma.on = false; cromaEl.Vid.srcObject = null;
+  if (net.casting && net.actions.dj) net.actions.dj.send(djPayload());
+  renderCroma();
+}
+// color del fondo: el promedio del borde del cuadro, donde casi siempre está la pantalla verde
+const cromaCv = document.createElement('canvas'), cromaCx = cromaCv.getContext('2d', {willReadFrequently:true});
+function cromaGrab(){
+  const v = croma.src; if (!v) return null;
+  const [w, h] = cromaSize(v); cromaCv.width = 96; cromaCv.height = Math.max(1, Math.round(96 * h / w));
+  try { cromaCx.drawImage(v, 0, 0, cromaCv.width, cromaCv.height); return cromaCx.getImageData(0, 0, cromaCv.width, cromaCv.height); } catch(e){ return null; }
+}
+const toHex = (r, g, b) => '#' + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('');
+function cromaAutoKey(){
+  const im = cromaGrab(); if (!im) return;
+  const {width: W, height: H, data: D} = im, acc = [[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+    if (x > W*0.14 && x < W*0.86 && y > H*0.14) continue;   // solo los bordes (y todo el borde de arriba)
+    const i = (y*W + x)*4, c = [D[i], D[i+1], D[i+2]], d = c.indexOf(Math.max(...c)), o = Math.max(...c.filter((_, j) => j !== d));
+    if (c[d] - o < 25) continue;
+    acc[d][0] += c[0]; acc[d][1] += c[1]; acc[d][2] += c[2]; acc[d][3]++;
+  }
+  const best = acc.reduce((a, b) => b[3] > a[3] ? b : a);
+  if (best[3] < 20){ cromaEl.Note.textContent = 'No encontré un fondo verde o azul en los bordes: haz clic sobre el fondo en la vista previa.'; return; }
+  croma.set.key = toHex(best[0]/best[3], best[1]/best[3], best[2]/best[3]); cromaFill(); cromaChanged();
+}
+cromaEl.Prev.addEventListener('click', e => {
+  const im = cromaGrab(); if (!im) return;
+  const r = cromaEl.Vid.getBoundingClientRect(), [w, h] = cromaSize(croma.src), sc = Math.min(r.width / w, r.height / h);
+  const ox = (r.width - w*sc) / 2, oy = (r.height - h*sc) / 2, u = (e.clientX - r.left - ox) / (w*sc), v = (e.clientY - r.top - oy) / (h*sc);
+  if (u < 0 || u > 1 || v < 0 || v > 1) return;
+  const W = im.width, H = im.height, cx = Math.round(u*(W-1)), cy = Math.round(v*(H-1)); let R = 0, G = 0, B = 0, n = 0;
+  for (let y = Math.max(0, cy-2); y <= Math.min(H-1, cy+2); y++) for (let x = Math.max(0, cx-2); x <= Math.min(W-1, cx+2); x++){ const i = (y*W + x)*4; R += im.data[i]; G += im.data[i+1]; B += im.data[i+2]; n++; }
+  croma.set.key = toHex(R/n, G/n, B/n); croma.set.picked = true; cromaFill(); cromaChanged();
+});
+cromaEl.Btn.addEventListener('click', () => croma.on ? cromaStop() : cromaStart());
+cromaEl.Dev.addEventListener('change', () => { if (croma.on){ cromaStop(); cromaStart(); } });
+cromaEl.Auto.addEventListener('click', () => { croma.set.picked = false; cromaAutoKey(); });
+cromaEl.Key.addEventListener('input', () => { croma.set.key = cromaEl.Key.value; croma.set.picked = true; cromaChanged(); });
+for (const [id, k] of CROMA_SL) cromaEl[id].addEventListener('input', () => { croma.set[k] = +cromaEl[id].value; cromaChanged(); });
+cromaEl.Look.addEventListener('click', () => { cromaLookUntil = performance.now() + 8000; });
+cromaEl.Reset.addEventListener('click', () => { const {dev, key, picked} = croma.set; croma.set = {...CROMA_DEF, dev, key, picked}; cromaFill(); cromaChanged(); });
+cromaFill(); renderCroma(); if (navigator.mediaDevices?.enumerateDevices) cromaDevices();
+// transmisión: la cámara viaja aparte del audio, con más calidad que la pantalla del computador
+function cromaSend(target){
+  if (!net.room || !net.casting || !croma.on || !croma.stream) return;
+  try { net.room.addStream(croma.stream, target ? {target, metadata:{kind:'croma'}} : {metadata:{kind:'croma'}}); } catch(e){}
+  setTimeout(limitVideo, 1500); setTimeout(limitVideo, 5000);
+}
+function cromaUnsend(){ try { net.room && croma.stream && net.room.removeStream(croma.stream); } catch(e){} }
+function cromaPayload(){ if (!croma.on || !croma.stream) return null; const S = croma.set; return {key:S.key, tol:S.tol, soft:S.soft, spill:S.spill, size:S.size, lift:S.lift, cx:S.cx, ct:S.ct, cb:S.cb, sid: croma.stream.id}; }
+function cromaRemote(stream){
+  if (!croma.remoteVid){ croma.remoteVid = document.createElement('video'); croma.remoteVid.muted = true; croma.remoteVid.playsInline = true; croma.remoteVid.autoplay = true; }
+  if (croma.remoteVid.srcObject !== stream){ croma.remoteVid.srcObject = stream; croma.remoteVid.play().catch(() => {}); }
+  croma.remoteSrc = croma.remoteVid;
+}
+function cromaRemoteEnd(){ croma.remoteSrc = null; if (croma.remoteVid) croma.remoteVid.srcObject = null; }
+const isCromaStream = (stream, meta) => (meta && meta.kind === 'croma') || !!(net.dj && net.dj.msg && net.dj.msg.cr && net.dj.msg.cr.sid === stream.id);
 const sysBtn = document.getElementById('sysBtn'), sysNote = document.getElementById('sysNote');
 let sysVideo = null;
 async function captureSystemAudio(){
@@ -3071,7 +3291,7 @@ function buildRemote(r){
 function removePeer(id){
   const r = net.peers.get(id); if (!r) return;
   if (r.group) scene.remove(r.group);
-  net.peers.delete(id); net.pending.delete(id);
+  net.peers.delete(id); net.pending.delete(id); cromaStreams.delete(id);
   if (net.djPeer === id) endRemoteDJ();
   if (r.ci >= 0) addChat({kind:'system', text: (r.def ? r.def.name : 'Alguien') + ' salió: ' + DEFAULTS[r.ci].name + ' queda libre'});
   locksChanged(); renderNet();
@@ -3125,7 +3345,7 @@ function renderNet(){
 }
 function castTrack(){ return music.source === 'live' ? 'En vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
 let castSig = null, castPub = null;
-function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince, lp: lightPreset, pub: castPub, sig: castSig}; }
+function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince, lp: lightPreset, pub: castPub, sig: castSig, cr: net.casting ? cromaPayload() : null}; }
 
 // transmitir
 async function startCast(){
@@ -3145,6 +3365,7 @@ async function startCast(){
   net.castStream = new MediaStream([...net.castDest.stream.getAudioTracks(), ...vtracks]);
   net.room.addStream(net.castStream);
   setTimeout(limitVideo, 1500);
+  cromaSend();
   net.actions.dj.send(djPayload());
   net.actions.logo.send({data: myLogo || ''}); drawLaptopLogo(myLogo);
   const me = chars[sel];
@@ -3159,6 +3380,7 @@ function stopCast(silent){
   if (!net.casting) return;
   net.casting = false;
   try { net.room && net.castStream && net.room.removeStream(net.castStream); } catch(e){}
+  cromaUnsend(); renderCroma();
   if (!silent && net.actions.dj) net.actions.dj.send(djPayload());
   drawLaptopLogo(null);
   netEl.note.textContent = 'Transmisión terminada.';
@@ -3173,6 +3395,12 @@ function limitVideo(){
     for (const snd of pc.getSenders()){
       if (!snd.track || snd.track.kind !== 'video') continue;
       const prm = snd.getParameters(); if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+      if (croma.track && snd.track === croma.track){
+        // la cámara del croma: hasta 720p, 24 cuadros y 1,2 Mbps (se ve nítida sin ahogar la conexión del DJ)
+        const hh = (croma.track.getSettings && croma.track.getSettings().height) || 1080;
+        prm.encodings[0].maxBitrate = 1200000; prm.encodings[0].maxFramerate = 24; prm.encodings[0].scaleResolutionDownBy = Math.max(1, hh / 720);
+        snd.setParameters(prm).catch(() => {}); continue;
+      }
       prm.encodings[0].maxBitrate = 250000; prm.encodings[0].maxFramerate = 10;
       snd.setParameters(prm).catch(() => {});
     }
@@ -3200,7 +3428,7 @@ function endRemoteDJ(){
   net.djPeer = null; net.dj = null;
   if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
   if (net.remoteAudio){ net.remoteAudio.pause(); net.remoteAudio.srcObject = null; }
-  net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null); drawLaptopLogo(null);
+  net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null); drawLaptopLogo(null); cromaRemoteEnd();
   if (music.source === 'remote'){ music.source = null; if (outGain) outGain.gain.value = 1; }
   renderNet();
 }
@@ -3276,7 +3504,7 @@ async function connect(){
     if (schedSigned) schedA.send(schedSigned, {target: id});
     lastPose = '';
     if (isHost()) for (const t of radio.tracks) radioA.send({...t, info: undefined, deck: undefined, cutAt: undefined}, {target: id});
-    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); setTimeout(limitVideo, 2500); logoA.send({data: myLogo || ''}, {target: id}); }
+    if (net.casting){ dj.send(djPayload(), {target: id}); net.room.addStream(net.castStream, {target: id}); cromaSend(id); setTimeout(limitVideo, 2500); logoA.send({data: myLogo || ''}, {target: id}); }
     renderNet();
   };
   roomObj.onPeerLeave = id => removePeer(id);
@@ -3330,11 +3558,13 @@ async function connect(){
       if (LIGHT_PRESETS.some(p => p[0] === d.lp)) lightPreset = d.lp;
       const st = net.pending.get(id);
       if (st && net.remoteStream !== st) playRemote(st);
+      const cs = cromaStreams.get(id); if (cs) cromaRemote(cs);
       if (!wasDj){ addChat({kind:'system', text: '🎧 ' + djName() + ' está en vivo'}); drawLaptopLogo(net.logos.get(id) || null); }
     } else if (net.djPeer === id) endRemoteDJ();
     renderNet(); renderLightRow();
   };
-  roomObj.onPeerStream = (stream, id) => {
+  roomObj.onPeerStream = (stream, id, meta) => {
+    if (isCromaStream(stream, meta)){ cromaStreams.set(id, stream); if (id === net.djPeer) cromaRemote(stream); return; }
     net.pending.set(id, stream);
     if (id === net.djPeer) playRemote(stream);
     renderNet();
