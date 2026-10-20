@@ -2001,7 +2001,7 @@ function setLaptopVideo(track){
 const CROMA_DEF = {key:'#00ff00', tol:0.55, soft:0.18, spill:0.7, size:1.25, lift:0.66, cx:0, ct:0, cb:0, dev:''};
 const croma = {on:false, track:null, stream:null, src:null, tex:null, mesh:null, remote:null, remoteSrc:null, set:{...CROMA_DEF}};
 try { Object.assign(croma.set, JSON.parse(localStorage.getItem('dj-croma') || '{}')); } catch(e){}
-const cromaU = {cDom:{value:new THREE.Vector3(0,1,0)}, cK0:{value:1}, cThr:{value:0.45}, cSoft:{value:0.18}, cSpill:{value:0.7}, cCrop:{value:new THREE.Vector4()}};
+const cromaU = {cDom:{value:new THREE.Vector3(0,1,0)}, cK0:{value:1}, cThr:{value:0.45}, cSoft:{value:0.18}, cSpill:{value:0.7}, cCrop:{value:new THREE.Vector4()}, cTint:{value:new THREE.Color(1, 1, 1)}};
 function cromaKeyParams(hex, U){
   const c = new THREE.Color(hex), v = [c.r, c.g, c.b], d = v.indexOf(Math.max(...v)), o = v.filter((_, i) => i !== d);
   U.cDom.value.set(d === 0 ? 1 : 0, d === 1 ? 1 : 0, d === 2 ? 1 : 0);
@@ -2016,7 +2016,7 @@ function cromaMaterial(){
   const m = new THREE.MeshBasicMaterial({color:'#ffffff', transparent:true, toneMapped:false, side:THREE.FrontSide});
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, cromaU);
-    sh.fragmentShader = 'uniform vec3 cDom; uniform float cK0, cThr, cSoft, cSpill; uniform vec4 cCrop;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+    sh.fragmentShader = 'uniform vec3 cDom, cTint; uniform float cK0, cThr, cSoft, cSpill; uniform vec4 cCrop;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
       if (vUv.x < cCrop.x || vUv.x > 1.0 - cCrop.y || vUv.y < cCrop.z || vUv.y > 1.0 - cCrop.w) discard;
       vec4 kr = texture2D(map, vUv);
       float kd = dot(kr.rgb, cDom); vec3 ko = kr.rgb * (1.0 - cDom); float km = max(max(ko.r, ko.g), ko.b);
@@ -2025,7 +2025,7 @@ function cromaMaterial(){
       if (ka < 0.04) discard;
       vec3 lc = diffuseColor.rgb; float ld = dot(lc, cDom); vec3 lo = lc * (1.0 - cDom);
       float lim = (lo.r + lo.g + lo.b) * 0.5 + 0.02;
-      diffuseColor.rgb = lc - cDom * max(0.0, ld - lim) * cSpill;
+      diffuseColor.rgb = (lc - cDom * max(0.0, ld - lim) * cSpill) * cTint;
       diffuseColor.a *= ka;`);
   };
   return m;
@@ -2033,7 +2033,7 @@ function cromaMaterial(){
 function cromaEnsureMesh(){
   if (croma.mesh) return croma.mesh;
   const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0);
-  croma.mesh = new THREE.Mesh(geo, cromaMaterial()); croma.mesh.visible = false; croma.mesh.renderOrder = 2;
+  croma.mesh = new THREE.Mesh(geo, cromaMaterial()); croma.mesh.visible = false; croma.mesh.renderOrder = -1;   // se dibuja antes que los haces de luz: así las luces pasan por encima del DJ
   scene.add(croma.mesh); return croma.mesh;
 }
 function cromaTexFrom(el){
@@ -2054,13 +2054,22 @@ function cromaClean(c){
     size: n(c.size, 0.6, 2.4, 1.25), lift: n(c.lift, 0, 1.6, 0.66), cx: n(c.cx, 0, 0.4, 0), ct: n(c.ct, 0, 0.4, 0), cb: n(c.cb, 0, 0.4, 0)};
 }
 let cromaLastSrc = null;
-function cromaUpdate(){
+const cromaC1 = new THREE.Color(), cromaC2 = new THREE.Color(), cromaW = new THREE.Color(1, 1, 1);
+function cromaLight(t){
+  // las luces de la cabina tiñen al DJ del video: el color de la escena, con un golpe de brillo en cada pulso
+  const tint = cromaU.cTint.value;
+  if (!room.items.luces || party < 0.02){ tint.copy(cromaW); return; }
+  const m1 = presetColor(0, t, cromaC1), m2 = presetColor(3, t, cromaC2);
+  cromaC1.multiplyScalar(Math.min(1.4, m1)).add(cromaC2.multiplyScalar(Math.min(1.4, m2))).multiplyScalar(0.5);
+  tint.copy(cromaW).lerp(cromaC1.multiplyScalar(1.15).addScalar(0.45), 0.55 * party).multiplyScalar(1 + 0.18 * music.lightPulse * party);
+}
+function cromaUpdate(t){
   const A = room.items.dj ? cromaActive() : null, m = cromaEnsureMesh();
   const parts = DJ.api.desk.children.filter(o => o !== DJ.api.deskBody);
   if (!A){ if (m.visible){ m.visible = false; parts.forEach(o => o.visible = true); } return null; }
   if (cromaLastSrc !== A.src){ if (m.material.map) m.material.map.dispose(); m.material.map = cromaTexFrom(A.src); m.material.needsUpdate = true; cromaLastSrc = A.src; }
   if (A.src.tagName !== 'VIDEO' && m.material.map) m.material.map.needsUpdate = !!A.src.__dirty;
-  cromaApply(A.set, cromaU);
+  cromaApply(A.set, cromaU); cromaLight(t || 0);
   const [w, h] = cromaSize(A.src), S = A.set, base = (room.items.tarima ? STAGE_H : 0);
   m.scale.set(S.size * w / h, S.size, 1);
   // parado en medio de la mesa de la cabina (la mesa tapa lo que queda bajo la cubierta), mirando a la sala
@@ -2457,7 +2466,7 @@ function tick(){
   camTarget.lerp(tmpV.set(me.x, 1 + me.y, me.z), Math.min(1, dt*6));
   me.group.visible = !firstPerson; // tu propio cuerpo no tapa la vista
   placeCamera();
-  { const A = cromaUpdate(); if (A){ if (A.me && inDJZone(me)) me.group.visible = false; else if (!A.me){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = false; } } else if (net.djPeer){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = true; } }
+  { const A = cromaUpdate(t); if (A){ if (A.me && inDJZone(me)) me.group.visible = false; else if (!A.me){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = false; } } else if (net.djPeer){ const r = net.peers.get(net.djPeer); if (r && r.group) r.group.visible = true; } }
   ring.position.y = 0.015;
   ring.material.opacity = 0.6 + Math.sin(t*4)*0.3;
   if (t - lastHud > 0.1){
