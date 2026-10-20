@@ -1670,7 +1670,7 @@ function cineGo(dir){
 function shotPose(name, e, k, sd, me, f, t){
   const dx = me.x, dy = me.y, dz = me.z, head = dy + 1.55;
   switch (name){
-    case 'orbita': { const a = sd * (-1.1 + 2.2*e);       // vuelta lenta por delante de la cabina
+    case 'orbita': { const a = sd * (-1.1 + 2.2*e) * (cine.cromaK || 1);       // vuelta lenta por delante de la cabina
       cineV.set(dx - Math.cos(a)*2.3, dy + 1.85 + 0.25*Math.sin(e*Math.PI), dz + Math.sin(a)*2.3); cineL.set(dx, head - 0.1, dz); return 40; }
     case 'heroe':    cineV.set(dx - 3.3 + 0.9*e, dy + 1.1, dz + sd*(1.75 - 0.35*e)); cineL.set(dx, head + 0.1, dz); return 36;
     case 'manos':    cineV.set(dx - 0.95 + 0.2*e, dy + 1.75, dz + sd*(1.35 - 0.25*e)); cineL.set(dx - 0.55, dy + 1.2, dz + sd*0.15); return 40;
@@ -1703,7 +1703,11 @@ function cineCamera(){
   const me = chars[sel], f = cine.focus && cine.focus.group && cine.focus.on !== false ? cine.focus : me;
   // las tomas de un bailarín necesitan a alguien en la pista; si no hay, plano general
   const shot = (cine.shot === 'bailarin' || cine.shot === 'seguir') && f === me ? 'grua' : cine.shot;
-  const fov = shotPose(shot, e, k, sd, me, f, t);
+  // con croma, las tomas apuntan a la cabeza del DJ del video (no a la del personaje) y la órbita se abre menos
+  const A = room.items.dj ? cromaActive() : null;
+  const who = A ? {x: me.x, z: me.z, y: (room.items.tarima ? STAGE_H : 0) + A.set.lift + A.set.size * 0.8 - 1.55} : me;
+  cine.cromaK = A ? 0.5 : 1;
+  const fov = shotPose(shot, e, k, sd, who, f, t);
   // movimiento de cámara de cine: nada sigue el ritmo (sin rebotes ni golpes de zoom); solo una deriva lenta
   // y un suavizado que absorbe los saltos de los personajes que baila. En cada corte la cámara salta a la nueva toma.
   const sh = 0.012;
