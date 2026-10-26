@@ -591,6 +591,9 @@ DEFAULTS.push({name:'DJ RastaGirl', build:'delgado', skin:'#c99a72', hair:'trenz
 DEFAULTS.push({name:'DJ WhiteStore', build:'delgado', skin:'#e4bc9a', hair:'coleta', hairColor:'#ecdcb8', top:'chaqueta', topColor:'#151517', pants:'cargo', pantsColor:'#151517', shoes:'#151517', danceA:'balanceo', danceB:'manos',
   model:'models/whitestore_anim.glb', rig:'mixamo', ear:[1.5, 0.1, 0.15], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, gait:'femenino', pose:'poder', signature:true, tag:'Modelo 3D · DJ',
   dances:[['Arms_Hip_Hop_Dance','Brazos Hip Hop'], ['Booty_Hip_Hop_Dance','Booty'], ['House_Dancing','House'], ['House_Dancing_2','House 2'], ['Northern_Soul_Spin','Soul Spin'], ['Snake_Hip_Hop_Dance','Snake'], ['Tut_Hip_Hop_Dance','Tut']]});
+DEFAULTS.push({name:'DJ Natan', build:'normal', skin:'#d2a07c', hair:'trenzas', hairColor:'#d8cba8', top:'chaqueta', topColor:'#161618', pants:'cargo', pantsColor:'#5a5444', shoes:'#2a241c', beard:'corta', danceA:'rebote', danceB:'manos',
+  model:'models/natan_anim.glb', rig:'mixamo', ear:[1.52, 0.1, 0.16], idle:'proc', armFix:1.45, djLean:0.25, djArm:-0.1, djElb:0.3, modelScale:1, modelLift:0, pose:'poder', signature:true, tag:'Modelo 3D · DJ',
+  dances:[['Hip_Hop_Dancing','Hip Hop'], ['Hip_Hop_Dancing_2','Hip Hop 2'], ['House_Dancing','House'], ['Wave_Hip_Hop_Dance','Wave'], ['Silly_Dancing','Silly'], ['Twerk','Twerk']]});
 // leyendas de cada personaje (inventadas, inspiradas en la cultura urbana y la música)
 const LEGENDS = {
  "Nika": "Llegó de la escena de neón con una sola regla: el escenario es suyo. Bailarina, coreógrafa y estrella de los after, nunca repite un paso. Cuando pone las manos en la cintura, la pista entera sabe que viene el drop.",
@@ -602,6 +605,7 @@ const LEGENDS = {
   "DJ Powerpuff": "Gorra rosada, audífonos gigantes y un cable que le cuelga hasta la cintura como si fuera parte del outfit. Empezó haciendo mixtapes en su pieza para sus amigas y terminó llenando bodegas: su arma secreta son los drops dulces que de pronto explotan en bajos que hacen temblar el piso.",
   "DJ RastaGirl": "Rastas hasta la cintura, collares de semillas y los colores verde, amarillo y rojo siempre encima. Se crió entre sound systems de reggae y dub, cargando parlantes desde niña, y hoy mezcla raíces jamaicanas con dancehall y bajos electrónicos. Su lema: la música es para unir, nunca para separar.",
   "DJ WhiteStore": "Gorra negra, lentes oscuros y audífonos blancos que nunca se saca: un uniforme en blanco y negro que ya es su marca. Dicen que antes de pinchar trabajaba de noche en una tienda de discos, ordenando vinilos por color y por tempo, y que de ahí sacó su oído para el minimal y el tech house. Habla poco y deja que los bajos digan el resto.",
+  "DJ Natan": "Mochila al hombro, rastas claras bajo el gorro y lentes de marco grueso: un nómade urbano que llega a la cabina como si viniera de recorrer medio continente. Junta discos en cada ciudad que pisa y los mezcla sin aviso: dub de una feria, house de un sótano, cumbia de una radio de carretera. Dice que su set es un mapa, y que cada noche se dibuja distinto.",
  "DJ Wishi": "El hombre de los lentes oscuros. Nadie le ha visto los ojos: dice que mezcla con los oídos y lee la pista por cómo vibra el suelo. Los tatuajes de sus brazos son las fechas de sus fiestas legendarias, y aún le queda piel."
 };
 DEFAULTS.forEach(d => { if (LEGENDS[d.name]) d.legend = LEGENDS[d.name]; });
