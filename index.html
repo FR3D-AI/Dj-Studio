@@ -1781,7 +1781,7 @@ function cineCamera(){
   cine.curShot = shot;
   // con croma, las tomas apuntan a la cabeza del DJ del video (no a la del personaje) y la órbita se abre menos
   const A = room.items.dj ? cromaActive() : null;
-  const who = A ? {x: me.x, z: me.z, y: (room.items.tarima ? STAGE_H : 0) + A.set.lift + A.set.size * 0.8 - 1.55} : me;
+  const who = A ? {x: 9.38, z: 0, y: (room.items.tarima ? STAGE_H : 0) + A.set.lift + A.set.size * 0.8 - 1.55} : me;
   cine.cromaK = A ? 0.5 : 1;
   const fov = shotPose(shot, e, k, sd, who, f, t);
   // movimiento de cámara de cine: nada sigue el ritmo (sin rebotes ni golpes de zoom); solo una deriva lenta
