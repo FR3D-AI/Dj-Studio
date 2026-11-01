@@ -1633,15 +1633,18 @@ const camTarget = new THREE.Vector3(chars[sel].x, 1, chars[sel].z);
 // (la mayoría sobre el propio DJ). Se activa o desactiva con el botón 🎬 y se navega con ◀ ▶.
 const CINE_DJ = ['orbita', 'heroe', 'manos', 'hombro', 'perfil', 'retrato', 'frontal', 'parlante'];
 // con el croma el DJ es un video plano: tomas propias, todas de frente (nunca desde el costado)
-const CINE_CROMA = ['cr_dolly', 'cr_pull', 'cr_crane', 'cr_crowd', 'cr_low', 'cr_vertigo', 'cr_manos', 'cr_truck', 'cr_tilt', 'cr_wide', 'cr_silueta', 'cr_retrato', 'cr_seguir', 'frontal', 'grua', 'esquina'];
+const CINE_FACE = ['bl_tilt', 'bl_rostro', 'bl_contra'];
+const CINE_BAILARIN = ['bl_orbita', 'bl_tilt', 'bl_rostro', 'bl_contra', 'bl_pies'];
+const CINE_CROMA = ['bl_orbita', 'bl_tilt', 'bl_rostro', 'bl_contra', 'bl_pies', 'cr_dolly', 'cr_pull', 'cr_crane', 'cr_crowd', 'cr_low', 'cr_vertigo', 'cr_manos', 'cr_truck', 'cr_tilt', 'cr_wide', 'cr_silueta', 'cr_retrato', 'cr_seguir', 'frontal', 'grua', 'esquina'];
 const CROMA_MAX_ANG = 0.38;   // ~22°: lo más de lado que puede quedar la cámara respecto al DJ
-const CINE_SALA = ['publico', 'grua', 'bailarin', 'luces', 'piso', 'pantallas', 'esquina', 'barrido', 'seguir'];
+const CINE_SALA = ['bl_orbita', 'bl_tilt', 'bl_rostro', 'bl_contra', 'bl_pies', 'publico', 'grua', 'bailarin', 'luces', 'piso', 'pantallas', 'esquina', 'barrido', 'seguir'];
 const CINE_NAMES = {orbita:'Órbita', heroe:'Contrapicado', manos:'Manos', hombro:'Sobre el hombro', perfil:'Perfil', retrato:'Retrato',
   frontal:'Frontal', parlante:'Desde el parlante', publico:'Entre el público', grua:'Grúa', bailarin:'Bailarín', luces:'Luces',
   piso:'A ras de piso', pantallas:'Pantallas', esquina:'Cámara de esquina', barrido:'Barrido 360', seguir:'Siguiendo a alguien',
   cr_dolly:'Avance de frente', cr_pull:'Revelación', cr_crane:'Grúa sobre el público', cr_crowd:'Entre las cabezas', cr_low:'Desde el borde de la tarima',
   cr_vertigo:'Efecto vértigo', cr_manos:'Manos de frente', cr_truck:'Travelling frontal', cr_tilt:'Bajando desde las luces', cr_wide:'Plano general central',
-  cr_silueta:'Siluetas', cr_retrato:'Primer plano', cr_seguir:'Detrás de un bailarín'};
+  cr_silueta:'Siluetas', cr_retrato:'Primer plano', cr_seguir:'Detrás de un bailarín',
+  bl_orbita:'Órbita al bailarín', bl_tilt:'De los pies a la cara', bl_rostro:'Acercamiento al bailarín', bl_contra:'Bailarín en contrapicado', bl_pies:'Pies en la pista'};
 const cine = {shot:null, start:0, endBeat:0, endT:0, seed:0, last:'', focus:null, on:false, hist:[], hi:-1, enabled:true};
 try { cine.enabled = localStorage.getItem('dj-cine') !== '0'; } catch(e){}
 const cineV = new THREE.Vector3(), cineL = new THREE.Vector3();
@@ -1666,7 +1669,14 @@ function cineNew(t, manual){
   do { sh = pool[Math.floor(Math.random()*pool.length)]; } while (sh === cine.last);
   let crowd = cineCrowd();
   // con croma, el bailarín a seguir tiene que estar frente a la cabina (si no, el DJ se vería de lado)
-  if (cromaOn){ const fr = crowd.filter(c => c.x < 7.4 && Math.abs(c.z) < Math.tan(CROMA_MAX_ANG) * (8.9 - c.x) * 0.8); crowd = fr.length ? fr : []; if (sh === 'cr_seguir' && !crowd.length) sh = 'cr_crowd'; }
+  if (cromaOn){ const fr = crowd.filter(c => c.x < 7.4 && Math.abs(c.z) < Math.tan(CROMA_MAX_ANG) * (8.9 - c.x) * 0.8); crowd = fr.length ? fr : []; if ((sh === 'cr_seguir' || CINE_BAILARIN.includes(sh)) && !crowd.length) sh = 'cr_crowd'; }
+  // las tomas que miran la cara del bailarín eligen a un bot (a ellos se les puede pedir que miren a la cámara)
+  if (CINE_FACE.includes(sh)){
+    // un bot con la vista despejada hacia la pista (que nadie se cruce entre él y la cámara)
+    const all = cineCrowd(), clear = c => { const bx = c.x - 8.9, bz = c.z, l = Math.hypot(bx, bz) || 1, ux = bx / l, uz = bz / l;
+      return !all.some(o => { if (o === c) return false; const px = o.x - c.x, pz = o.z - c.z, along = px*ux + pz*uz; return along > 0.2 && along < 2.8 && Math.abs(px*uz - pz*ux) < 0.55; }); };
+    const bots = crowd.filter(c => chars.includes(c) && c.x < 7.2), ok = bots.filter(clear);
+    if (ok.length) crowd = ok; else if (bots.length) crowd = bots; }
   const entry = {shot: sh, seed: Math.random(), focus: crowd.length ? crowd[Math.floor(Math.random()*crowd.length)] : null};
   cine.hist = cine.hist.slice(0, cine.hi + 1); cine.hist.push(entry); if (cine.hist.length > 40) cine.hist.shift();
   cine.hi = cine.hist.length - 1;
@@ -1701,6 +1711,24 @@ function shotPose(name, e, k, sd, me, f, t){
     case 'esquina':  cineV.set(-9.6, 2.85, sd*4.6); cineL.set(-1 + (dx + 1)*e, 0.8 + 0.7*e, dz*e); return 55;
     case 'barrido': { const a = k*6.28 + sd*e*2.6;
       cineV.set(1.5 + Math.cos(a)*0.4, 2.15, Math.sin(a)*0.4); cineL.set(1.5 + Math.cos(a)*7, 1.1, Math.sin(a)*4.5); return 62; }
+    // ---- tomas de un bailarín (con el DJ de fondo cuando la cámara mira hacia la cabina) ----
+    case 'bl_orbita': case 'bl_tilt': case 'bl_rostro': case 'bl_contra': case 'bl_pies': {
+      e = ease(Math.min(1, (t - cine.start) / 3.6));   // estas tomas cuentan su propio tiempo: completan el movimiento en ~3,5 s
+      const fy = f.y || 0, bx = f.x - 8.9, bz = f.z, bl = Math.hypot(bx, bz) || 1, ux = bx / bl, uz = bz / bl;   // u: de la cabina hacia el bailarín
+      const pa = Math.atan2(uz, ux);
+      if (name === 'bl_orbita'){   // vuelta alrededor del bailarín; con croma solo el arco del lado de la pista (el DJ queda de fondo, de frente)
+        const span = cine.cromaK < 1 ? 1.0 : 2.6, a = pa + sd * (-span / 2 + span * e);
+        cineV.set(f.x + Math.cos(a)*1.7, fy + 1.35, f.z + Math.sin(a)*1.7); cineL.set(f.x, fy + 1.15, f.z); return 42; }
+      if (name === 'bl_tilt'){     // sube desde los pies hasta la cara; detrás aparece el DJ
+        const u = Math.min(1, e*1.25);
+        cineV.set(f.x + ux*1.25 + sd*uz*0.15, fy + 0.45 + 0.75*u, f.z + uz*1.25 - sd*ux*0.15); cineL.set(f.x, fy + 0.12 + 1.45*u, f.z); return 46; }
+      if (name === 'bl_rostro'){   // se acerca a la cara del bailarín con la cabina desenfocada atrás
+        const d = 2.6 - 1.6*e;
+        cineV.set(f.x + ux*d, fy + 1.5, f.z + uz*d); cineL.set(f.x, fy + 1.45, f.z); return 34; }
+      if (name === 'bl_contra'){   // desde el suelo hacia arriba: el bailarín gigante y las luces encima
+        cineV.set(f.x + ux*1.35 + sd*uz*(0.35 - 0.7*e), fy + 0.3, f.z + uz*1.35 - sd*ux*(0.35 - 0.7*e)); cineL.set(f.x, fy + 1.55, f.z); return 52; }
+      // bl_pies: a ras de piso, pasando de lado frente a los pies
+      cineV.set(f.x + ux*1.05 + sd*uz*(0.9 - 1.8*e), fy + 0.22, f.z + uz*1.05 - sd*ux*(0.9 - 1.8*e)); cineL.set(f.x, fy + 0.35, f.z); return 50; }
     // ---- tomas del croma: todas miran al DJ de frente ----
     case 'cr_dolly':   cineV.set(3.2 + 2.6*e, head - 0.05, sd*0.25*(1 - e)); cineL.set(8.9, head - 0.25, 0); return 38;
     case 'cr_pull':    cineV.set(7.6 - 4.2*e, head - 0.1 + 0.9*e, sd*0.15); cineL.set(8.9, head - 0.2 - 0.25*e, 0); return 30 + 14*e;
@@ -1732,7 +1760,9 @@ function cineCamera(){
   const dur = Math.max(1, cine.endT - cine.start), e = ease(Math.min(1, (t - cine.start) / dur)), k = cine.seed, sd = k < 0.5 ? -1 : 1;
   const me = chars[sel], f = cine.focus && cine.focus.group && cine.focus.on !== false ? cine.focus : me;
   // las tomas de un bailarín necesitan a alguien en la pista; si no hay, plano general
-  const shot = (cine.shot === 'bailarin' || cine.shot === 'seguir' || cine.shot === 'cr_seguir') && f === me ? (cine.shot === 'cr_seguir' ? 'cr_crowd' : 'grua') : cine.shot;
+  const shot = (cine.shot === 'bailarin' || cine.shot === 'seguir' || cine.shot === 'cr_seguir' || CINE_BAILARIN.includes(cine.shot)) && f === me ? (cine.shot === 'bailarin' || cine.shot === 'seguir' ? 'grua' : 'cr_crowd') : cine.shot;
+  cine.faceCam = CINE_FACE.includes(shot) && f !== me && chars.includes(f) ? f : null;
+  cine.curShot = shot;
   // con croma, las tomas apuntan a la cabeza del DJ del video (no a la del personaje) y la órbita se abre menos
   const A = room.items.dj ? cromaActive() : null;
   const who = A ? {x: me.x, z: me.z, y: (room.items.tarima ? STAGE_H : 0) + A.set.lift + A.set.size * 0.8 - 1.55} : me;
@@ -1744,10 +1774,10 @@ function cineCamera(){
   cineV.x += Math.sin(t*0.31 + k*9)*sh; cineV.y += Math.sin(t*0.23 + k*5)*sh*0.6; cineV.z += Math.cos(t*0.27 + k*7)*sh;
   clampRoom(cineV);
   // con croma, la cámara nunca queda de lado respecto al DJ (el video es plano): se acerca al eje de la cabina
-  if (A && cineV.x < 8.6){ const lim = Math.tan(CROMA_MAX_ANG) * (8.9 - cineV.x); if (Math.abs(cineV.z) > lim){ const dz = Math.sign(cineV.z) * lim - cineV.z; cineV.z += dz; cineL.z += dz; } }
+  if (A && cineV.x < 8.6 && shot !== 'bl_orbita'){ const lim = Math.tan(CROMA_MAX_ANG) * (8.9 - cineV.x); if (Math.abs(cineV.z) > lim){ const dz = Math.sign(cineV.z) * lim - cineV.z; cineV.z += dz; cineL.z += dz; } }
   // en vertical: el sujeto sube al tercio superior (la cámara mira un poco más abajo) para no llenar el cuadro de techo
   const fv = camera.aspect < 0.9 ? Math.min(80, fov * 1.4) : fov;
-  if (camera.aspect < 0.9 && !/manos/.test(shot)) cineL.y -= cineV.distanceTo(cineL) * Math.tan(fv * Math.PI / 360) * 0.38;
+  if (camera.aspect < 0.9 && !/manos|^bl_/.test(shot)) cineL.y -= cineV.distanceTo(cineL) * Math.tan(fv * Math.PI / 360) * 0.38;
   const cut = cine.sStart !== cine.start || !cine.sV;
   if (cut){ cine.sStart = cine.start; cine.sV = cineV.clone(); cine.sL = cineL.clone(); cine.sT = t; }
   else { const a = 1 - Math.exp(-Math.min(0.1, t - cine.sT) * 5); cine.sT = t; cine.sV.lerp(cineV, a); cine.sL.lerp(cineL, a); }
@@ -2368,6 +2398,7 @@ function tick(){
     else if (speed === 0 && groove > 0 && c !== me && room.items.dj) wantRot = Math.atan2(8.6 - c.x, 0 - c.z); // miran a la cabina
     if (c === me && firstPerson && !djNow) wantRot = yaw + Math.PI; // en primera persona el cuerpo mira hacia donde miras
     if (follow) wantRot = c.trot;
+    if (cine.on && cine.faceCam === c && !djNow) wantRot = Math.atan2(camera.position.x - c.x, camera.position.z - c.z);   // el bailarín de la toma mira a la cámara
     if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||follow||(c===me&&firstPerson)?12:3)); }
     c.move += ((speed > 0 || (follow && moved > 0.25) ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
     c.spd = (c.spd || 0) + (moved - (c.spd || 0)) * Math.min(1, dt*8);
@@ -2523,6 +2554,57 @@ function tick(){
   else { gfxFrame(t, dt, live.concat(remotes)); pipFrame(); }
   schedTick();
 }
+/* ---------- profundidad de campo de las tomas de cine ---------- */
+// Algunas tomas simulan un lente luminoso (f/1.8 en las más cerradas): lo que está a la distancia de enfoque queda
+// nítido y lo que está más cerca o más lejos se desenfoca, según la fórmula del círculo de confusión de una cámara real.
+const DOF_SHOTS = {retrato:1.8, cr_retrato:1.8, bl_rostro:1.8, bl_tilt:1.8, bl_pies:1.8, bl_contra:2.0, manos:1.8, cr_manos:2.0, cr_pull:1.8,
+  cr_silueta:1.8, cr_crowd:2.0, bailarin:1.8, bl_orbita:2.0, perfil:2.0, hombro:2.0, cr_vertigo:2.0, seguir:2.2, cr_seguir:2.2, heroe:2.8, orbita:2.8, cr_dolly:2.8, cr_low:2.8, cr_truck:2.8};
+const DOF = {rt:null, scene:null, cam:null, mat:null, on:true};
+try { DOF.on = localStorage.getItem('dj-dof') !== '0'; } catch(e){}
+const dofSz = new THREE.Vector2();
+function dofN(){ return DOF.on && cine.on && camera.fov ? (DOF_SHOTS[cine.curShot] || 0) : 0; }
+function dofRender(w, h){
+  if (!DOF.scene){
+    DOF.mat = new THREE.ShaderMaterial({
+      uniforms:{tColor:{value:null}, tDepth:{value:null}, res:{value:new THREE.Vector2()}, cNear:{value:0.1}, cFar:{value:100}, focusD:{value:2}, lensK:{value:0}, maxR:{value:20}},
+      vertexShader:'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader:`uniform sampler2D tColor, tDepth; uniform vec2 res; uniform float cNear, cFar, focusD, lensK, maxR; varying vec2 vUv;
+        float lin(float z){ float n = z*2.0 - 1.0; return 2.0*cNear*cFar / (cFar + cNear - n*(cFar - cNear)); }
+        float coc(float d){ return min(maxR, lensK * abs(d - focusD) / max(d, 0.01)); }
+        void main(){
+          float d = lin(texture2D(tDepth, vUv).x), r = coc(d);
+          vec4 acc = texture2D(tColor, vUv); float ws = 1.0;
+          // el desenfoque de lo que está delante se derrama sobre lo nítido: se mira alrededor con el radio máximo cercano
+          float R = max(r, maxR * 0.5);
+          for (int i = 0; i < 28; i++){
+            float fi = float(i) + 0.5, rr = sqrt(fi / 28.0) * R, a = fi * 2.39996;
+            vec2 uv = vUv + vec2(cos(a), sin(a)) * rr / res;
+            float ds = lin(texture2D(tDepth, uv).x), rs = coc(ds);
+            float w = ds < d ? smoothstep(rr - 1.0, rr + 1.0, rs) : smoothstep(rr - 1.0, rr + 1.0, min(rs, r));
+            acc += texture2D(tColor, uv) * w; ws += w;
+          }
+          gl_FragColor = linearToOutputTexel(vec4((acc / ws).rgb, 1.0));
+        }`,
+      depthTest:false, depthWrite:false, toneMapped:false});
+    DOF.scene = new THREE.Scene(); DOF.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DOF.mat));
+    DOF.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  }
+  if (!DOF.rt || DOF.rt.width !== w || DOF.rt.height !== h){
+    if (DOF.rt){ DOF.rt.dispose(); DOF.rt.depthTexture.dispose(); }
+    DOF.rt = new THREE.WebGLRenderTarget(w, h, {minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, type: renderer.capabilities.isWebGL2 ? THREE.HalfFloatType : THREE.UnsignedByteType});
+    DOF.rt.depthTexture = new THREE.DepthTexture(w, h); DOF.rt.depthTexture.type = THREE.UnsignedIntType;
+  }
+  // lente equivalente (full frame, lado corto = 24 mm), enfocado en el sujeto de la toma
+  const N = dofN(), short = Math.min(w, h), vf = camera.fov * Math.PI / 180;
+  const fovShort = w < h ? 2 * Math.atan(Math.tan(vf / 2) * w / h) : vf;
+  const fl = 0.012 / Math.tan(fovShort / 2), s = Math.max(0.3, camera.position.distanceTo(cine.sL || cineL));
+  const U = DOF.mat.uniforms;
+  U.focusD.value = s; U.lensK.value = fl * fl / (N * Math.max(0.01, s - fl)) / 0.024 * short * 1.6;
+  U.maxR.value = Math.round(short * 0.035); U.res.value.set(w, h); U.cNear.value = camera.near; U.cFar.value = camera.far;
+  renderer.setRenderTarget(DOF.rt); renderer.render(scene, camera); renderer.setRenderTarget(null);
+  U.tColor.value = DOF.rt.texture; U.tDepth.value = DOF.rt.depthTexture;
+  renderer.render(DOF.scene, DOF.cam);
+}
 /* ---------- modo ahorro del DJ ---------- */
 // Con la vista flotante abierta y el DJ en otro programa (Rekordbox), la ventana grande deja de dibujarse:
 // solo se dibuja la cinemática chiquita (resolución de la ventana flotante, sin postproceso, ~30 cuadros por segundo).
@@ -2544,7 +2626,7 @@ function ecoFrame(){
   const Q = PIP_Q[pipQ], r = Math.min(2, Math.max(0.4, (pipVert ? Q.v : Q.h) / (pipCv.clientHeight || 720)));
   const w = Math.max(64, Math.round((pipCv.clientWidth || 480) * r)), h = Math.max(36, Math.round((pipCv.clientHeight || 270) * r));
   if (w !== ECO.w || h !== ECO.h){ ECO.w = w; ECO.h = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
-  renderer.render(scene, camera);
+  if (dofN()) dofRender(w, h); else renderer.render(scene, camera);
   if (pipCv.width !== w || pipCv.height !== h){ pipCv.width = w; pipCv.height = h; }
   try { pipCtx.drawImage(renderer.domElement, 0, 0, w, h); } catch(e){}
 }
@@ -2781,7 +2863,7 @@ function gfxFrame(t, dt, people){
     b.position.set(c.x, (c.y || 0) + 0.012, c.z); seen.add(c);
   }
   for (const [c, b] of GFX.blobs) if (!seen.has(c)){ if (!c.group || c.on === false){ scene.remove(b); GFX.blobs.delete(c); } else b.visible = false; }
-  if (!GFX.composer){ renderer.render(scene, camera); return; }
+  if (!GFX.composer){ if (dofN()){ renderer.getDrawingBufferSize(dofSz); dofRender(dofSz.x, dofSz.y); } else renderer.render(scene, camera); return; }
   const lvl = music.sounding ? Math.min(1, music.bass*1.3) : 0;
   if (GFX.grade){ GFX.grade.uniforms.uLevel.value += (lvl - GFX.grade.uniforms.uLevel.value) * Math.min(1, dt*4); GFX.grade.uniforms.uTime.value = t; }
   if (GFX.bloom) GFX.bloom.strength = 0.45 + 0.3*lvl + 0.15*music.pulse;
@@ -3979,7 +4061,7 @@ async function openDjChat(){
   const d = w.document;
   d.title = 'Vista del DJ';
   const st = d.createElement('style'); st.textContent = PIP_CSS; d.head.append(st);
-  d.body.innerHTML = '<canvas id="cv"></canvas><header><div class="tag"><i></i>EN VIVO<span id="cnt"></span></div><div class="ctl"><button id="qual" type="button" title="Calidad de la cinemática: menos calidad = menos trabajo para el computador"></button><button id="vert" type="button"></button><button id="chatT" type="button"></button><button id="vid" type="button"></button></div></header>'
+  d.body.innerHTML = '<canvas id="cv"></canvas><header><div class="tag"><i></i>EN VIVO<span id="cnt"></span></div><div class="ctl"><button id="dofB" type="button" title="Desenfoque de lente (profundidad de campo) en las tomas cerradas"></button><button id="qual" type="button" title="Calidad de la cinemática: menos calidad = menos trabajo para el computador"></button><button id="vert" type="button"></button><button id="chatT" type="button"></button><button id="vid" type="button"></button></div></header>'
     + '<div id="chat"><div id="log"></div><form id="f"><input id="t" maxlength="200" placeholder="Responde al público…" autocomplete="off"><button>Enviar</button></form></div>';
   pipCv = d.getElementById('cv'); pipCtx = pipCv.getContext('2d', {alpha:false});
   const vid = d.getElementById('vid');
@@ -3997,6 +4079,8 @@ async function openDjChat(){
   const setQ = q => { pipQ = q; ECO.w = ECO.h = 0; const Q = PIP_Q[q]; qual.textContent = '⚙ ' + Q.label + ' · ' + (pipVert ? Math.round(Q.v * 9 / 16) + '×' + Q.v : Math.round(Q.h * 16 / 9) + '×' + Q.h);
     try { localStorage.setItem('dj-pip-q', q); } catch(e){} };
   qual.addEventListener('click', () => setQ(QORD[(QORD.indexOf(pipQ) + 1) % 3])); setQ(pipQ);
+  const dofB = d.getElementById('dofB'), setDof = on => { DOF.on = on; dofB.textContent = on ? '🎞 Desenfoque' : '🎞 Sin desenfoque'; try { localStorage.setItem('dj-dof', on ? '1' : '0'); } catch(e){} };
+  dofB.addEventListener('click', () => setDof(!DOF.on)); setDof(DOF.on);
   vert.addEventListener('click', () => setQ(pipQ));
   // los últimos mensajes que ya estaban
   [...chatLog.children].slice(-12).forEach(r => { const b = r.querySelector('b'); pipAdd(r.className.replace('msg ', ''), b ? b.textContent : '', b ? r.textContent.slice(b.textContent.length).trim() : r.textContent); });
