@@ -1749,7 +1749,9 @@ function cineCamera(){
   if (cut){ cine.sStart = cine.start; cine.sV = cineV.clone(); cine.sL = cineL.clone(); cine.sT = t; }
   else { const a = 1 - Math.exp(-Math.min(0.1, t - cine.sT) * 5); cine.sT = t; cine.sV.lerp(cineV, a); cine.sL.lerp(cineL, a); }
   camera.position.copy(cine.sV); camera.lookAt(cine.sL);
-  if (Math.abs(camera.fov - fov) > 0.05){ camera.fov = fov; camera.updateProjectionMatrix(); }
+  // en vertical (9:16) el cuadro es angosto: se abre el ángulo para que las tomas no queden apretadas
+  const fv = camera.aspect < 0.9 ? Math.min(80, fov * 1.4) : fov;
+  if (Math.abs(camera.fov - fv) > 0.05){ camera.fov = fv; camera.updateProjectionMatrix(); }
   for (const w of walls) for (const m of w.userData.mats){ m.opacity += (1 - m.opacity) * 0.2; m.depthWrite = m.opacity > 0.9; m.transparent = m.opacity < 0.99; }
 }
 function renderCine(){
@@ -2536,7 +2538,8 @@ function ecoSet(on){
 function ecoFrame(){
   if (++ECO.n % 2) return;
   if (!pipVideo || !pipCtx) return;                       // "solo chat": no se dibuja nada
-  const r = Math.min(1.25, djPip.devicePixelRatio || 1);
+  // en vertical se dibuja con resolución de transmisión (hasta 720×1280) aunque la ventana sea más chica
+  const r = pipVert ? Math.min(2, Math.max(1, 1280 / (pipCv.clientHeight || 720))) : Math.min(1.25, djPip.devicePixelRatio || 1);
   const w = Math.max(64, Math.round((pipCv.clientWidth || 480) * r)), h = Math.max(36, Math.round((pipCv.clientHeight || 270) * r));
   if (w !== ECO.w || h !== ECO.h){ ECO.w = w; ECO.h = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
   renderer.render(scene, camera);
@@ -3918,7 +3921,11 @@ header{position:absolute;top:6px;left:6px;right:6px;display:flex;align-items:cen
 header .tag{display:flex;align-items:center;gap:6px;padding:3px 8px;border-radius:6px;background:rgba(12,10,18,.72);font-weight:800;font-size:12px;letter-spacing:.4px}
 header i{width:8px;height:8px;border-radius:50%;background:#ff4f6d;box-shadow:0 0 8px #ff4f6d}
 header .tag span{font-weight:600;color:#a89fbd}
-header button{pointer-events:auto;margin-left:auto;background:rgba(12,10,18,.72);color:#f2ece0;border:1px solid #3a3350;border-radius:6px;padding:3px 8px;font:700 12px inherit;font-family:inherit;cursor:pointer}
+header .ctl{margin-left:auto;display:flex;gap:5px;opacity:0;transition:opacity .2s}
+body:hover header .ctl,body.solo header .ctl{opacity:1}
+body.vert #cv{left:50%;top:50%;right:auto;bottom:auto;width:min(100vw,56.25vh);height:min(100vh,177.78vw);transform:translate(-50%,-50%)}
+body.nochat #chat,body.nochat header .tag{display:none}
+header button{pointer-events:auto;background:rgba(12,10,18,.72);color:#f2ece0;border:1px solid #3a3350;border-radius:6px;padding:3px 8px;font:700 12px inherit;font-family:inherit;cursor:pointer}
 #chat{position:absolute;right:6px;bottom:6px;width:min(250px,48%);max-height:68%;display:flex;flex-direction:column;background:rgba(12,10,18,.66);border:1px solid rgba(255,255,255,.08);border-radius:10px;backdrop-filter:blur(3px)}
 body.solo #chat{inset:38px 6px 6px 6px;width:auto;max-height:none;background:#17141f}
 #log{flex:1;min-height:0;overflow:auto;padding:6px 8px;display:flex;flex-direction:column;gap:3px;font-size:13px;scrollbar-width:thin}
@@ -3943,8 +3950,8 @@ function pipAdd(kind, who, text, gif){
   const cnt = d.getElementById('cnt'); if (cnt) cnt.textContent = '· ' + (net.peers ? net.peers.size + 1 : 1) + ' en la sala';
 }
 // La ventana muestra la cinemática del juego (copia de cada cuadro) y el chat del público en su esquina.
-let pipCv = null, pipCtx = null, pipVideo = true;
-try { pipVideo = localStorage.getItem('dj-pip-video') !== '0'; } catch(e){}
+let pipCv = null, pipCtx = null, pipVideo = true, pipVert = false, pipChat = true;
+try { pipVideo = localStorage.getItem('dj-pip-video') !== '0'; pipVert = localStorage.getItem('dj-pip-vert') === '1'; pipChat = localStorage.getItem('dj-pip-chat') !== '0'; } catch(e){}
 function pipFrame(){
   if (!pipCtx || !pipVideo || !djPip || djPip.closed) return;
   if ((frameNo & 1) && !document.hidden) return;          // con la pestaña a la vista basta con 30 cuadros por segundo
@@ -3959,7 +3966,7 @@ async function openDjChat(){
   if (djPip && !djPip.closed){ djPip.focus && djPip.focus(); return; }
   let w = null;
   try {
-    if ('documentPictureInPicture' in window) w = await documentPictureInPicture.requestWindow({width: 480, height: 300});
+    if ('documentPictureInPicture' in window) w = await documentPictureInPicture.requestWindow(pipVert ? {width: 405, height: 720} : {width: 480, height: 300});
   } catch(e){ w = null; }
   if (!w) w = window.open('', 'djchat', 'width=480,height=300');
   if (!w){ addChat({kind:'system', text:'El navegador bloqueó la ventana flotante: permite las ventanas emergentes para este sitio.'}); return; }
@@ -3967,12 +3974,20 @@ async function openDjChat(){
   const d = w.document;
   d.title = 'Vista del DJ';
   const st = d.createElement('style'); st.textContent = PIP_CSS; d.head.append(st);
-  d.body.innerHTML = '<canvas id="cv"></canvas><header><div class="tag"><i></i>EN VIVO<span id="cnt"></span></div><button id="vid" type="button"></button></header>'
+  d.body.innerHTML = '<canvas id="cv"></canvas><header><div class="tag"><i></i>EN VIVO<span id="cnt"></span></div><div class="ctl"><button id="vert" type="button"></button><button id="chatT" type="button"></button><button id="vid" type="button"></button></div></header>'
     + '<div id="chat"><div id="log"></div><form id="f"><input id="t" maxlength="200" placeholder="Responde al público…" autocomplete="off"><button>Enviar</button></form></div>';
   pipCv = d.getElementById('cv'); pipCtx = pipCv.getContext('2d', {alpha:false});
   const vid = d.getElementById('vid');
   const setVid = on => { pipVideo = on; d.body.classList.toggle('solo', !on); vid.textContent = on ? '💬 Solo chat' : '🎬 Ver cinemática'; try { localStorage.setItem('dj-pip-video', on ? '1' : '0'); } catch(e){} };
   vid.addEventListener('click', () => setVid(!pipVideo)); setVid(pipVideo);
+  // vertical (9:16) para transmitir la cinemática por TikTok, y chat que se puede esconder para no duplicar el del live
+  const vert = d.getElementById('vert'), chT = d.getElementById('chatT');
+  const setVert = (on, resize) => { pipVert = on; d.body.classList.toggle('vert', on); vert.textContent = on ? '🖥 Horizontal' : '📱 Vertical';
+    try { localStorage.setItem('dj-pip-vert', on ? '1' : '0'); } catch(e){}
+    if (resize){ try { w.resizeTo(on ? 405 : 480, on ? 760 : 320); } catch(e){} } };
+  const setChat = on => { pipChat = on; d.body.classList.toggle('nochat', !on); chT.textContent = on ? '💬 Ocultar chat' : '💬 Mostrar chat'; try { localStorage.setItem('dj-pip-chat', on ? '1' : '0'); } catch(e){} };
+  vert.addEventListener('click', () => setVert(!pipVert, true)); setVert(pipVert, false);
+  chT.addEventListener('click', () => setChat(!pipChat)); setChat(pipChat);
   // los últimos mensajes que ya estaban
   [...chatLog.children].slice(-12).forEach(r => { const b = r.querySelector('b'); pipAdd(r.className.replace('msg ', ''), b ? b.textContent : '', b ? r.textContent.slice(b.textContent.length).trim() : r.textContent); });
   d.getElementById('f').addEventListener('submit', e => { e.preventDefault(); const t = d.getElementById('t'); if (sendChat(t.value)) t.value = ''; });
