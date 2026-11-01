@@ -2399,7 +2399,7 @@ function tick(){
     if (c === me && firstPerson && !djNow) wantRot = yaw + Math.PI; // en primera persona el cuerpo mira hacia donde miras
     if (follow) wantRot = c.trot;
     if (cine.on && cine.faceCam === c && !djNow) wantRot = Math.atan2(camera.position.x - c.x, camera.position.z - c.z);   // el bailarín de la toma mira a la cámara
-    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||follow||(c===me&&firstPerson)?12:3)); }
+    if (wantRot !== null){ let diff = Math.atan2(Math.sin(wantRot - c.rot), Math.cos(wantRot - c.rot)); c.rot += diff * Math.min(1, dt*(speed>0||follow||(c===me&&firstPerson)?12:(cine.faceCam === c ? 9 : 3))); }
     c.move += ((speed > 0 || (follow && moved > 0.25) ? Math.min(1, moved/2.4 + 0.3) : 0) - c.move) * Math.min(1, dt*10);
     c.spd = (c.spd || 0) + (moved - (c.spd || 0)) * Math.min(1, dt*8);
     c.phase += dt * 2*Math.PI * gaitCad(c.spd, gaitFem(c.def || defs[c.i]));
