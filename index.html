@@ -955,7 +955,10 @@ item('tarima','Tarima DJ',true,(g)=>{
   const em = new THREE.MeshBasicMaterial({color:'#ffb347'});
   const e1 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e1.position.set(2.69,STAGE_H-0.01,0); g.add(e1);
   const e2 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e2.position.set(2.39,STAGE_H/2-0.01,0); g.add(e2);
-  return {edge:em};
+  // luz blanca suave sobre la tarima (~20 %): con las luces de fiesta la sala se oscurece, pero a quien está arriba se le ve
+  const wl = new THREE.SpotLight('#ffffff', 0.55, 13, 0.78, 0.7, 1); wl.position.set(1.2, 3.6, 0); wl.target.position.set(4.0, 0.8, 0);
+  g.add(wl, wl.target);
+  return {edge:em, white:wl};
 }, STAGE_DX);
 item('dj','Cabina DJ',true,(g0,solid)=>{
   const g = new THREE.Group(); g0.add(g);
@@ -2166,6 +2169,7 @@ function cromaLight(t){
   const m1 = presetColor(0, t, cromaC1), m2 = presetColor(3, t, cromaC2);
   cromaC1.multiplyScalar(Math.min(1.4, m1)).add(cromaC2.multiplyScalar(Math.min(1.4, m2))).multiplyScalar(0.5);
   tint.copy(cromaW).lerp(cromaC1.multiplyScalar(1.15).addScalar(0.45), 0.55 * party).multiplyScalar(1 + 0.18 * music.lightPulse * party);
+  tint.lerp(cromaW, 0.2);   // la luz blanca de la tarima: al DJ siempre se le ve la cara
 }
 function cromaUpdate(t){
   const A = room.items.dj ? cromaActive() : null, m = cromaEnsureMesh();
