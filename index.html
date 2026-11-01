@@ -955,8 +955,8 @@ item('tarima','Tarima DJ',true,(g)=>{
   const em = new THREE.MeshBasicMaterial({color:'#ffb347'});
   const e1 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e1.position.set(2.69,STAGE_H-0.01,0); g.add(e1);
   const e2 = new THREE.Mesh(new THREE.BoxGeometry(0.03,0.04,5.0), em); e2.position.set(2.39,STAGE_H/2-0.01,0); g.add(e2);
-  // luz blanca suave sobre la tarima (~20 %): con las luces de fiesta la sala se oscurece, pero a quien está arriba se le ve
-  const wl = new THREE.SpotLight('#ffffff', 0.55, 13, 0.78, 0.7, 1); wl.position.set(1.2, 3.6, 0); wl.target.position.set(4.0, 0.8, 0);
+  // luz blanca sobre la tarima, de frente al DJ: con las luces de fiesta la sala se oscurece, pero a quien está arriba siempre se le ve
+  const wl = new THREE.SpotLight('#ffffff', 1.7, 13, 0.6, 0.6, 1); wl.position.set(1.6, 3.4, 0); wl.target.position.set(4.3, 1.1, 0);
   g.add(wl, wl.target);
   return {edge:em, white:wl};
 }, STAGE_DX);
