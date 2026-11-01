@@ -1745,12 +1745,14 @@ function cineCamera(){
   clampRoom(cineV);
   // con croma, la cámara nunca queda de lado respecto al DJ (el video es plano): se acerca al eje de la cabina
   if (A && cineV.x < 8.6){ const lim = Math.tan(CROMA_MAX_ANG) * (8.9 - cineV.x); if (Math.abs(cineV.z) > lim){ const dz = Math.sign(cineV.z) * lim - cineV.z; cineV.z += dz; cineL.z += dz; } }
+  // en vertical: el sujeto sube al tercio superior (la cámara mira un poco más abajo) para no llenar el cuadro de techo
+  const fv = camera.aspect < 0.9 ? Math.min(80, fov * 1.4) : fov;
+  if (camera.aspect < 0.9 && !/manos/.test(shot)) cineL.y -= cineV.distanceTo(cineL) * Math.tan(fv * Math.PI / 360) * 0.38;
   const cut = cine.sStart !== cine.start || !cine.sV;
   if (cut){ cine.sStart = cine.start; cine.sV = cineV.clone(); cine.sL = cineL.clone(); cine.sT = t; }
   else { const a = 1 - Math.exp(-Math.min(0.1, t - cine.sT) * 5); cine.sT = t; cine.sV.lerp(cineV, a); cine.sL.lerp(cineL, a); }
   camera.position.copy(cine.sV); camera.lookAt(cine.sL);
   // en vertical (9:16) el cuadro es angosto: se abre el ángulo para que las tomas no queden apretadas
-  const fv = camera.aspect < 0.9 ? Math.min(80, fov * 1.4) : fov;
   if (Math.abs(camera.fov - fv) > 0.05){ camera.fov = fv; camera.updateProjectionMatrix(); }
   for (const w of walls) for (const m of w.userData.mats){ m.opacity += (1 - m.opacity) * 0.2; m.depthWrite = m.opacity > 0.9; m.transparent = m.opacity < 0.99; }
 }
