@@ -465,6 +465,11 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <ol class="plist" id="plist"></ol>
       <p class="note">Elige los archivos de tus pistas (MP3, WAV, M4A) o arrástralos a la sala. Suenan solo en tu navegador, no se suben a ningún lado.</p>
       </div></details>
+      <details class="fold" id="fMesa"><summary><span class="ft">🎛️ Mesa Web</span><span class="badge" id="mesaState">Apagada</span></summary><div class="fbody">
+        <p class="note">Mezcla aquí mismo, sin Rekordbox: conecta tu controladora por USB (la <b>Pioneer DDJ-400</b> se reconoce sola, sin mapear nada) e importa tu biblioteca de rekordbox con sus BPM, grillas, memory cues y hot cues. El master llega directo a la sala, sin capturar la pantalla.</p>
+        <div class="row"><button class="btn primary" id="mesaBtn" type="button">Abrir Mesa Web</button></div>
+        <p class="note" id="mesaNote">Funciona en Chrome o Edge en un computador. En rekordbox: <b>Archivo → Exportar colección en formato xml</b>, y ese archivo lo importas en la mesa.</p>
+      </div></details>
       <details class="fold" id="fLive"><summary><span class="ft">🎚️ Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></summary><div class="fbody">
         <div class="row"><button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button><button class="btn" id="sysAudioBtn" type="button" title="Solo el sonido: la pantalla no se transmite ni se procesa">🎧 Solo audio (sin pantalla)</button></div>
         <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige la <b>Ventana</b> de Rekordbox y activa <b>Compartir audio del sistema</b>. La sala verá esa ventana en el computador de la cabina. Si tu computador va justo, usa <b>Solo audio</b>: elige <b>Pantalla completa</b> y activa <b>Compartir audio del sistema</b>; la imagen se descarta al instante y solo viaja el sonido. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
@@ -2041,7 +2046,7 @@ function trackEnergy(dt, lvl, bass){
   music.calm = music.fast < 0.16;
 }
 function analyse(t, dt){
-  const live = (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode);
+  const live = (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode) || music.source === 'mesa';
   const playing = !!analyser && (live || (!audioEl.paused && !audioEl.ended));
   music.real = playing;
   if (playing){
@@ -2611,6 +2616,7 @@ function tick(){
   if (frameNo % (ECO.on ? 8 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   updateBubbles(dt);
   if (ECO.on) ecoFrame();
+  else if (window.MESA_COVER && !(djPip && !djPip.closed) && frameNo % 6) {} // la Mesa Web tapa la sala: se dibuja a ~10 cuadros por segundo
   else { gfxFrame(t, dt, live.concat(remotes)); pipFrame(); }
   schedTick();
 }
@@ -3113,6 +3119,7 @@ function playIdx(i){
   start();
 }
 function start(){
+  if (music.source === 'mesa' && window.MW) MW.powerOff();
   if (music.source === 'remote'){ if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; } if (net.remoteAudio) net.remoteAudio.pause(); music.source = null; netEl.hear.hidden = !net.djPeer; }
   stopLive(); renderLive();
   ensureAudio();
@@ -3185,6 +3192,43 @@ liveBtn.addEventListener('click', async () => {
       : 'No se pudo abrir esa entrada de audio: ' + (e && e.message || e);
     renderLive();
   }
+});
+
+/* ---------- Mesa Web: mezclador en el navegador ---------- */
+// Los scripts de la mesa se cargan solo cuando alguien la abre. La mesa usa el mismo motor de audio de la sala:
+// su master entra al analizador (luces, baile) y a la transmisión, igual que una canción local.
+const mesaBtn = document.getElementById('mesaBtn'), mesaState = document.getElementById('mesaState'), mesaNote = document.getElementById('mesaNote');
+const mesaHost = window.MESA_HOST = {
+  async audio(){ ensureAudio(); if (actx.state === 'suspended') await actx.resume(); return {actx, analyser}; },
+  activate(){
+    if (music.source === 'live') stopSys();
+    if (music.source !== 'remote'){ audioEl.pause(); if (outGain) outGain.gain.value = 0; music.source = 'mesa'; music.intervals = []; music.lastReal = -9; music.lastBeat = -9; resetLiveBpm(); MW.feedRoom(true); }
+    renderPlaylist(); renderMesa();
+  },
+  deactivate(){ if (music.source === 'mesa'){ music.source = null; music.liveGrid = null; if (outGain) outGain.gain.value = 1; } nowEl.textContent = cur >= 0 ? playlist[cur].name : 'Carga tus pistas para que la sala baile'; renderMesa(); if (net.casting) stopCast(); },
+  detectTempo: f => detectTempo(f),
+  casting: () => !!net.casting,
+  state: () => ({source: music.source, grid: music.liveGrid, bpm: music.bpm, sounding: music.sounding, bass: music.bass}),
+  frame(){
+    if (music.source !== 'mesa') return;
+    music.liveGrid = MW.roomGrid();
+    if (frameNo % 30 === 0){ const np = MW.nowPlaying(); nowEl.textContent = '🎛️ Mesa Web' + (np ? ': ' + np : ''); if (net.casting && np !== mesaHost.lastNp){ mesaHost.lastNp = np; try { net.actions.dj.send(djPayload()); } catch(e){} } }
+  },
+};
+function renderMesa(){ const on = !!(window.MW && MW.isOn && MW.isOn()); mesaState.textContent = on ? 'Encendida' : 'Apagada'; mesaState.classList.toggle('on', on); mesaBtn.textContent = on ? 'Mostrar la Mesa Web' : 'Abrir Mesa Web'; }
+let mesaLoading = null;
+function loadMesa(){
+  if (mesaLoading) return mesaLoading;
+  const files = ['mesa/mesa-core.js', 'mesa/mesa-lib.js', 'mesa/mesa-midi.js', 'mesa/mesa-ui.js', 'mesa/mesa.js'];
+  mesaLoading = files.reduce((p, f) => p.then(() => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = f + '?v=1'; s.onload = ok; s.onerror = () => bad(new Error('No se pudo cargar ' + f)); document.head.appendChild(s); })), Promise.resolve());
+  mesaLoading.catch(() => { mesaLoading = null; });
+  return mesaLoading;
+}
+mesaBtn.addEventListener('click', async () => {
+  mesaBtn.disabled = true; mesaNote.textContent = 'Abriendo la Mesa Web…';
+  try { await loadMesa(); await MW.open(); renderMesa(); mesaNote.textContent = 'La mesa está encendida. Con «▾ Ver la sala» vuelves aquí sin cortar la música.'; }
+  catch(e){ console.error(e); mesaNote.textContent = 'No se pudo abrir la Mesa Web: ' + (e && e.message || e); }
+  finally { mesaBtn.disabled = false; }
 });
 
 /* ---------- configuración: secciones plegables (se recuerda cuáles dejaste abiertas) ---------- */
@@ -3339,6 +3383,7 @@ let sysAudioOnly = false;
 // solo audio: el navegador igual pide elegir una pantalla para dar acceso al sonido, pero la imagen se corta al instante
 // (no se procesa, no se codifica y no se envía); así el computador del DJ queda libre para Rekordbox y la transmisión
 async function captureSystemAudio(audioOnlyMode){
+  if (music.source === 'mesa' && window.MW) MW.powerOff();
   if (!navigator.mediaDevices?.getDisplayMedia){ sysNote.textContent = 'Este navegador no puede capturar el audio del computador. Usa Chrome o Edge en un computador.'; return false; }
   let st;
   try {
@@ -3670,7 +3715,7 @@ function renderNet(){
   musicSec.hidden = !(allowed || net.casting);
   djBar.hidden = !net.casting;
 }
-function castTrack(){ return music.source === 'live' ? 'En vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
+function castTrack(){ if (music.source === 'mesa') return (window.MW && MW.nowPlaying && MW.nowPlaying()) || 'Mesa Web'; return music.source === 'live' ? 'En vivo' : (cur >= 0 && !audioEl.paused ? playlist[cur].name : ''); }
 let castSig = null, castPub = null;
 function djPayload(){ return {on: net.casting, name: myDef().name, track: castTrack(), since: net.castSince, lp: lightPreset, pub: castPub, sig: castSig, cr: net.casting ? cromaPayload() : null}; }
 
@@ -3679,7 +3724,7 @@ async function startCast(){
   if (!net.room || !canCast()) return;
   ensureAudio(); if (!actx) return;
   if (actx.state === 'suspended') actx.resume();
-  if (!(music.source === 'live' || (cur >= 0 && !audioEl.paused))){
+  if (!(music.source === 'live' || music.source === 'mesa' || (cur >= 0 && !audioEl.paused))){
     netEl.note.textContent = 'Elige la pantalla y activa “Compartir audio del sistema” para transmitir lo que suena en tu software de DJ.';
     const ok = await captureSystemAudio();
     if (!ok){ netEl.note.textContent = sysNote.textContent; djTurnNote.textContent = sysNote.textContent; return; }
@@ -3743,6 +3788,7 @@ function limitVideo(){
 // escuchar al DJ
 function playRemote(stream){
   ensureAudio(); if (!actx) return;
+  if (window.MW && MW.isOn && MW.isOn()) MW.feedRoom(false);   // la mesa sigue en tus audífonos, la sala escucha al DJ de turno
   if (net.casting) stopCast();
   stopLive(); renderLive(); audioEl.pause();
   if (net.remoteNode){ net.remoteNode.disconnect(); net.remoteNode = null; }
@@ -3764,6 +3810,7 @@ function endRemoteDJ(){
   if (net.remoteAudio){ net.remoteAudio.pause(); net.remoteAudio.srcObject = null; }
   net.remoteStream = null; netEl.hear.hidden = true; setLaptopVideo(null); drawLaptopLogo(null); cromaRemoteEnd();
   if (music.source === 'remote'){ music.source = null; if (outGain) outGain.gain.value = 1; }
+  if (window.MW && MW.isOn && MW.isOn()) mesaHost.activate();
   renderNet();
 }
 netEl.cast.addEventListener('click', () => net.casting ? stopCast() : startCast());
@@ -3932,7 +3979,7 @@ let lastSlotAnnounced = null, prepSlot = null, prepBusy = false;
 const fmtLeft = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 // el turno que viene o el que está en curso, si empieza dentro de 2 minutos
 function soonSlot(now = Date.now()){ return sched.slots.filter(s => s.end > now && s.start - now <= PREP_MS).sort((x, y) => x.start - y.start)[0] || null; }
-function myScreenReady(){ return music.source === 'live' && ((!!sysVideo && sysVideo.readyState === 'live') || sysAudioOnly); }
+function myScreenReady(){ if (music.source === 'mesa') return true; return music.source === 'live' && ((!!sysVideo && sysVideo.readyState === 'live') || sysAudioOnly); }
 async function prepareCast(audioOnlyMode){
   if (prepBusy) return; prepBusy = true;
   try {

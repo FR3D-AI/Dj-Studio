@@ -11,6 +11,19 @@ Sala 3D de 10 × 10 m que corre en el navegador: tarima con cabina DJ, luces de 
 
 Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
 
+## Mesa Web: mezclar en el navegador
+
+En el panel, **🎛️ Mesa Web → Abrir Mesa Web** abre un mezclador de 2 bandejas al estilo rekordbox: forma de onda de 3 bandas,
+grilla de golpes, CUE, 8 hot cues, memory cues, loops (IN/OUT, beat loop, ½ y 2×), beat jump, SYNC y MASTER,
+Master Tempo (cambia el tempo sin cambiar el tono), EQ aislador de 3 bandas, filtro, Beat FX, sampler, escucha previa
+por audífonos y crossfader. El master llega directo a la sala y a la transmisión, sin capturar la pantalla.
+
+- **Controladoras**: se reconocen solas por Web MIDI (Chrome o Edge). La Pioneer DDJ-400 viene incluida; para más de
+  140 modelos se usa el mapeo publicado por el proyecto Mixxx (ver `vendor/mixxx/README.md`).
+- **Biblioteca de rekordbox**: en rekordbox, *Archivo → Exportar colección en formato xml*; en la mesa, *Importar XML*
+  y luego *Carpeta de música*. Llegan BPM, grillas, memory cues, hot cues (con color y nombre), loops y listas.
+  Lo que cambies se puede exportar de vuelta a rekordbox (*Exportar XML*).
+
 ## Cómo funciona
 - Todo el juego está en `index.html` (Three.js desde CDN).
 - La sala en línea usa conexión directa entre navegadores (WebRTC), con Trystero 0.25.4 incluido en `vendor/`.
@@ -28,3 +41,4 @@ Requiere Chrome o Edge. En Mac: Chrome 141+ y macOS 14.2+.
 - Modelo de **DJ Natan** (`models/natan_anim.glb`): generado con Meshy AI («Urban Nomad») y animado con Mixamo: caminar, correr, 6 bailes, entrada y salida del selector y sus loops de DJ.
 - Modelo de **DJ Wishi** (`models/wishi_anim.glb`): generado con Meshy AI y animado con Mixamo (caminar, correr, 7 bailes y las animaciones de entrada y salida del selector).
 - Modelos de **DJ Valknuz** (`models/valknuz_anim.glb`) y **DJ Green Roll** (`models/greenroll_anim.glb`): generados con Meshy AI; malla reducida, textura horneada y esqueleto propio, con los brazos llevados a reposo, hechos para este juego. Los dos usan el esqueleto de Mixamo (Adobe): Valknuz y Green Roll con caminata, bailes y animaciones del selector capturados (Green Roll con un modelo nuevo de Meshy, el «Masked Sentinel»).
+- Mesa Web: mapeo de la Pioneer DDJ-400 y scripts comunes del proyecto [Mixxx](https://github.com/mixxxdj/mixxx) (GPL-2.0 o posterior).
