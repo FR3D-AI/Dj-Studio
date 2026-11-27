@@ -97,7 +97,7 @@ const CSS = `
 .mw-bar input[type=search]{flex:1;min-width:140px;background:#1d1a26;border:1px solid #3a3449;border-radius:7px;color:#e9e6f0;padding:5px 9px;font:inherit}
 .mw-bar small{color:#9e97b0}
 .mw-list{flex:1;overflow:auto;position:relative;min-height:0;outline:none}
-.mw-list .hd,.mw-list .tr{display:grid;grid-template-columns:22px minmax(140px,2fr) minmax(90px,1.2fr) minmax(120px,1.8fr) 62px 46px 54px minmax(60px,.8fr);gap:8px;align-items:center;padding:0 8px;height:26px;white-space:nowrap}
+.mw-list .hd,.mw-list .tr{display:grid;grid-template-columns:22px minmax(180px,2.4fr) 62px minmax(120px,1.6fr) minmax(90px,1.1fr) 46px 54px minmax(60px,.8fr);gap:8px;align-items:center;padding:0 8px;height:26px;white-space:nowrap}
 .mw-list .hd{position:sticky;top:0;background:#1a1822;color:#9e97b0;font-size:11px;font-weight:800;z-index:1;cursor:pointer}
 .mw-list .tr{position:absolute;left:0;right:0;cursor:default;border-bottom:1px solid #18161f}
 .mw-list .tr span{overflow:hidden;text-overflow:ellipsis}
@@ -578,13 +578,13 @@ function drawList(){
     return;
   }
   const sorted = k => L.sortKey === k ? (L.sortDir > 0 ? ' ▲' : ' ▼') : '';
-  const hd = `<div class="hd"><span></span><span data-s="title">Título${sorted('title')}</span><span data-s="artist">Artista${sorted('artist')}</span><span data-s="fileName">Archivo${sorted('fileName')}</span><span data-s="bpm" class="n">BPM${sorted('bpm')}</span><span data-s="key">Tono${sorted('key')}</span><span data-s="dur" class="n">Tiempo${sorted('dur')}</span><span data-s="genre">Género${sorted('genre')}</span></div>`;
+  const hd = `<div class="hd"><span></span><span data-s="fileName">Archivo${sorted('fileName')}</span><span data-s="bpm" class="n">BPM${sorted('bpm')}</span><span data-s="title">Título${sorted('title')}</span><span data-s="artist">Artista${sorted('artist')}</span><span data-s="key">Tono${sorted('key')}</span><span data-s="dur" class="n">Tiempo${sorted('dur')}</span><span data-s="genre">Género${sorted('genre')}</span></div>`;
   const vh = list.clientHeight || 300, s = Math.max(0, Math.floor(list.scrollTop / ROW) - 4), e = Math.min(L.list.length, s + Math.ceil(vh / ROW) + 8);
   let rows = '';
   const loaded = new Set(MW.decks.map(d => d.track && d.track.id));
   for (let i = s; i < e; i++){
     const t = L.list[i], ok = L.hasFile(t);
-    rows += `<div class="tr${i === L.sel ? ' on' : ''}${ok ? '' : ' miss'}" data-i="${i}" draggable="true" style="top:${ROW + i * ROW}px" title="${ok ? 'Doble clic para cargar · arrastra a una bandeja' : 'No encuentro el archivo: elige la carpeta de música'}"><span class="mw-dot${ok ? ' ok' : ''}" style="${t.color ? 'background:' + t.color : ''}"></span><span>${loaded.has(t.id) ? '▶ ' : ''}${esc(t.title)}</span><span>${esc(t.artist)}</span><span title="${esc(t.path || '')}">${esc(t.fileName || '')}</span><span class="n">${t.bpm ? t.bpm.toFixed(2) : '—'}</span><span>${esc(t.key || '')}</span><span class="n">${t.dur ? MW.fmtTime(t.dur).replace(/\.\d$/, '') : ''}</span><span>${esc(t.genre || '')}</span></div>`;
+    rows += `<div class="tr${i === L.sel ? ' on' : ''}${ok ? '' : ' miss'}" data-i="${i}" draggable="true" style="top:${ROW + i * ROW}px" title="${ok ? 'Doble clic para cargar · arrastra a una bandeja' : 'No encuentro el archivo: elige la carpeta de música'}"><span class="mw-dot${ok ? ' ok' : ''}" style="${t.color ? 'background:' + t.color : ''}"></span><span title="${esc(t.path || '')}">${loaded.has(t.id) ? '▶ ' : ''}${esc(t.fileName || t.title)}</span><span class="n">${t.bpm ? t.bpm.toFixed(2) : '—'}</span><span>${esc(t.title)}</span><span>${esc(t.artist)}</span><span>${esc(t.key || '')}</span><span class="n">${t.dur ? MW.fmtTime(t.dur).replace(/\.\d$/, '') : ''}</span><span>${esc(t.genre || '')}</span></div>`;
   }
   list.innerHTML = hd + `<div style="height:${L.list.length * ROW}px"></div>` + rows;
 }
