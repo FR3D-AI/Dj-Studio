@@ -322,10 +322,12 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <li>Toca <b>Preparar mi pantalla</b> aquí abajo.</li>
       <li>En la ventana del navegador elige la pestaña <b>Ventana</b> y selecciona tu software de DJ: eso es lo que verá la sala en el computador de la cabina. (También sirve <b>Pantalla completa</b>, pero se verá todo lo que tengas abierto).</li>
       <li>Activa el interruptor <b>Compartir audio del sistema</b> y toca <b>Compartir</b>.</li>
+      <li>¿Tu computador va justo con Rekordbox y TikTok? Usa <b>Solo audio, sin pantalla</b>: elige <b>Pantalla completa</b>, activa <b>Compartir audio del sistema</b> y la imagen se descarta al instante; a la sala solo le llega el sonido.</li>
       <li>Listo: cuando llegue tu hora la transmisión parte sola. Dale play y todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
     </ol>
     <p class="note" id="djTurnNote"></p>
     <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
+    <button class="btn" id="djTurnAudio" type="button">🎧 Solo audio, sin pantalla (para computadores justos)</button>
     <button class="btn" id="djTurnChat" type="button">🎬 Abrir vista flotante: cinemática + chat (queda encima de Rekordbox)</button>
     <button class="btn" id="djTurnLater" type="button">Ahora no</button>
   </div>
@@ -456,8 +458,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <p class="note">Elige los archivos de tus pistas (MP3, WAV, M4A) o arrástralos a la sala. Suenan solo en tu navegador, no se suben a ningún lado.</p>
       <div class="livebox">
         <div class="mtop"><span class="lbl">Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></div>
-        <button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button>
-        <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige la <b>Ventana</b> de Rekordbox y activa <b>Compartir audio del sistema</b>. La sala verá esa ventana en el computador de la cabina. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
+        <div class="row"><button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button><button class="btn" id="sysAudioBtn" type="button" title="Solo el sonido: la pantalla no se transmite ni se procesa">🎧 Solo audio (sin pantalla)</button></div>
+        <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige la <b>Ventana</b> de Rekordbox y activa <b>Compartir audio del sistema</b>. La sala verá esa ventana en el computador de la cabina. Si tu computador va justo, usa <b>Solo audio</b>: elige <b>Pantalla completa</b> y activa <b>Compartir audio del sistema</b>; la imagen se descarta al instante y solo viaja el sonido. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
         <details class="adv">
           <summary>Opción avanzada: entrada de audio</summary>
           <div class="row">
@@ -3309,12 +3311,15 @@ function cromaRemoteEnd(){ croma.remoteSrc = null; if (croma.remoteVid) croma.re
 const isCromaStream = (stream, meta) => (meta && meta.kind === 'croma') || !!(net.dj && net.dj.msg && net.dj.msg.cr && net.dj.msg.cr.sid === stream.id);
 const sysBtn = document.getElementById('sysBtn'), sysNote = document.getElementById('sysNote');
 let sysVideo = null;
-async function captureSystemAudio(){
+let sysAudioOnly = false;
+// solo audio: el navegador igual pide elegir una pantalla para dar acceso al sonido, pero la imagen se corta al instante
+// (no se procesa, no se codifica y no se envía); así el computador del DJ queda libre para Rekordbox y la transmisión
+async function captureSystemAudio(audioOnlyMode){
   if (!navigator.mediaDevices?.getDisplayMedia){ sysNote.textContent = 'Este navegador no puede capturar el audio del computador. Usa Chrome o Edge en un computador.'; return false; }
   let st;
   try {
     st = await navigator.mediaDevices.getDisplayMedia({
-      video: {frameRate: {max: 10}, width: {max: 640}, height: {max: 360}, displaySurface: 'window'},
+      video: audioOnlyMode ? {frameRate: {max: 1}, width: {max: 320}, height: {max: 180}, displaySurface: 'monitor'} : {frameRate: {max: 10}, width: {max: 640}, height: {max: 360}, displaySurface: 'window'},
       audio: {echoCancellation:false, noiseSuppression:false, autoGainControl:false, suppressLocalAudioPlayback:false},
       systemAudio: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude', monitorTypeSurfaces: 'include'
     });
@@ -3328,24 +3333,31 @@ async function captureSystemAudio(){
     sysNote.textContent = 'No llegó audio. Vuelve a intentarlo y activa el interruptor “Compartir audio del sistema” antes de compartir (en Mac necesitas Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
     return false;
   }
-  sysVideo = st.getVideoTracks()[0] || null; // se ve en el computador del DJ (y se envía a la sala en baja calidad)
-  if (sysVideo) setLaptopVideo(sysVideo);
+  sysAudioOnly = !!audioOnlyMode;
+  if (sysAudioOnly){ st.getVideoTracks().forEach(t => t.stop()); sysVideo = null; }
+  else { sysVideo = st.getVideoTracks()[0] || null; if (sysVideo) setLaptopVideo(sysVideo); } // la pantalla se ve en el computador de la cabina (en baja calidad)
   const audioOnly = new MediaStream(at);
   await startLive(null, audioOnly);
-  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } setLaptopVideo(null); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
+  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysAudioOnly = false; setLaptopVideo(null); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
   renderLive(); renderPlaylist(); renderSys();
   nowEl.textContent = 'En vivo: audio del computador';
-  sysNote.textContent = 'Capturando el audio del computador. Todo lo que suene en Rekordbox llega a la sala.';
+  sysNote.textContent = sysAudioOnly ? 'Capturando solo el audio del computador (sin pantalla). Todo lo que suene en Rekordbox llega a la sala.' : 'Capturando el audio del computador. Todo lo que suene en Rekordbox llega a la sala.';
   return true;
 }
+const sysAudioBtn = document.getElementById('sysAudioBtn');
+let sysOn = false;
 function renderSys(){
-  const on = music.source === 'live' && !!sysVideo;
-  sysBtn.textContent = on ? 'Dejar de capturar' : 'Capturar audio del computador';
+  sysOn = music.source === 'live' && (!!sysVideo || sysAudioOnly);
+  sysBtn.textContent = sysOn && !sysAudioOnly ? 'Dejar de capturar' : 'Capturar audio del computador';
+  sysAudioBtn.textContent = sysOn && sysAudioOnly ? 'Dejar de capturar' : '🎧 Solo audio (sin pantalla)';
+  sysBtn.hidden = sysOn && sysAudioOnly; sysAudioBtn.hidden = sysOn && !sysAudioOnly;
 }
-sysBtn.addEventListener('click', async () => {
-  if (music.source === 'live' && sysVideo){ sysVideo.stop(); sysVideo = null; setLaptopVideo(null); stopLive(); renderLive(); renderSys(); if (net.casting) stopCast(); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; return; }
-  await captureSystemAudio();
-});
+function stopSys(){
+  if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysAudioOnly = false; setLaptopVideo(null);
+  stopLive(); renderLive(); renderSys(); if (net.casting) stopCast(); sysNote.textContent = 'Se dejó de capturar el audio del computador.';
+}
+sysBtn.addEventListener('click', async () => { if (sysOn) return stopSys(); await captureSystemAudio(false); });
+sysAudioBtn.addEventListener('click', async () => { if (sysOn) return stopSys(); await captureSystemAudio(true); });
 liveDev.addEventListener('change', () => { if (music.source === 'live') liveBtn.click(), setTimeout(() => liveBtn.click(), 50); });
 navigator.mediaDevices?.addEventListener?.('devicechange', listInputs);
 listInputs();
@@ -3804,19 +3816,20 @@ async function connect(){
 const PREP_MS = 2 * 60 * 1000;
 const djTurn = document.getElementById('djTurn'), djTurnNote = document.getElementById('djTurnNote');
 const djTurnClock = document.getElementById('djTurnClock'), djTurnTitle = document.getElementById('djTurnTitle'), djTurnGo = document.getElementById('djTurnGo');
+const djTurnAudio = document.getElementById('djTurnAudio');
 const djCount = document.getElementById('djCount'), djCountText = document.getElementById('djCountText'), djCountBtn = document.getElementById('djCountBtn');
 const shownTurns = new Set();
 let lastSlotAnnounced = null, prepSlot = null, prepBusy = false;
 const fmtLeft = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 // el turno que viene o el que está en curso, si empieza dentro de 2 minutos
 function soonSlot(now = Date.now()){ return sched.slots.filter(s => s.end > now && s.start - now <= PREP_MS).sort((x, y) => x.start - y.start)[0] || null; }
-function myScreenReady(){ return music.source === 'live' && !!sysVideo && sysVideo.readyState === 'live'; }
-async function prepareCast(){
+function myScreenReady(){ return music.source === 'live' && ((!!sysVideo && sysVideo.readyState === 'live') || sysAudioOnly); }
+async function prepareCast(audioOnlyMode){
   if (prepBusy) return; prepBusy = true;
   try {
     ensureAudio(); if (actx && actx.state === 'suspended') actx.resume();
     const s = soonSlot();
-    if (myScreenReady() || await captureSystemAudio()){ prepSlot = s ? s.id : null; }
+    if (myScreenReady() || await captureSystemAudio(!!audioOnlyMode)){ prepSlot = s ? s.id : null; }
     else djTurnNote.textContent = sysNote.textContent;
   } finally { prepBusy = false; }
   if (activeSlot() && canCast() && !net.casting && myScreenReady()) startCast();
@@ -3836,14 +3849,15 @@ function updateTurnUI(){
   } else djCount.hidden = true;
   const ready = myScreenReady();
   djCountBtn.hidden = !(mine && !net.casting && djTurn.hidden);
-  djCountBtn.textContent = ready ? '✔ Pantalla lista' : (now < s?.start ? 'Preparar mi pantalla' : 'Compartir ahora');
+  djCountBtn.textContent = ready ? (sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista') : (now < s?.start ? 'Preparar mi pantalla' : 'Compartir ahora');
+  djTurnAudio.hidden = ready;
   if (!mine){ if (!djTurn.hidden && !net.casting) djTurn.hidden = true; return; }
   // al DJ: abrir el aviso una vez por turno (2 minutos antes), sin tapar el ingreso ni la selección
   if (!net.casting && !shownTurns.has(s.id) && gate.hidden && cselEl.hidden){ shownTurns.add(s.id); djTurn.hidden = false; }
   if (now < s.start){
     djTurnTitle.textContent = '¡Te toca ser DJ en ' + fmtLeft(s.start - now) + '!';
     djTurnClock.textContent = fmtLeft(s.start - now);
-    djTurnGo.textContent = ready ? '✔ Pantalla lista' : 'Preparar mi pantalla';
+    djTurnGo.textContent = ready ? (sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista') : 'Preparar mi pantalla';
     djTurnGo.disabled = ready;
     djTurnNote.textContent = ready ? 'Todo listo. Tu transmisión parte sola en ' + fmtLeft(s.start - now) + ': deja tu primera pista preparada.'
       : 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Prepara ahora tu pantalla para partir a la hora. Usa Chrome o Edge en un computador.';
@@ -3858,7 +3872,8 @@ function updateTurnUI(){
 }
 function checkMyTurn(){ updateTurnUI(); }
 setInterval(updateTurnUI, 1000);
-djTurnGo.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(); });
+djTurnGo.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(false); });
+djTurnAudio.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(true); });
 djCountBtn.addEventListener('click', () => { djTurn.hidden = false; updateTurnUI(); });
 document.getElementById('djTurnLater').addEventListener('click', () => { djTurn.hidden = true; updateTurnUI(); });
 
