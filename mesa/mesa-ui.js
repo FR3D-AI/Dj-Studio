@@ -445,7 +445,18 @@ function drawWave(i){
   const wv = d.wave, p = d.pos(), sec = waveZoom * (W / dpr) / 1400 * Math.max(0.05, d.tempo()), spp = sec / W, mid = H / 2;
   const t0 = p - W / 2 * spp;
   // loop activo
-  if (d.loop.on || d.loop.b > d.loop.a){ const xa = (d.loop.a - t0) / spp, xb = (d.loop.b - t0) / spp; if (xb > 0 && xa < W){ c.fillStyle = d.loop.on ? 'rgba(255,170,0,.2)' : 'rgba(255,170,0,.07)'; c.fillRect(xa, 0, xb - xa, H); } }
+  // loops guardados (hot cues y memory loops de rekordbox): franja fina abajo
+  for (const q of [...d.hot.filter(Boolean), ...d.mem]){ if (q.type === 4 && q.end > q.t){ const xa = (q.t - t0) / spp, xb = (q.end - t0) / spp; if (xb > 0 && xa < W){ c.fillStyle = q.color || 'rgba(255,170,0,.55)'; c.globalAlpha = 0.55; c.fillRect(xa, H - 4 * dpr, xb - xa, 4 * dpr); c.globalAlpha = 1; } } }
+  // loop activo: zona marcada de punta a punta, con líneas IN y OUT
+  if (d.loop.b > d.loop.a){
+    const xa = (d.loop.a - t0) / spp, xb = (d.loop.b - t0) / spp;
+    if (xb > 0 && xa < W){
+      c.fillStyle = d.loop.on ? 'rgba(255,170,0,.24)' : 'rgba(255,170,0,.07)'; c.fillRect(xa, 0, xb - xa, H);
+      c.fillStyle = d.loop.on ? '#ffb000' : 'rgba(255,176,0,.45)';
+      c.fillRect(xa - dpr, 0, 2 * dpr, H); c.fillRect(xb - dpr, 0, 2 * dpr, H);
+      if (d.loop.on){ c.font = '800 ' + (9 * dpr) + 'px system-ui'; c.fillText('IN', xa + 3 * dpr, H - 6 * dpr); c.fillText('OUT', xb - 22 * dpr, H - 6 * dpr); if (d.loop.beats){ const lab = 'LOOP ' + fracTxt(d.loop.beats); c.fillText(lab, Math.max(xa + 3 * dpr, Math.min(xb - 60 * dpr, (xa + xb) / 2 - 18 * dpr)), 11 * dpr); } }
+    }
+  }
   const step = Math.max(1, Math.floor(dpr));
   for (let x = 0; x < W; x += step){
     const t = t0 + x * spp; if (t < 0 || t > d.dur) continue;
@@ -487,6 +498,7 @@ function drawOverview(d){
   const p = d.pos() / d.dur;
   c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, p * W, H);
   if (d.loop.b > d.loop.a){ c.fillStyle = d.loop.on ? 'rgba(255,170,0,.35)' : 'rgba(255,170,0,.15)'; c.fillRect(d.loop.a / d.dur * W, 0, Math.max(2, (d.loop.b - d.loop.a) / d.dur * W), H); }
+  for (const q of [...d.hot.filter(Boolean), ...d.mem]){ if (q.type === 4 && q.end > q.t){ c.fillStyle = q.color || '#ffaa00'; c.globalAlpha = 0.7; c.fillRect(q.t / d.dur * W, H - 3 * dpr, Math.max(2, (q.end - q.t) / d.dur * W), 3 * dpr); c.globalAlpha = 1; } }
   for (const m of d.mem){ c.fillStyle = '#ff3b30'; c.fillRect(m.t / d.dur * W, H - 6 * dpr, 2 * dpr, 6 * dpr); }
   d.hot.forEach((h, k) => { if (h){ c.fillStyle = h.color || MW.HOT_COLORS[k]; c.fillRect(h.t / d.dur * W - dpr, 0, 2 * dpr, 7 * dpr); } });
   c.fillStyle = '#fff'; c.fillRect(p * W - dpr, 0, 2 * dpr, H);

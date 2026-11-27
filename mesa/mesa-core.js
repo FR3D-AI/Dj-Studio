@@ -450,7 +450,7 @@ Deck.prototype = {
       MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', 1); this.editCues(); MW.emitDeck(this); return;
     }
     this.hotHeld = i; this.playedDuringCue = false;
-    if (c.type === 4 && c.end > c.t){ this.seek(c.t); this.setLoop(c.t, c.end, true, this.grid ? Math.round((MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) * 1000) / 1000 : 0); }
+    if (c.type === 4 && c.end > c.t){ this.seek(c.t); this.setLoop(c.t, c.end, true, this.grid ? MW.snapBeats(MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) : 0); }
     else this.jumpTo(c.t);
     if (!this.playing()){ this.hotPreview = false; MW.setValue(this.g, 'play', 1); }
   },
@@ -462,7 +462,7 @@ Deck.prototype = {
     if (!c) return;
     this.cuePt = c.t; this.seek(c.t); if (this.playing()) MW.setValue(this.g, 'play', 0);
     // memory loop guardado en rekordbox: queda armado y activo (se encienden IN, OUT y RELOOP/EXIT)
-    if (c.type === 4 && c.end > c.t) this.setLoop(c.t, c.end, true, this.grid ? Math.round((MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) * 1000) / 1000 : 0);
+    if (c.type === 4 && c.end > c.t) this.setLoop(c.t, c.end, true, this.grid ? MW.snapBeats(MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) : 0);
     else if (this.loop.on) this.setLoop(this.loop.a, this.loop.b, false, this.loop.beats);
     this.indicators();
   },
@@ -493,6 +493,8 @@ Deck.prototype = {
   },
 };
 MW.Deck = Deck;
+// tamaño de loop en golpes: 3,999 → 4 (los loops de rekordbox vienen en segundos)
+MW.snapBeats = b => { const q = Math.round(b * 32) / 32; return Math.abs(q - b) < 0.02 ? q : Math.round(b * 1000) / 1000; };
 MW.leader = function(except){
   const ds = MW.decks.filter(d => d !== except && d.L);
   const lead = ds.find(d => MW.getValue(d.g, 'sync_leader') || MW.getValue(d.g, 'sync_master'));
