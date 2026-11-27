@@ -193,6 +193,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .fold[open] > summary::after{transform:rotate(-135deg);margin-bottom:-4px}
 .fold > summary:hover{background:color-mix(in srgb, var(--fg) 5%, transparent)}
 .fold > .fbody{display:flex;flex-direction:column;gap:9px;padding:2px 12px 12px}
+.txlog{margin:0;max-height:160px;overflow:auto;white-space:pre-wrap;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--muted, #aaa);background:rgba(0,0,0,.25);border-radius:8px;padding:8px}
+.txlog:empty{display:none}
 .foldgroup{display:flex;flex-direction:column;gap:12px}
 .foldgroup[hidden]{display:none}
 .online{display:flex;flex-direction:column;gap:9px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -473,6 +475,12 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
             <button class="btn" id="liveBtn" type="button">Escuchar en vivo</button>
           </div>
           <p class="note" id="liveNote">Para mesas con tarjeta de sonido o un cable de audio virtual (BlackHole, iShowU Audio Capture).</p>
+        </details>
+        <details class="adv">
+          <summary>Estado de la transmisión</summary>
+          <p class="note" id="txStats">Nadie está transmitiendo.</p>
+          <pre class="txlog" id="txLog"></pre>
+          <p class="note">El audio viaja en Opus estéreo a 128 kbps, con prioridad sobre la imagen. Si algo se corta, aquí queda anotado a qué hora y por qué.</p>
         </details>
       </div></details>
       <details class="fold" id="fCroma"><summary><span class="ft">🟩 Croma: toca tú en el escenario</span><span class="badge" id="cromaState">Apagado</span></summary><div class="fbody">
@@ -3354,7 +3362,10 @@ async function captureSystemAudio(audioOnlyMode){
   else { sysVideo = st.getVideoTracks()[0] || null; if (sysVideo) setLaptopVideo(sysVideo); } // la pantalla se ve en el computador de la cabina (en baja calidad)
   const audioOnly = new MediaStream(at);
   await startLive(null, audioOnly);
-  at[0].addEventListener('ended', () => { if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysAudioOnly = false; setLaptopVideo(null); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
+  at[0].addEventListener('mute', () => txNote('La captura de audio del computador dejó de recibir sonido (Windows/Chrome la pausó)', true));
+  at[0].addEventListener('unmute', () => txNote('La captura de audio volvió a recibir sonido'));
+  txNote('Captura de audio iniciada' + (sysAudioOnly ? ' (solo audio)' : ' (con pantalla)') + ' · ' + ((at[0].getSettings && at[0].getSettings().channelCount) || '?') + ' canal(es)');
+  at[0].addEventListener('ended', () => { txNote('La captura de audio del computador se cerró: se detuvo el compartir (botón de Chrome, pantalla bloqueada o cambio de dispositivo de audio). Toca de nuevo Capturar para seguir.', true); if (music.source === 'live'){ stopLive(); renderLive(); if (net.casting) stopCast(); } if (sysVideo){ sysVideo.stop(); sysVideo = null; } sysAudioOnly = false; setLaptopVideo(null); sysNote.textContent = 'Se dejó de capturar el audio del computador.'; renderSys(); });
   renderLive(); renderPlaylist(); renderSys();
   nowEl.textContent = 'En vivo: audio del computador';
   sysNote.textContent = sysAudioOnly ? 'Capturando solo el audio del computador (sin pantalla). Todo lo que suene en Rekordbox llega a la sala.' : 'Capturando el audio del computador. Todo lo que suene en Rekordbox llega a la sala.';
@@ -3377,6 +3388,81 @@ sysAudioBtn.addEventListener('click', async () => { if (sysOn) return stopSys();
 liveDev.addEventListener('change', () => { if (music.source === 'live') liveBtn.click(), setTimeout(() => liveBtn.click(), 50); });
 navigator.mediaDevices?.addEventListener?.('devicechange', listInputs);
 listInputs();
+
+/* ---------- calidad del audio que se transmite ---------- */
+// Por defecto WebRTC manda la música como si fuera una llamada: Opus mono a ~32 kbps. Aquí se pide Opus estéreo a 128 kbps,
+// sin cortes en los silencios (DTX), retocando la descripción de cada conexión antes de usarla.
+const OPUS_KBPS = 128;
+function opusMunge(sdp){
+  const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i); if (!m) return sdp;
+  const pt = m[1];
+  return sdp.replace(new RegExp('a=fmtp:' + pt + ' ([^\\r\\n]*)'), (all, prm) => {
+    const q = prm.split(';').map(x => x.trim()).filter(x => x && !/^(stereo|sprop-stereo|maxaveragebitrate|usedtx)=/.test(x));
+    q.push('stereo=1', 'sprop-stereo=1', 'maxaveragebitrate=' + OPUS_KBPS * 1000, 'usedtx=0');
+    return 'a=fmtp:' + pt + ' ' + q.join(';');
+  });
+}
+if (window.RTCPeerConnection && !RTCPeerConnection.prototype.__opusHQ){
+  const P = RTCPeerConnection.prototype, sld = P.setLocalDescription, srd = P.setRemoteDescription;
+  P.__opusHQ = true;
+  P.setLocalDescription = async function(desc){
+    if (!desc || !desc.type){   // descripción implícita: se crea aquí para poder retocarla
+      const st = this.signalingState;
+      desc = (st === 'have-remote-offer' || st === 'have-local-pranswer') ? await this.createAnswer() : await this.createOffer();
+    }
+    if (desc.type !== 'rollback' && desc.sdp) desc = {type: desc.type, sdp: opusMunge(desc.sdp)};
+    return sld.call(this, desc);
+  };
+  P.setRemoteDescription = function(desc){
+    if (desc && desc.type !== 'rollback' && desc.sdp) desc = {type: desc.type, sdp: opusMunge(desc.sdp)};
+    return srd.call(this, desc);
+  };
+}
+
+/* ---------- registro de la transmisión (para entender cortes) ---------- */
+const txLog = [];
+function txNote(text, warn){
+  const t = new Date(), hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ':' + String(t.getSeconds()).padStart(2, '0');
+  txLog.push((warn ? '⚠️ ' : '') + hh + '  ' + text); if (txLog.length > 40) txLog.shift();
+  const el = document.getElementById('txLog'); if (el) el.textContent = txLog.slice().reverse().join('\n');
+  if (warn && typeof addChat === 'function') addChat({kind:'system', text: '⚠️ ' + text});
+}
+let txPrev = new Map();
+async function txMonitor(){
+  const el = document.getElementById('txStats'); if (!el) return;
+  if (!net.room){ el.textContent = 'Sin conexión a la sala.'; return; }
+  const peers = net.room.getPeers(), list = peers instanceof Map ? [...peers.entries()] : Object.entries(peers || {});
+  let sending = 0, kb = [], bad = 0, recv = null;
+  for (const [id, pc] of list){
+    if (!pc || !pc.getStats) continue;
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') bad++;
+    let st; try { st = await pc.getStats(); } catch(e){ continue; }
+    st.forEach(r => {
+      if (r.type === 'outbound-rtp' && r.kind === 'audio' && net.casting){
+        const k = id + ':o', prev = txPrev.get(k); txPrev.set(k, {b: r.bytesSent, t: r.timestamp});
+        if (prev && r.timestamp > prev.t){ const kbps = (r.bytesSent - prev.b) * 8 / (r.timestamp - prev.t); kb.push(kbps); sending++; }
+      }
+      if (r.type === 'inbound-rtp' && r.kind === 'audio' && id === net.djPeer){
+        const k = id + ':i', prev = txPrev.get(k); txPrev.set(k, {b: r.bytesReceived, t: r.timestamp, lost: r.packetsLost});
+        if (prev && r.timestamp > prev.t) recv = {kbps: (r.bytesReceived - prev.b) * 8 / (r.timestamp - prev.t), lost: (r.packetsLost || 0) - (prev.lost || 0)};
+      }
+    });
+  }
+  let txt = '';
+  if (net.casting){
+    const avg = kb.length ? Math.round(kb.reduce((a, b) => a + b, 0) / kb.length) : 0;
+    txt = `Enviando audio a ${sending} persona${sending === 1 ? '' : 's'} · ${avg} kbps cada una` + (bad ? ` · ${bad} conexión(es) con problemas` : '');
+    if (liveStream){ const at = liveStream.getAudioTracks()[0]; if (!at || at.readyState !== 'live') txt += ' · ⚠️ la captura de audio está detenida'; else if (at.muted) txt += ' · ⚠️ la captura de audio no está recibiendo sonido'; }
+    if (sending && avg < 8 && !txMonitor.warned){ txMonitor.warned = true; txNote('El audio sale casi vacío (' + avg + ' kbps): revisa que Rekordbox suene por el audio del sistema', true); }
+    if (avg >= 8) txMonitor.warned = false;
+  } else if (net.djPeer){
+    txt = recv ? `Recibiendo al DJ: ${Math.round(recv.kbps)} kbps` + (recv.lost > 20 ? ` · se perdieron ${recv.lost} paquetes` : '') : 'Esperando el audio del DJ…';
+    if (recv && recv.kbps < 4){ if (!txMonitor.lowSince) txMonitor.lowSince = Date.now(); else if (Date.now() - txMonitor.lowSince > 6000 && !txMonitor.saidLow){ txMonitor.saidLow = true; txNote('Dejó de llegar el audio del DJ', false); } }
+    else { txMonitor.lowSince = 0; if (txMonitor.saidLow){ txMonitor.saidLow = false; txNote('Volvió a llegar el audio del DJ'); } }
+  } else txt = 'Nadie está transmitiendo.';
+  el.textContent = txt;
+}
+setInterval(txMonitor, 3000);
 
 /* ---------- sala en línea (conexión directa entre navegadores) ---------- */
 // Cada persona que abre la página entra a la misma sala. Se comparten:
@@ -3605,8 +3691,9 @@ async function startCast(){
   const vtracks = sysVideo && sysVideo.readyState === 'live' ? [sysVideo] : [];
   net.castStream = new MediaStream([...net.castDest.stream.getAudioTracks(), ...vtracks]);
   net.room.addStream(net.castStream);
-  setTimeout(limitVideo, 1500);
-  cromaSend();
+  setTimeout(limitVideo, 1500); setTimeout(limitVideo, 6000);
+  cromaSend(); txNote('Transmisión iniciada');
+  if (actx && !actx.__txWatch){ actx.__txWatch = true; actx.addEventListener('statechange', () => { if (actx.state !== 'running'){ txNote('El motor de audio del navegador quedó en «' + actx.state + '»: se intenta reanudar', true); actx.resume().catch(() => {}); } }); }
   net.actions.dj.send(djPayload());
   net.actions.logo.send({data: myLogo || ''}); drawLaptopLogo(myLogo);
   const me = chars[sel];
@@ -3621,7 +3708,7 @@ function stopCast(silent){
   if (!net.casting) return;
   net.casting = false;
   try { net.room && net.castStream && net.room.removeStream(net.castStream); } catch(e){}
-  cromaUnsend(); renderCroma();
+  cromaUnsend(); renderCroma(); txNote('Transmisión detenida');
   if (!silent && net.actions.dj) net.actions.dj.send(djPayload());
   drawLaptopLogo(null);
   netEl.note.textContent = 'Transmisión terminada.';
@@ -3634,6 +3721,12 @@ function limitVideo(){
   for (const pc of list){
     if (!pc || !pc.getSenders) continue;
     for (const snd of pc.getSenders()){
+      if (snd.track && snd.track.kind === 'audio'){
+        // la música primero: 128 kbps y prioridad alta, así si la conexión se aprieta se sacrifica el video y no el sonido
+        const pa = snd.getParameters(); if (!pa.encodings || !pa.encodings.length) pa.encodings = [{}];
+        pa.encodings[0].maxBitrate = OPUS_KBPS * 1000; pa.encodings[0].priority = 'high'; pa.encodings[0].networkPriority = 'high';
+        snd.setParameters(pa).catch(() => {}); continue;
+      }
       if (!snd.track || snd.track.kind !== 'video') continue;
       const prm = snd.getParameters(); if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
       if (croma.track && snd.track === croma.track){
@@ -3642,7 +3735,7 @@ function limitVideo(){
         prm.encodings[0].maxBitrate = 1200000; prm.encodings[0].maxFramerate = 24; prm.encodings[0].scaleResolutionDownBy = Math.max(1, hh / 720);
         snd.setParameters(prm).catch(() => {}); continue;
       }
-      prm.encodings[0].maxBitrate = 250000; prm.encodings[0].maxFramerate = 10;
+      prm.encodings[0].maxBitrate = 250000; prm.encodings[0].maxFramerate = 10; prm.encodings[0].priority = 'low';
       snd.setParameters(prm).catch(() => {});
     }
   }
