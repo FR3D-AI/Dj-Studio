@@ -342,7 +342,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
         <li>Toca <b>Mezclar en la Mesa Web</b>, carga tu primera pista y déjala lista.</li>
         <li>Cuando llegue tu hora la transmisión parte sola: dale play.</li>
       </ol>
-      <button class="btn primary" id="djTurnMesa" type="button">🎛️ Mezclar en la Mesa Web</button>
+      <button class="btn primary" id="djTurnMesa" type="button">🎛️ Mezclar en la Mesa Web (pantalla dividida)</button>
     </section>
     <details class="djopt" id="djTurnSoft"><summary>🖥️ Usar mi software de DJ (Rekordbox, Serato, Traktor…) compartiendo pantalla</summary>
     <ol class="steps">
@@ -484,7 +484,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       </div></details>
       <details class="fold" id="fMesa"><summary><span class="ft">🎛️ Mesa Web</span><span class="badge" id="mesaState">Apagada</span></summary><div class="fbody">
         <p class="note">Mezcla aquí mismo, sin Rekordbox: conecta tu controladora por USB (la <b>Pioneer DDJ-400</b> se reconoce sola, sin mapear nada) e importa tu biblioteca de rekordbox con sus BPM, grillas, memory cues y hot cues. El master llega directo a la sala, sin capturar la pantalla.</p>
-        <div class="row"><button class="btn primary" id="mesaBtn" type="button">Abrir Mesa Web</button></div>
+        <div class="row"><button class="btn primary" id="mesaSplit" type="button">🎛️ Mesa Web con pantalla dividida</button><button class="btn" id="mesaBtn" type="button">⛶ Mesa Web en pantalla completa</button></div>
+        <p class="note">Pantalla dividida: el público arriba y la mesa abajo; la división se arrastra para ver más canciones o más público.</p>
         <p class="note" id="mesaNote">Funciona en Chrome o Edge en un computador. En rekordbox: <b>Archivo → Exportar colección en formato xml</b>, y ese archivo lo importas en la mesa.</p>
       </div></details>
       <details class="fold" id="fLive"><summary><span class="ft">🎚️ Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></summary><div class="fbody">
@@ -3232,7 +3233,7 @@ const mesaHost = window.MESA_HOST = {
     if (frameNo % 30 === 0){ const np = MW.nowPlaying(); nowEl.textContent = '🎛️ Mesa Web' + (np ? ': ' + np : ''); if (net.casting && np !== mesaHost.lastNp){ mesaHost.lastNp = np; try { net.actions.dj.send(djPayload()); } catch(e){} } }
   },
 };
-function renderMesa(){ const on = !!(window.MW && MW.isOn && MW.isOn()); mesaState.textContent = on ? 'Encendida' : 'Apagada'; mesaState.classList.toggle('on', on); mesaBtn.textContent = on ? 'Mostrar la Mesa Web' : 'Abrir Mesa Web'; }
+function renderMesa(){ const on = !!(window.MW && MW.isOn && MW.isOn()); mesaState.textContent = on ? 'Encendida' : 'Apagada'; mesaState.classList.toggle('on', on); }
 let mesaLoading = null;
 function loadMesa(){
   if (mesaLoading) return mesaLoading;
@@ -3241,12 +3242,15 @@ function loadMesa(){
   mesaLoading.catch(() => { mesaLoading = null; });
   return mesaLoading;
 }
-mesaBtn.addEventListener('click', async () => {
-  mesaBtn.disabled = true; mesaNote.textContent = 'Abriendo la Mesa Web…';
-  try { await loadMesa(); await MW.open(); renderMesa(); mesaNote.textContent = 'La mesa está encendida. Con «▾ Ver la sala» vuelves aquí sin cortar la música.'; }
+async function openMesa(view){
+  mesaBtn.disabled = mesaSplit.disabled = true; mesaNote.textContent = 'Abriendo la Mesa Web…';
+  try { await loadMesa(); MW.settings.view = view; await MW.open(); renderMesa(); mesaNote.textContent = 'La mesa está encendida. Con «▾ Ver la sala» vuelves aquí sin cortar la música.'; }
   catch(e){ console.error(e); mesaNote.textContent = 'No se pudo abrir la Mesa Web: ' + (e && e.message || e); }
-  finally { mesaBtn.disabled = false; }
-});
+  finally { mesaBtn.disabled = mesaSplit.disabled = false; }
+}
+const mesaSplit = document.getElementById('mesaSplit');
+mesaBtn.addEventListener('click', () => openMesa('full'));
+mesaSplit.addEventListener('click', () => openMesa('dock'));
 
 /* ---------- configuración: secciones plegables (se recuerda cuáles dejaste abiertas) ---------- */
 {
@@ -4024,7 +4028,7 @@ function updateTurnUI(){
   djCountBtn.hidden = !(mine && !net.casting && djTurn.hidden);
   const readyTxt = music.source === 'mesa' ? '✔ Mesa Web lista' : sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista';
   djCountBtn.textContent = ready ? readyTxt : (now < s?.start ? 'Prepararme' : 'Tocar ahora');
-  djTurnMesa.textContent = music.source === 'mesa' ? (now < s?.start ? '✔ Mesa Web lista' : '🎛️ Empezar con la Mesa Web') : '🎛️ Mezclar en la Mesa Web';
+  djTurnMesa.textContent = music.source === 'mesa' ? (now < s?.start ? '✔ Mesa Web lista' : '🎛️ Empezar con la Mesa Web') : '🎛️ Mezclar en la Mesa Web (pantalla dividida)';
   djTurnAudio.hidden = ready;
   if (!mine){ if (!djTurn.hidden && !net.casting) djTurn.hidden = true; return; }
   // al DJ: abrir el aviso una vez por turno (2 minutos antes), sin tapar el ingreso ni la selección
@@ -4055,7 +4059,7 @@ djTurnMesa.addEventListener('click', async () => {
   djTurnMesa.disabled = true;
   try {
     await loadMesa();
-    if (!MW.settings.view) MW.settings.view = 'dock';
+    MW.settings.view = 'dock';   // con el público arriba
     await MW.open(); renderMesa();
     djTurn.hidden = true;
     if (activeSlot() && canCast() && !net.casting) startCast();
