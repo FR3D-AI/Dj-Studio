@@ -3664,15 +3664,19 @@ function netSendLook(){ clearTimeout(lookTimer); lookTimer = setTimeout(() => { 
 // Servidor TURN público y gratuito (Open Relay de metered.ca): hace de puente cuando la conexión directa no pasa,
 // por ejemplo un celular con datos móviles y un computador con wifi. Las credenciales son temporales y se generan
 // aquí con la clave compartida que publica el proyecto (método "use-auth-secret" de coturn).
+// Servidor TURN: hace de puente cuando dos jugadores no se pueden conectar directo (datos móviles, routers estrictos).
+// Sin TURN, esos dos jugadores nunca se encuentran y cada uno queda solo en su propia sala.
+// El TURN gratis que usábamos (staticauth.openrelay.metered.ca) dejó de existir: ahora hay que poner aquí una cuenta propia.
+const METERED_APP = '', METERED_KEY = '';   // cuenta gratis de metered.ca (20 GB al mes): nombre de la app y API key
+const STUN_FALLBACK = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}];
 async function turnServers(){
-  try {
-    const user = Math.floor(Date.now() / 1000) + 24*3600 + ':dj-studio';
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('openrelayprojectsecret'), {name:'HMAC', hash:'SHA-1'}, false, ['sign']);
-    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(user));
-    const credential = btoa(String.fromCharCode(...new Uint8Array(sig)));
-    const h = 'staticauth.openrelay.metered.ca';
-    return [{urls: ['turn:' + h + ':80', 'turn:' + h + ':80?transport=tcp', 'turn:' + h + ':443', 'turns:' + h + ':443?transport=tcp'], username: user, credential}];
-  } catch(e){ return []; }
+  if (METERED_APP && METERED_KEY){
+    try {
+      const r = await fetch(`https://${METERED_APP}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(METERED_KEY)}`);
+      if (r.ok){ const list = await r.json(); if (Array.isArray(list) && list.length) return list; }
+    } catch(e){}
+  }
+  return STUN_FALLBACK;
 }
 async function connect(){
   setNetState('Conectando…', false);
