@@ -238,6 +238,23 @@ const OVERRIDES = {
         const side = st <= 0x98 ? 0 : 1, m = d1 < 0x08 ? 'hot' : d1 >= 0x60 && d1 < 0x68 ? 'loop' : d1 >= 0x20 && d1 < 0x28 ? 'jump' : d1 >= 0x30 && d1 < 0x38 ? 'smp' : null;
         if (m) MW.padModeHw[side] = m;
       }
+      // atajos de rekordbox con la DDJ-400
+      if ((st === 0x90 || st === 0x91)){
+        const d = MW.decks[st & 0x0F];
+        // SHIFT + CUE/LOOP CALL ◀ = DELETE (borra el memory cue de aquí) · SHIFT + ▶ = MEMORY (guarda uno)
+        if (d1 === 0x3E){ if (d2 && d) d.delMemory(); return true; }
+        if (d1 === 0x3D){ if (d2 && d) d.addMemory(); return true; }
+        // SHIFT + PLAY = vuelve al CUE y sigue tocando (stutter)
+        if (d1 === 0x47){ if (d2 && d && d.L){ d.seek(d.cuePt); MW.setValue(d.g, 'play', 1); } return true; }
+        // LOOP IN mantenido = loop automático de 4 golpes
+        if (d1 === 0x10 && d){
+          clearTimeout(d.in4T);
+          if (d2) d.in4T = setTimeout(() => { if (d.L){ d.setLoop(d.loop.a, d.loop.a + 4 * d.beatLen(), true, 4); d.loopInSet = false; } }, 500);
+          return false;
+        }
+      }
+      // SHIFT + BROWSE (girar) = alejar o acercar las formas de onda
+      if (st === 0xB6 && d1 === 0x64){ MW.waveZoomBy && MW.waveZoomBy(d2 < 64 ? 1 : -1); return true; }
       // BEAT SYNC como en rekordbox: un toque deja la bandeja sincronizada (y la apaga si ya estaba); mantenerlo la hace MASTER
       if ((st === 0x90 || st === 0x91) && (d1 === 0x58 || d1 === 0x5C)){
         const d = MW.decks[st & 0x0F]; if (!d || !d2) return true;

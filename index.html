@@ -2064,8 +2064,10 @@ function trackEnergy(dt, lvl, bass){
   music.calm = music.fast < 0.16;
 }
 function analyse(t, dt){
-  const live = (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode) || music.source === 'mesa';
-  const playing = !!analyser && (live || (!audioEl.paused && !audioEl.ended));
+  // con la Mesa Web, "suena" solo si alguna bandeja está tocando: al terminar la pista la sala para de verdad
+  const mesaOn = music.source === 'mesa', mesaPlaying = mesaOn && !!(window.MW && MW.leaderPlaying && MW.leaderPlaying());
+  const live = (music.source === 'live' && !!liveNode) || (music.source === 'remote' && !!net.remoteNode) || mesaPlaying;
+  const playing = !!analyser && (live || (!mesaOn && !audioEl.paused && !audioEl.ended));
   music.real = playing;
   if (playing){
     analyser.getByteFrequencyData(freq);
@@ -2093,7 +2095,7 @@ function analyse(t, dt){
     // mientras se mide el tempo: detección en vivo del bombo
     if (ta < music.lastReal || ta < music.lastBeat){ music.lastReal = -9; music.lastBeat = -9; }
     if (b > music.avg * 1.15 + 0.03 && b > 0.25 && ta - music.lastReal > Math.max(0.3, 0.6 * 60 / (music.bpm || 120))) onBeat(ta, true);
-    else if (ta - music.lastBeat > 60/music.bpm * 1.02) onBeat(ta, false);
+    else if (music.sounding && ta - music.lastBeat > 60/music.bpm * 1.02) onBeat(ta, false);   // sin música no se inventan golpes
   } else {
     music.bass *= 0.9; music.mids *= 0.9; music.highs *= 0.9;
     trackEnergy(dt, 0, 0);
@@ -3237,8 +3239,8 @@ function renderMesa(){ const on = !!(window.MW && MW.isOn && MW.isOn()); mesaSta
 let mesaLoading = null;
 function loadMesa(){
   if (mesaLoading) return mesaLoading;
-  const files = ['mesa/mesa-core.js', 'mesa/mesa-lib.js', 'mesa/mesa-midi.js', 'mesa/mesa-ui.js', 'mesa/mesa.js'];
-  mesaLoading = files.reduce((p, f) => p.then(() => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = f + '?v=3'; s.onload = ok; s.onerror = () => bad(new Error('No se pudo cargar ' + f)); document.head.appendChild(s); })), Promise.resolve());
+  const files = ['mesa/mesa-core.js', 'mesa/mesa-analyze.js', 'mesa/mesa-lib.js', 'mesa/mesa-midi.js', 'mesa/mesa-ui.js', 'mesa/mesa.js'];
+  mesaLoading = files.reduce((p, f) => p.then(() => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = f + '?v=4'; s.onload = ok; s.onerror = () => bad(new Error('No se pudo cargar ' + f)); document.head.appendChild(s); })), Promise.resolve());
   mesaLoading.catch(() => { mesaLoading = null; });
   return mesaLoading;
 }
@@ -3519,7 +3521,8 @@ async function txMonitor(){
     const avg = kb.length ? Math.round(kb.reduce((a, b) => a + b, 0) / kb.length) : 0;
     txt = `Enviando audio a ${sending} persona${sending === 1 ? '' : 's'} · ${avg} kbps cada una` + (bad ? ` · ${bad} conexión(es) con problemas` : '');
     if (liveStream){ const at = liveStream.getAudioTracks()[0]; if (!at || at.readyState !== 'live') txt += ' · ⚠️ la captura de audio está detenida'; else if (at.muted) txt += ' · ⚠️ la captura de audio no está recibiendo sonido'; }
-    if (sending && avg < 8 && !txMonitor.warned){ txMonitor.warned = true; txNote('El audio sale casi vacío (' + avg + ' kbps): revisa que Rekordbox suene por el audio del sistema', true); }
+    const mesaIdle = music.source === 'mesa' && !(window.MW && MW.leaderPlaying && MW.leaderPlaying());
+    if (sending && avg < 8 && !mesaIdle && !txMonitor.warned){ txMonitor.warned = true; txNote(music.source === 'mesa' ? 'El audio sale casi vacío (' + avg + ' kbps): revisa el volumen de los canales y el master de la Mesa Web' : 'El audio sale casi vacío (' + avg + ' kbps): revisa que Rekordbox suene por el audio del sistema', true); }
     if (avg >= 8) txMonitor.warned = false;
   } else if (net.djPeer){
     txt = recv ? `Recibiendo al DJ: ${Math.round(recv.kbps)} kbps` + (recv.lost > 20 ? ` · se perdieron ${recv.lost} paquetes` : '') : 'Esperando el audio del DJ…';

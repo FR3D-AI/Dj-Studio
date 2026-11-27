@@ -25,7 +25,7 @@ const CSS = `
 .mw-tb:hover{background:#2c2838}.mw-tb.pri{background:#ffb347;color:#2a1a05;border-color:#ffb347;font-weight:700}
 .mw-waves{display:grid;grid-template-rows:62px 62px;gap:2px;background:#050507;padding:2px 0;position:relative}
 .mw-waves canvas{width:100%;height:100%;display:block;cursor:grab}
-.mw-zoom{position:absolute;right:6px;top:4px;display:flex;gap:4px;z-index:2}.mw-zoom button{background:#0009;border:1px solid #444;border-radius:5px;width:24px;height:22px;padding:0}
+.mw-zoom{position:absolute;right:6px;top:4px;display:flex;gap:4px;z-index:2;align-items:center}.mw-zoom span{background:#000a;border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700}.mw-zoom button{background:#0009;border:1px solid #444;border-radius:5px;width:24px;height:22px;padding:0}
 .mw-main{display:grid;grid-template-columns:minmax(330px,1fr) 340px minmax(330px,1fr);gap:6px;padding:6px;background:#0d0c12}
 .mw-deck{background:#17151e;border:1px solid #262231;border-radius:10px;padding:7px;display:grid;gap:6px;
   grid-template-columns:150px minmax(0,1fr) 50px;grid-template-rows:auto 30px 150px auto;grid-template-areas:"head head head" "ov ov ov" "jog pads tempo" "tr pads tempo";min-width:0;position:relative}
@@ -97,7 +97,7 @@ const CSS = `
 .mw-bar input[type=search]{flex:1;min-width:140px;background:#1d1a26;border:1px solid #3a3449;border-radius:7px;color:#e9e6f0;padding:5px 9px;font:inherit}
 .mw-bar small{color:#9e97b0}
 .mw-list{flex:1;overflow:auto;position:relative;min-height:0;outline:none}
-.mw-list .hd,.mw-list .tr{display:grid;grid-template-columns:22px minmax(140px,2.2fr) minmax(90px,1.4fr) 62px 46px 54px minmax(70px,1fr);gap:8px;align-items:center;padding:0 8px;height:26px;white-space:nowrap}
+.mw-list .hd,.mw-list .tr{display:grid;grid-template-columns:22px minmax(140px,2fr) minmax(90px,1.2fr) minmax(120px,1.8fr) 62px 46px 54px minmax(60px,.8fr);gap:8px;align-items:center;padding:0 8px;height:26px;white-space:nowrap}
 .mw-list .hd{position:sticky;top:0;background:#1a1822;color:#9e97b0;font-size:11px;font-weight:800;z-index:1;cursor:pointer}
 .mw-list .tr{position:absolute;left:0;right:0;cursor:default;border-bottom:1px solid #18161f}
 .mw-list .tr span{overflow:hidden;text-overflow:ellipsis}
@@ -191,11 +191,12 @@ function deckHTML(n){
         <button class="mw-sm" data-act="memadd" title="Guardar un memory cue aquí">+ MEMORY</button>
         <button class="mw-sm" data-act="memdel" title="Borrar el memory cue de esta posición">BORRAR</button>
         <button class="mw-sm" data-g="${g}" data-k="keylock" data-mode="toggle" title="Master Tempo: cambia el tempo sin cambiar el tono">MT</button>
+        <button class="mw-sm" data-act="analyze" title="Volver a analizar BPM y grilla (rango y modo en Ajustes)">ANALIZAR</button>
       </div>
     </div>
     <div class="mw-tempo">
       <button class="mw-sm" data-act="range" title="Rango del pitch">±10%</button>
-      <div class="mw-fd" data-g="${g}" data-k="rate" data-inv="1" data-tempo="1"><i class="c"></i><b></b></div>
+      <div class="mw-fd" data-g="${g}" data-k="rate" data-tempo="1"><i class="c"></i><b></b></div>
       <div class="mw-tv" data-f="tv">0.0%</div>
       <button class="mw-sm" data-act="reset-rate" title="Volver al tempo original">0</button>
     </div>
@@ -225,7 +226,7 @@ const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="M
     <button class="mw-tb" id="mwMin" title="Ver la sala; la mesa sigue sonando">▾ Ver la sala</button>
     <button class="mw-tb" id="mwOff" title="Detener la Mesa Web y devolver el audio a la sala">⏻ Apagar</button>
   </header>
-  <section class="mw-waves"><canvas id="mwW1"></canvas><canvas id="mwW2"></canvas><div class="mw-zoom"><button id="mwZo" title="Alejar">−</button><button id="mwZi" title="Acercar">+</button></div></section>
+  <section class="mw-waves"><canvas id="mwW1"></canvas><canvas id="mwW2"></canvas><div class="mw-zoom"><span id="mwZoomT" hidden></span><button id="mwZo" title="Alejar (SHIFT + girar BROWSE en la DDJ-400)">−</button><button id="mwZi" title="Acercar (SHIFT + girar BROWSE en la DDJ-400)">+</button></div></section>
   <section class="mw-main">${deckHTML(1)}
     <div class="mw-mix">${stripHTML(1)}
       <div class="mw-ctr">
@@ -252,6 +253,8 @@ const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="M
         <select class="mw-dk" id="mwSrc" aria-label="Lista"></select>
         <label class="mw-tb mw-fo" title="Agregar canciones sueltas">＋ Canciones<input type="file" id="mwFiles" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.aiff,.aif,.ogg" multiple hidden></label>
         <input type="search" id="mwQ" placeholder="Buscar título, artista, género, BPM o tono" aria-label="Buscar en la biblioteca">
+        <select id="mwSort" aria-label="Ordenar"><option value="">Orden de la lista</option><option value="fileName">Nombre del archivo (A-Z)</option><option value="title">Título</option><option value="artist">Artista</option><option value="bpm">BPM</option><option value="key">Tono</option><option value="genre">Género</option></select>
+        <button class="mw-tb" id="mwAna" title="Analiza BPM y grilla de las canciones de esta lista que todavía no los tienen">📈 Analizar</button>
         <button class="mw-tb mw-fo" id="mwExp" title="Descarga un XML para importar en rekordbox con los cues y la grilla que hiciste aquí">📤 Exportar XML</button>
         <small class="mw-fo" id="mwLibInfo"></small>
       </div>
@@ -345,6 +348,7 @@ function setupDeck(el){
   el.querySelector('[data-act="mem+1"]').addEventListener('click', () => d.memJump(1));
   el.querySelector('[data-act=memadd]').addEventListener('click', () => d.addMemory());
   el.querySelector('[data-act=memdel]').addEventListener('click', () => d.delMemory());
+  el.querySelector('[data-act=analyze]').addEventListener('click', () => d.reanalyze());
   bind(el, g, 'rateRange', 'range'); bind(el, g, 'beatloop_size', 'lsz');
   for (const b of $$('.mw-modes button', el)) b.addEventListener('click', () => { padMode[n - 1] = b.dataset.pm; drawPads(d); });
   for (const p of $$('.mw-pad', el)){
@@ -431,7 +435,7 @@ function setupWave(cv, i){
   cv.addEventListener('pointermove', e => { if (x0 == null) return; const d = MW.decks[i]; const r = cv.getBoundingClientRect(); const ds = -(e.clientX - x0) / r.width * waveZoom; x0 = e.clientX; MW.scratchTick(d.n, ds / d.scratchK); });
   const up = () => { if (x0 == null) return; x0 = null; MW.scratchDisable(i + 1); };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('wheel', e => { e.preventDefault(); waveZoom = clamp(waveZoom * (e.deltaY > 0 ? 1.15 : 0.87), 2, 40); }, {passive:false});
+  cv.addEventListener('wheel', e => { e.preventDefault(); MW.waveZoomBy(e.deltaY > 0 ? 1 : -1); }, {passive:false});
 }
 function drawWave(i){
   const cv = $('#mwW' + (i + 1)), [W, H, dpr] = fitCanvas(cv), c = cv.getContext('2d'), d = MW.decks[i], col = DECK_COL[i];
@@ -516,6 +520,8 @@ function setupLib(){
   $('#mwPerm').addEventListener('click', () => L.regrant());
   $('#mwFiles').addEventListener('change', e => { const n = L.addFiles([...e.target.files]); MW.toast(n + ' canciones agregadas.'); e.target.value = ''; });
   $('#mwExp').addEventListener('click', () => { if (!L.tracks.length) return MW.toast('La biblioteca está vacía.', true); L.exportXml(); MW.toast('Listo: en rekordbox ve a Preferencias → Avanzado → Base de datos → rekordbox xml, elige este archivo y arrastra las pistas desde «rekordbox xml» a tu colección.'); });
+  $('#mwSort').addEventListener('change', e => { L.sortKey = e.target.value || null; L.sortDir = 1; L.changed(); });
+  $('#mwAna').addEventListener('click', () => L.analyzeList());
   let qT = 0; $('#mwQ').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { L.query = e.target.value; L.sel = 0; L.changed(); }, 120); });
   const list = $('#mwList');
   list.addEventListener('scroll', () => drawList());
@@ -543,6 +549,8 @@ MW.emitLib = function(scrollOnly){
     $('#mwSrc').innerHTML = L.sources().filter(x => !x.head && !x.folder).map(x => `<option value="${x.id}"${x.id === L.view ? ' selected' : ''}>${'  '.repeat(Math.max(0, x.depth - 1))}${esc(x.name)}${x.n != null ? ' (' + x.n + ')' : ''}</option>`).join('');
     const xmlN = L.tracks.filter(t => t.src === 'xml').length, have = L.tracks.filter(t => L.hasFile(t)).length;
     $('#mwLibInfo').textContent = (L.xmlName ? L.xmlName + ' · ' : '') + (L.folderName ? '📁 ' + L.folderName + ' · ' : '') + have + ' de ' + L.tracks.length + ' con archivo';
+    const so = $('#mwSort'); if (so && so.value !== (L.sortKey || '')) so.value = L.sortKey || '';
+    const ab = $('#mwAna'); if (ab) ab.textContent = L.analyzing ? '⏹ Analizando ' + L.analyzing + '…' : '📈 Analizar';
     const pb = $('#mwPerm'); pb.hidden = !L.needPerm; if (L.needPerm) pb.querySelector('span').textContent = L.folderName;
     $('#mwDir').classList.toggle('pri', !!xmlN && !L.files.size);
   }
@@ -558,13 +566,13 @@ function drawList(){
     return;
   }
   const sorted = k => L.sortKey === k ? (L.sortDir > 0 ? ' ▲' : ' ▼') : '';
-  const hd = `<div class="hd"><span></span><span data-s="title">Título${sorted('title')}</span><span data-s="artist">Artista${sorted('artist')}</span><span data-s="bpm" class="n">BPM${sorted('bpm')}</span><span data-s="key">Tono${sorted('key')}</span><span data-s="dur" class="n">Tiempo${sorted('dur')}</span><span data-s="genre">Género${sorted('genre')}</span></div>`;
+  const hd = `<div class="hd"><span></span><span data-s="title">Título${sorted('title')}</span><span data-s="artist">Artista${sorted('artist')}</span><span data-s="fileName">Archivo${sorted('fileName')}</span><span data-s="bpm" class="n">BPM${sorted('bpm')}</span><span data-s="key">Tono${sorted('key')}</span><span data-s="dur" class="n">Tiempo${sorted('dur')}</span><span data-s="genre">Género${sorted('genre')}</span></div>`;
   const vh = list.clientHeight || 300, s = Math.max(0, Math.floor(list.scrollTop / ROW) - 4), e = Math.min(L.list.length, s + Math.ceil(vh / ROW) + 8);
   let rows = '';
   const loaded = new Set(MW.decks.map(d => d.track && d.track.id));
   for (let i = s; i < e; i++){
     const t = L.list[i], ok = L.hasFile(t);
-    rows += `<div class="tr${i === L.sel ? ' on' : ''}${ok ? '' : ' miss'}" data-i="${i}" draggable="true" style="top:${ROW + i * ROW}px" title="${ok ? 'Doble clic para cargar · arrastra a una bandeja' : 'No encuentro el archivo: elige la carpeta de música'}"><span class="mw-dot${ok ? ' ok' : ''}" style="${t.color ? 'background:' + t.color : ''}"></span><span>${loaded.has(t.id) ? '▶ ' : ''}${esc(t.title)}</span><span>${esc(t.artist)}</span><span class="n">${t.bpm ? t.bpm.toFixed(2) : '—'}</span><span>${esc(t.key || '')}</span><span class="n">${t.dur ? MW.fmtTime(t.dur).replace(/\.\d$/, '') : ''}</span><span>${esc(t.genre || '')}</span></div>`;
+    rows += `<div class="tr${i === L.sel ? ' on' : ''}${ok ? '' : ' miss'}" data-i="${i}" draggable="true" style="top:${ROW + i * ROW}px" title="${ok ? 'Doble clic para cargar · arrastra a una bandeja' : 'No encuentro el archivo: elige la carpeta de música'}"><span class="mw-dot${ok ? ' ok' : ''}" style="${t.color ? 'background:' + t.color : ''}"></span><span>${loaded.has(t.id) ? '▶ ' : ''}${esc(t.title)}</span><span>${esc(t.artist)}</span><span title="${esc(t.path || '')}">${esc(t.fileName || '')}</span><span class="n">${t.bpm ? t.bpm.toFixed(2) : '—'}</span><span>${esc(t.key || '')}</span><span class="n">${t.dur ? MW.fmtTime(t.dur).replace(/\.\d$/, '') : ''}</span><span>${esc(t.genre || '')}</span></div>`;
   }
   list.innerHTML = hd + `<div style="height:${L.list.length * ROW}px"></div>` + rows;
 }
@@ -620,8 +628,8 @@ function setupTop(){
   if (MW.settings.dockListH) root.style.setProperty('--mw-list-h', MW.settings.dockListH + 'px');
   $('#mwMax').addEventListener('click', () => MW.minimize(false));
   $('#mwOff').addEventListener('click', () => MW.powerOff());
-  $('#mwZi').addEventListener('click', () => { waveZoom = clamp(waveZoom * 0.75, 2, 40); });
-  $('#mwZo').addEventListener('click', () => { waveZoom = clamp(waveZoom * 1.33, 2, 40); });
+  $('#mwZi').addEventListener('click', () => MW.waveZoomBy(-2));
+  $('#mwZo').addEventListener('click', () => MW.waveZoomBy(2));
   $('#mwSetB').addEventListener('click', () => { const s = $('#mwSet'); s.hidden = !s.hidden; if (!s.hidden) drawSettings(); });
   $('#mwCtl').addEventListener('click', () => MW.midi.start());
   listOutputs();
@@ -630,13 +638,16 @@ function drawSettings(){
   const s = $('#mwSet'), S = MW.settings, M = MW.midi;
   s.innerHTML = `<b>Ajustes de la Mesa Web</b>
     <label>Curva del crossfader <select data-s="xfCurve"><option value="suave">Suave (mezcla larga)</option><option value="corte">Corte (scratch)</option></select></label>
-    <label>Dirección del pitch <select data-s="pitchInvert"><option value="false">Abajo = más rápido (Pioneer)</option><option value="true">Arriba = más rápido</option></select></label>
+    <label>Dirección del pitch <select data-s="pitchUp"><option value="false">Abajo = más BPM (como rekordbox)</option><option value="true">Arriba = más BPM</option></select></label>
+    <label>Rango de BPM del análisis <select data-s="bpmRange">${(MW.BPM_RANGES || []).map((r, i) => `<option value="${i}">${r[0]} – ${r[1]} BPM</option>`).join('')}</select></label>
+    <label>Grilla del análisis <select data-s="gridMode"><option value="fija">Normal (tempo fijo)</option><option value="dinamica">Dinámica (tempo variable)</option></select></label>
+    <p>El análisis sirve para las canciones que no traen grilla de rekordbox. Con <b>ANALIZAR</b> en cada bandeja vuelves a analizar la pista cargada.</p>
     <label>Elegir la tarjeta de sonido de la mesa sola <select data-s="autoOut"><option value="true">Sí</option><option value="false">No</option></select></label>
     <p>Controladora: ${M.devices.length ? M.devices.map(d => esc(d.name) + ' → ' + esc(d.entry.n)).join(', ') : 'ninguna'}${M.sysex ? '' : ' · sin permiso SysEx (las perillas toman su posición al moverlas)'}.</p>
     <p>Mapeos del proyecto <a href="https://github.com/mixxxdj/mixxx/tree/main/res/controllers" target="_blank" rel="noopener" style="color:#ffb347">Mixxx</a> (GPL-2.0). La DDJ-400 viene incluida; otras ${M.index ? M.index.length : 140}+ se descargan al conectarlas.</p>
     <pre>${esc(M.log.join('\n')) || 'Sin mensajes.'}</pre>
     <button class="mw-tb" id="mwForget">Olvidar la biblioteca guardada en este navegador</button>`;
-  for (const sel of $$('select[data-s]', s)){ sel.value = String(S[sel.dataset.s]); sel.addEventListener('change', () => { const v = sel.value; S[sel.dataset.s] = v === 'true' ? true : v === 'false' ? false : v; MW.saveSettings(); for (const d of MW.decks){ d.applyFader(); d.applyRate(); } }); }
+  for (const sel of $$('select[data-s]', s)){ sel.value = String(S[sel.dataset.s]); sel.addEventListener('change', () => { const v = sel.value; S[sel.dataset.s] = v === 'true' ? true : v === 'false' ? false : /^\d+$/.test(v) ? +v : v; MW.saveSettings(); for (const d of MW.decks){ d.applyFader(); d.applyRate(); } }); }
   $('#mwForget').addEventListener('click', () => { MW.lib.forget(); s.hidden = true; MW.toast('Biblioteca olvidada.'); });
 }
 MW.emitMidi = function(){
@@ -692,6 +703,10 @@ function frame(){
   const ctl = $('#mwCtl i'); if (ctl && MW.midiActivity) ctl.style.background = performance.now() - MW.midiActivity < 90 ? '#ffef5a' : '';
   if (performance.now() - lastLib > 1000){ lastLib = performance.now(); }
 }
+// zoom de las formas de onda (+ = alejar: se ve más de lo que viene)
+let zoomTip = 0;
+MW.waveZoomBy = n => { waveZoom = clamp(waveZoom * Math.pow(1.15, n), 2, 64); try { localStorage.setItem('mesa-zoom', waveZoom); } catch(e){} const z = $('#mwZoomT'); if (z){ z.textContent = Math.round(waveZoom * 10) / 10 + ' s'; z.hidden = false; clearTimeout(zoomTip); zoomTip = setTimeout(() => { z.hidden = true; }, 1200); } };
+try { const z = +localStorage.getItem('mesa-zoom'); if (z) waveZoom = clamp(z, 2, 64); } catch(e){}
 // los pads de la DDJ-400 dicen en qué modo están (cada modo manda notas distintas)
 MW.padModeHw = [null, null];
 function updateMini(){

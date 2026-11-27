@@ -57,7 +57,7 @@ L.importXml = async function(text, name, quiet){
     const loc = a('Location'), path = locToPath(loc);
     const t = {
       id: 'x' + a('TrackID'), rbId: a('TrackID'), src: 'xml', title: a('Name') || base(path), artist: a('Artist'), album: a('Album'), genre: a('Genre'),
-      bpm: parseFloat(a('AverageBpm')) || 0, key: a('Tonality'), dur: parseFloat(a('TotalTime')) || 0, rating: (+a('Rating') || 0) / 51,
+      fileName: base(path), bpm: parseFloat(a('AverageBpm')) || 0, key: a('Tonality'), dur: parseFloat(a('TotalTime')) || 0, rating: (+a('Rating') || 0) / 51,
       loc, path, fname: norm(base(path)), size: +a('Size') || 0, comment: a('Comments'), color: a('Colour') ? '#' + a('Colour').replace(/^0x/i, '').padStart(6, '0').slice(-6) : '',
       added: a('DateAdded'), kind: a('Kind'), plays: +a('PlayCount') || 0, attrs: {}, grid: [], cues: [],
     };
@@ -116,10 +116,19 @@ function folderTracks(){
   for (const [k, arr] of L.files){
     if (inXml.has(k)) continue;
     const f = arr[0], m = guessMeta(base(f.path));
-    const t = {id: 'f:' + f.path, src: 'folder', title: m.title, artist: m.artist, album: '', genre: '', bpm: 0, key: '', dur: 0, fname: k, path: f.path, size: f.size, grid: [], cues: [], color: ''};
+    const t = {id: 'f:' + f.path, src: 'folder', fileName: base(f.path), title: m.title, artist: m.artist, album: '', genre: '', bpm: 0, key: '', dur: 0, fname: k, path: f.path, size: f.size, grid: [], cues: [], color: ''};
     L.tracks.push(t);
   }
   L.byId = new Map(L.tracks.map(t => [t.id, t]));
+}
+// lo que ya se analizó antes (BPM, duración) aparece en la lista sin volver a analizar
+async function hydrate(){
+  for (const t of L.tracks){
+    if (t.bpm && t.dur) continue;
+    const s = await L.getSaved(t);
+    if (s){ if (!t.bpm && s.grid && s.grid[0]) t.bpm = s.grid[0].bpm; if (!t.dur && s.dur) t.dur = s.dur; }
+  }
+  L.refresh(); MW.emitLib && MW.emitLib();
 }
 L.addFiles = function(fileList, folder){
   let n = 0;
@@ -186,8 +195,7 @@ L.fileFor = async function(t){
 /* ---------- lo guardado en este navegador (cues, grilla) ---------- */
 const keyOf = t => (t.fname || '') + '|' + (t.size || '');
 L.getSaved = t => idb('tracks', 'readonly', s => s.get(keyOf(t)));
-L.save = (t, data) => { data.at = Date.now(); idb('tracks', 'readwrite', s => s.put(data, keyOf(t))); if (data.grid && data.grid.length) t.grid = data.grid; if (data.cues) t.cues = data.cues; t.edited = true; };
-async function hydrate(){ /* lo guardado se lee al cargar cada pista */ }
+L.save = (t, data) => { data.at = Date.now(); idb('tracks', 'readwrite', s => s.put(data, keyOf(t))); if (data.grid && data.grid.length && t.src !== 'xml') t.grid = data.grid; if (data.cues) t.cues = data.cues; t.edited = true; };
 L.markPlayed = t => { L.history = [t.id, ...L.history.filter(x => x !== t.id)].slice(0, 200); };
 
 /* ---------- vistas, búsqueda y orden ---------- */
@@ -207,8 +215,8 @@ function listFor(id){
 L.refresh = function(){
   let list = listFor(L.view);
   const q = norm(L.query).trim();
-  if (q){ const ws = q.split(/\s+/); list = list.filter(t => { const h = norm(t.title + ' ' + t.artist + ' ' + t.album + ' ' + t.genre + ' ' + t.key + ' ' + (t.bpm ? Math.round(t.bpm) : '')); return ws.every(w => h.includes(w)); }); }
-  if (L.sortKey){ const k = L.sortKey, d = L.sortDir; list = [...list].sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === 'number' ? x - y : String(x || '').localeCompare(String(y || ''))) * d; }); }
+  if (q){ const ws = q.split(/\s+/); list = list.filter(t => { const h = norm(t.title + ' ' + t.artist + ' ' + (t.fileName || '') + ' ' + t.album + ' ' + t.genre + ' ' + t.key + ' ' + (t.bpm ? Math.round(t.bpm) : '')); return ws.every(w => h.includes(w)); }); }
+  if (L.sortKey){ const k = L.sortKey, d = L.sortDir; list = [...list].sort((a, b) => { const x = a[k], y = b[k]; if (typeof x === 'number' || typeof y === 'number') return ((x || 0) - (y || 0)) * d; return String(x || '').localeCompare(String(y || ''), 'es', {numeric: true, sensitivity: 'base'}) * d; }); }
   L.list = list; L.sel = Math.max(0, Math.min(L.sel, list.length - 1));
 };
 L.selected = () => L.list[L.sel] || null;
@@ -229,6 +237,27 @@ L.control = function(k, v){
   }
 };
 L.moveTree = n => { const s = L.sources().filter(x => !x.head && !x.folder); let i = s.findIndex(x => x.id === L.view); i = Math.max(0, Math.min(s.length - 1, i + n)); L.setView(s[i].id); };
+
+/* ---------- analizar las canciones de la lista que no tienen BPM ---------- */
+L.analyzeList = async function(){
+  if (L.analyzing){ L.stopAnalyze = true; return; }
+  const todo = L.list.filter(t => !t.bpm && L.hasFile(t)); if (!todo.length){ MW.toast('Todas las canciones de esta lista ya tienen BPM.'); return; }
+  L.stopAnalyze = false; let k = 0;
+  for (const t of todo){
+    if (L.stopAnalyze) break;
+    L.analyzing = (++k) + ' de ' + todo.length; MW.emitLib && MW.emitLib();
+    try {
+      const f = await L.fileFor(t); if (!f) continue;
+      const buf = await MW.A.ctx.decodeAudioData(await f.arrayBuffer());
+      const an = await MW.analyzeBeats(buf.getChannelData(0), buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0), buf.sampleRate, MW.analyzeOpts());
+      t.dur = buf.duration; if (!t.size) t.size = f.size;
+      const prev = (await L.getSaved(t)) || {};
+      if (an){ t.bpm = an.bpm; L.save(t, {...prev, grid: an.grid, dur: buf.duration}); } else L.save(t, {...prev, dur: buf.duration});
+    } catch(e){ console.error(e); }
+  }
+  L.analyzing = null; L.changed();
+  MW.toast(L.stopAnalyze ? 'Análisis detenido.' : 'Análisis listo.');
+};
 
 /* ---------- exportar a rekordbox ---------- */
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

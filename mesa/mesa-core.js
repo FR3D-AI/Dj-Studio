@@ -138,7 +138,11 @@ MW.isDownbeat = (g, b) => { const s = segAt(g, MW.timeOfBeat(g, b)); const k = M
 /* ---------- audio ---------- */
 const A = MW.A = {ctx:null, ready:false};
 MW.decks = []; MW.samplers = [];
-MW.settings = {xfCurve:'suave', pitchInvert:false, hpMode:'auto', autoOut:true};
+MW.settings = {xfCurve:'suave', pitchUp:false, hpMode:'auto', autoOut:true, bpmRange:3, gridMode:'fija'};
+// pitch como Pioneer/rekordbox: fader hacia abajo = más rápido (pitchUp = true lo invierte)
+const pitchSign = () => MW.settings.pitchUp ? 1 : -1;
+MW.pitchSign = pitchSign;
+MW.analyzeOpts = () => { const r = (MW.BPM_RANGES || [[88, 175]])[MW.settings.bpmRange] || [88, 175]; return {min: r[0], max: r[1], dynamic: MW.settings.gridMode === 'dinamica'}; };
 try { Object.assign(MW.settings, JSON.parse(localStorage.getItem('mesa-ajustes') || '{}')); } catch(e){}
 MW.saveSettings = () => { try { localStorage.setItem('mesa-ajustes', JSON.stringify(MW.settings)); } catch(e){} };
 
@@ -255,7 +259,7 @@ Deck.prototype = {
     return (r.pos + Math.max(0, A.ctx.currentTime - r.t) * r.v * this.sr) / this.sr;
   },
   playing(){ return MW.getValue(this.g, 'play') > 0; },
-  tempo(){ const r = MW.getValue(this.g, 'rate') * MW.getValue(this.g, 'rateRange') * (MW.settings.pitchInvert ? -1 : 1); return 1 + r; },
+  tempo(){ const r = MW.getValue(this.g, 'rate') * MW.getValue(this.g, 'rateRange') * pitchSign(); return 1 + r; },
   baseBpm(t){ return this.grid ? MW.bpmAt(this.grid, t == null ? this.pos() : t) : (this.track && this.track.bpm) || 0; },
   bpm(){ return this.baseBpm() * this.tempo(); },
   post(m, tr){ this.node.port.postMessage(m, tr || []); },
@@ -305,10 +309,14 @@ Deck.prototype = {
     this.seek(t);
   },
   beatLen(){ return 60 / (this.baseBpm() || 120); },
+  double(o){
+    const go = () => { const p = o.pos(); this.seek(p); MW.setValue(this.g, 'rate', MW.getValue(o.g, 'rate')); MW.setValue(this.g, 'rateRange', MW.getValue(o.g, 'rateRange')); if (o.playing()){ this.seek(o.pos()); MW.setValue(this.g, 'play', 1); } };
+    this.afterLoad = go; this.load(o.track);
+  },
   async load(track){
     const L = MW.lib;
     if (!track) return;
-    if (this.loading) return;
+    const myReq = this.loadReq = (this.loadReq || 0) + 1;
     const file = await L.fileFor(track);
     if (!file){ MW.toast('No encuentro el archivo de «' + track.title + '». Elige la carpeta donde está tu música.', true); return; }
     this.loading = true; MW.setState(this.g, 'loading', 1);
@@ -321,13 +329,23 @@ Deck.prototype = {
       // grilla, cues y BPM: de rekordbox, o de lo que guardó la Mesa Web la última vez, o se mide ahora
       if (!track.size) track.size = file.size;
       const saved = await L.getSaved(track);
+      let an = null;
+      if (!(track.grid && track.grid.length) && !(saved && saved.grid)){
+        MW.toast('Analizando «' + track.title + '» (BPM y grilla)…');
+        an = await MW.analyzeBeats(Lc, Rc || Lc, buf.sampleRate, MW.analyzeOpts()).catch(e => { console.error(e); return null; });
+      }
+      if (myReq !== this.loadReq) return;      // mientras tanto pidieron otra pista
       this.stop(true);
       this.track = track; this.dur = buf.duration; this.sr = buf.sampleRate;
       this.wave = wave;
       this.L = true;
       this.post({t:'load', L: Lc, R: Rc}, Rc ? [Lc.buffer, Rc.buffer] : [Lc.buffer]);
       this.rep = {pos:0, t:A.ctx.currentTime, v:0, playing:false};
-      const segs = track.grid && track.grid.length ? track.grid : (saved && saved.grid);
+      // si la volviste a analizar aquí, manda ese análisis; si no, el de rekordbox
+      this.regrid = !!(saved && saved.regrid);
+      const segs = (this.regrid && saved.grid) || (track.grid && track.grid.length ? track.grid : (saved && saved.grid) || (an && an.grid));
+      track.dur = track.dur || buf.duration;
+      if (an){ track.bpm = an.bpm; }
       this.grid = mkGrid(segs);
       this.hot = new Array(8).fill(null); this.mem = [];
       const cues = (saved && saved.cues) || track.cues || [];
@@ -343,20 +361,26 @@ Deck.prototype = {
       for (let i = 0; i < 8; i++) MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', this.hot[i] ? 1 : 0);
       this.applyRate(); this.indicators();
       L.markPlayed(track);
-      if (!this.grid) this.measureBpm(file, track);
-      MW.emitDeck(this);
+      if (an) this.save();
+      MW.emitDeck(this); MW.lib.changed();
+      if (this.afterLoad){ const f = this.afterLoad; this.afterLoad = null; f(); }
     } catch(e){
       console.error(e); MW.toast('No pude abrir «' + track.title + '»: ' + (e && e.message || e), true);
     } finally { this.loading = false; MW.setState(this.g, 'loading', 0); }
   },
-  async measureBpm(file, track){
-    MW.toast('Midiendo el BPM de «' + track.title + '»…');
-    const r = MW.host && MW.host.detectTempo ? await MW.host.detectTempo(file).catch(() => null) : null;
-    if (this.track !== track || !r) return;
-    this.grid = mkGrid([{t: r.t0, bpm: Math.round(r.bpm * 100) / 100}]);
-    track.bpm = r.bpm; this.applyRate(); this.save(); MW.emitDeck(this); MW.lib.changed();
+  // volver a analizar la pista cargada (con el rango de BPM y el modo de grilla de Ajustes)
+  async reanalyze(){
+    const track = this.track; if (!track) return;
+    const file = await MW.lib.fileFor(track); if (!file) return;
+    MW.toast('Analizando «' + track.title + '»…');
+    const buf = await A.ctx.decodeAudioData(await file.arrayBuffer());
+    const an = await MW.analyzeBeats(buf.getChannelData(0), buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0), buf.sampleRate, MW.analyzeOpts());
+    if (!an || this.track !== track){ if (!an) MW.toast('No pude encontrar un pulso claro en esta pista.', true); return; }
+    this.regrid = true; this.grid = mkGrid(an.grid); track.bpm = an.bpm;
+    this.applyRate(); this.save(); MW.emitDeck(this); MW.lib.changed();
+    MW.toast('«' + track.title + '»: ' + an.bpm.toFixed(2) + ' BPM' + (an.grid.length > 1 ? ' (grilla dinámica, ' + an.grid.length + ' tramos)' : '') + '.');
   },
-  save(){ if (this.track) MW.lib.save(this.track, {grid: this.grid ? this.grid.map(s => ({t:s.t, bpm:s.bpm, bar:s.bar})) : null, cues: [...this.hot.map((c, i) => c && {...c, num:i}).filter(Boolean), ...this.mem.map(c => ({...c, num:-1}))], cuePt: this.cuePt}); },
+  save(){ if (this.track) MW.lib.save(this.track, {dur: this.dur, regrid: !!this.regrid, grid: this.grid ? this.grid.map(s => ({t:s.t, bpm:s.bpm, bar:s.bar})) : null, cues: [...this.hot.map((c, i) => c && {...c, num:i}).filter(Boolean), ...this.mem.map(c => ({...c, num:-1}))], cuePt: this.cuePt}); },
   stop(unload){
     MW.setValue(this.g, 'play', 0);
     if (unload){ this.post({t:'unload'}); this.L = null; this.track = null; this.wave = null; this.grid = null; this.dur = 0; MW.setState(this.g, 'track_loaded', 0); MW.emitDeck(this); }
@@ -448,7 +472,7 @@ Deck.prototype = {
     if (ratio > 1.5) ratio /= 2; else if (ratio < 0.67) ratio *= 2;
     const range = MW.getValue(this.g, 'rateRange'); let r = (ratio - 1) / range;
     if (Math.abs(r) > 1){ const need = [0.06, 0.10, 0.16, 0.25, 0.5, 1].find(x => Math.abs(ratio - 1) <= x) || 1; MW.setValue(this.g, 'rateRange', need); r = (ratio - 1) / need; }
-    MW.setValue(this.g, 'rate', (MW.settings.pitchInvert ? -1 : 1) * clamp(r, -1, 1), 'sync');
+    MW.setValue(this.g, 'rate', pitchSign() * clamp(r, -1, 1), 'sync');
     if (phase !== false && m.grid && this.grid){
       const mf = MW.beatAt(m.grid, m.pos()), of = MW.beatAt(this.grid, this.pos());
       let d = (mf - Math.floor(mf)) - (of - Math.floor(of)); if (d > 0.5) d -= 1; if (d < -0.5) d += 1;
@@ -474,7 +498,7 @@ MW.syncTick = function(){
       if (m && m.L && m !== d && m.bpm()){
         const want = m.bpm(), base = d.baseBpm();
         let ratio = want / base; if (ratio > 1.5) ratio /= 2; else if (ratio < 0.67) ratio *= 2;
-        const range = MW.getValue(d.g, 'rateRange'), r = clamp((ratio - 1) / range, -1, 1) * (MW.settings.pitchInvert ? -1 : 1);
+        const range = MW.getValue(d.g, 'rateRange'), r = clamp((ratio - 1) / range, -1, 1) * pitchSign();
         if (Math.abs(MW.getValue(d.g, 'rate') - r) > 1e-5) MW.setValue(d.g, 'rate', r, 'sync');
         if (m.playing() && d.playing() && m.grid && d.grid){
           const mf = MW.beatAt(m.grid, m.pos()), of = MW.beatAt(d.grid, d.pos());
@@ -518,7 +542,13 @@ MW.onControl((c, v, prev, from) => {
     case 'end': if (press) d.seek(d.dur - 1); return;
     case 'stop': if (press) MW.setValue(g, 'play', 0); return;
     case 'eject': if (press && !d.playing()) d.stop(true); return;
-    case 'LoadSelectedTrack': if (press && MW.lib){ if (d.playing()) { MW.toast('La bandeja ' + d.n + ' está sonando: ponla en pausa para cargar otra pista.', true); return; } d.load(MW.lib.selected()); } return;
+    case 'LoadSelectedTrack': if (press && MW.lib){
+      if (d.playing()) { MW.toast('La bandeja ' + d.n + ' está sonando: ponla en pausa para cargar otra pista.', true); return; }
+      const now = performance.now(), o = MW.decks.find(x => x !== d);
+      // LOAD dos veces seguidas = Instant Doubles (la misma pista de la otra bandeja, en el mismo punto)
+      if (now - (d.lastLoad || 0) < 600 && o && o.L){ d.lastLoad = 0; d.double(o); return; }
+      d.lastLoad = now; d.load(MW.lib.selected());
+    } return;
     case 'reverse': d.post({t:'reverse', on: press}); return;
     case 'reverseroll': if (press){ d.post({t:'slip', on:true}); d.post({t:'reverse', on:true}); } else { d.post({t:'reverse', on:false}); d.post({t:'slip', on:false}); } return;
     case 'back': case 'fwd': d.jogBend = press ? (k === 'fwd' ? 2 : -3) : 0; return;
