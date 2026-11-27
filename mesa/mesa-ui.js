@@ -548,7 +548,7 @@ MW.emitLib = function(scrollOnly){
     tree.innerHTML = L.sources().map(s => s.head ? `<div class="hd">${esc(s.name)}</div>` : s.folder ? `<div class="fo" style="padding-left:${10 + s.depth * 12}px">📂 ${esc(s.name)}</div>` : `<div data-v="${s.id}" class="${s.id === L.view ? 'on' : ''}" style="padding-left:${10 + s.depth * 12}px">${s.id === 'all' ? '🎵' : s.id === 'hist' ? '🕘' : '♫'} ${esc(s.name)}<small>${s.n != null ? s.n : ''}</small></div>`).join('');
     $('#mwSrc').innerHTML = L.sources().filter(x => !x.head && !x.folder).map(x => `<option value="${x.id}"${x.id === L.view ? ' selected' : ''}>${'  '.repeat(Math.max(0, x.depth - 1))}${esc(x.name)}${x.n != null ? ' (' + x.n + ')' : ''}</option>`).join('');
     const xmlN = L.tracks.filter(t => t.src === 'xml').length, have = L.tracks.filter(t => L.hasFile(t)).length;
-    $('#mwLibInfo').textContent = (L.xmlName ? L.xmlName + ' · ' : '') + (L.folderName ? '📁 ' + L.folderName + ' · ' : '') + have + ' de ' + L.tracks.length + ' con archivo';
+    $('#mwLibInfo').textContent = (L.xmlName ? L.xmlName + ' · ' : '') + (L.folderName ? '📁 ' + L.folderName + ' · ' : '') + (L.files.size ? have + ' canciones disponibles' + (L.tracks.length > have ? ' (se ocultan ' + (L.tracks.length - have) + ' que no están en la carpeta)' : '') : L.tracks.length + ' canciones: elige la carpeta de música');
     const so = $('#mwSort'); if (so && so.value !== (L.sortKey || '')) so.value = L.sortKey || '';
     const ab = $('#mwAna'); if (ab) ab.textContent = L.analyzing ? '⏹ Analizando ' + L.analyzing + '…' : '📈 Analizar';
     const pb = $('#mwPerm'); pb.hidden = !L.needPerm; if (L.needPerm) pb.querySelector('span').textContent = L.folderName;

@@ -17,11 +17,11 @@ class MesaDeck extends AudioWorkletProcessor {
     this.keylock = false;
     this.ramp = 0;           // fundido corto tras un salto (evita clics)
     this.n = 0;
-    // WSOLA
-    this.N = 2048; this.Hs = 1024; this.win = new Float32Array(this.N);
-    for (let i = 0; i < this.N; i++) this.win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / this.N);
-    this.fifoL = new Float32Array(4096); this.fifoR = new Float32Array(4096); this.fifoN = 0; this.fifoR0 = 0;
-    this.tailL = new Float32Array(this.Hs); this.tailR = new Float32Array(this.Hs); this.prevStart = -1;
+    // WSOLA (Master Tempo): ventanas de 2048 con 75 % de traslape, sumadas en un acumulador
+    this.N = 2048; this.Hs = 512; this.win = new Float32Array(this.N);
+    for (let i = 0; i < this.N; i++) this.win[i] = (0.5 - 0.5 * Math.cos(2 * Math.PI * i / this.N)) * 0.5;   // 4 ventanas Hann traslapadas suman 2
+    this.olaL = new Float32Array(this.N); this.olaR = new Float32Array(this.N);
+    this.fifoL = new Float32Array(8192); this.fifoR = new Float32Array(8192); this.fifoN = 0; this.fifoR0 = 0; this.prevStart = -1; this.warm = 0;
     this.port.onmessage = e => this.msg(e.data);
   }
   msg(m){
@@ -29,7 +29,7 @@ class MesaDeck extends AudioWorkletProcessor {
       case 'load': this.L = m.L; this.R = m.R || m.L; this.len = this.L.length; this.pos = 0; this.playing = false; this.loopOn = false; this.resetStretch(); break;
       case 'unload': this.L = this.R = null; this.len = 0; this.playing = false; break;
       case 'play': this.playing = !!m.on; if (m.on) this.ramp = 64; break;
-      case 'seek': this.pos = Math.max(0, Math.min(this.len - 1, m.pos)); this.target = this.pos; this.ramp = 128; this.resetStretch(); this.send(); break;
+      case 'seek': this.pos = Math.max(0, Math.min(this.len - 1, m.pos)); this.target = this.pos; this.ramp = 128; this.prevStart = -1; this.send(); break;
       case 'rate': this.rate = m.r; break;
       case 'bend': this.bend = m.v; break;
       case 'keylock': this.keylock = !!m.on; this.resetStretch(); break;
@@ -40,7 +40,7 @@ class MesaDeck extends AudioWorkletProcessor {
       case 'slip': if (m.on){ this.slip = true; this.slipPos = this.pos; } else if (this.slip){ this.slip = false; this.pos = Math.min(this.len - 1, this.slipPos); this.ramp = 128; this.resetStretch(); } break;
     }
   }
-  resetStretch(){ this.fifoN = 0; this.fifoR0 = 0; this.prevStart = -1; }
+  resetStretch(){ this.fifoN = 0; this.fifoR0 = 0; this.prevStart = -1; this.olaL.fill(0); this.olaR.fill(0); this.warm = 0; }
   send(){ this.port.postMessage({pos: this.pos, playing: this.playing, v: this.v, t: currentTime}); }
   sample(arr, p){
     const i = Math.floor(p), f = p - i, n = this.len;
@@ -56,29 +56,29 @@ class MesaDeck extends AudioWorkletProcessor {
   }
   // WSOLA: busca el trozo que mejor empalma con lo que ya sonó y lo suma con una ventana
   stretchHop(){
-    const N = this.N, Hs = this.Hs, L = this.L, R = this.R, w = this.win;
+    const N = this.N, Hs = this.Hs, L = this.L, R = this.R, w = this.win, len = this.len;
     let start = Math.round(this.pos);
     if (this.prevStart >= 0){
-      const nat = this.prevStart + Hs, D = 384;
+      // busca el trozo que mejor empalma con la continuación natural del anterior
+      const nat = this.prevStart + Hs, D = 320;
       let best = -1e30, bd = 0;
-      for (let d = -D; d <= D; d += 4){
-        const s = start + d; if (s < 0 || s + 512 >= this.len) continue;
+      const tryD = (d, step) => {
+        const s0 = start + d; if (s0 < 0 || s0 + 1024 >= len || nat + 1024 >= len) return;
         let c = 0, e = 1e-9;
-        for (let k = 0; k < 512; k += 4){ const x = L[s + k] + R[s + k], y = L[nat + k] + R[nat + k]; c += x * y; e += x * x; }
+        for (let k = 0; k < 1024; k += step){ const x = L[s0 + k] + R[s0 + k], y = L[nat + k] + R[nat + k]; c += x * y; e += x * x; }
         c /= Math.sqrt(e); if (c > best){ best = c; bd = d; }
-      }
+      };
+      for (let d = -D; d <= D; d += 4) tryD(d, 8);
+      const c0 = bd; best = -1e30; for (let d = c0 - 3; d <= c0 + 3; d++) tryD(d, 2);
       start += bd;
     }
-    start = Math.max(0, Math.min(this.len - N - 1, start));
-    // salida: la cola del trozo anterior + la primera mitad del nuevo
+    start = Math.max(0, Math.min(len - N - 1, start));
+    const oL = this.olaL, oR = this.olaR;
+    for (let k = 0; k < N; k++){ const wk = w[k]; oL[k] += (L[start + k] || 0) * wk; oR[k] += (R[start + k] || 0) * wk; }
+    // sale el primer tramo ya completo (al empezar, la ventana misma hace un fundido corto)
     const o = this.fifoN;
-    for (let k = 0; k < Hs; k++){
-      const wl = w[k];
-      this.fifoL[o + k] = this.tailL[k] + (L[start + k] || 0) * wl;
-      this.fifoR[o + k] = this.tailR[k] + (R[start + k] || 0) * wl;
-    }
-    for (let k = 0; k < Hs; k++){ const wl = w[Hs + k]; this.tailL[k] = (L[start + Hs + k] || 0) * wl; this.tailR[k] = (R[start + Hs + k] || 0) * wl; }
-    if (this.prevStart < 0){ for (let k = 0; k < Hs; k++){ const g = k / Hs; this.fifoL[o + k] *= g; this.fifoR[o + k] *= g; } }
+    for (let k = 0; k < Hs; k++){ this.fifoL[o + k] = oL[k]; this.fifoR[o + k] = oR[k]; }
+    oL.copyWithin(0, Hs); oR.copyWithin(0, Hs); oL.fill(0, N - Hs); oR.fill(0, N - Hs);
     this.fifoN += Hs;
     this.prevStart = start;
   }
@@ -95,7 +95,8 @@ class MesaDeck extends AudioWorkletProcessor {
       this.v += (goal - this.v) * (this.playing ? 0.35 : 0.5);
       if (!this.playing && Math.abs(this.v) < 0.002) this.v = 0;
     }
-    const stretch = this.keylock && !this.scratch && this.playing && this.dir > 0 && Math.abs(this.v - 1) > 0.002 && this.len > this.N * 2;
+    // con Master Tempo se usa siempre el mismo camino (también a tempo 0 %): cambiar de camino daba saltos de ~20 ms
+    const stretch = this.keylock && !this.scratch && this.playing && this.dir > 0 && this.v > 0.05 && this.len > this.N * 2;
     if (stretch){
       // el cabezal avanza a "v" pero el sonido sale a su tono original
       while (this.fifoN - this.fifoR0 < n){

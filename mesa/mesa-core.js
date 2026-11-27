@@ -153,10 +153,12 @@ MW.initAudio = async function(ctx, hostOut){
   if (A.ready) return;
   A.ctx = ctx;
   await ctx.audioWorklet.addModule(new URL('mesa-worklet.js', BASE));
-  A.master = ctx.createGain();
-  A.limiter = ctx.createDynamicsCompressor(); A.limiter.threshold.value = -1; A.limiter.knee.value = 0; A.limiter.ratio.value = 20; A.limiter.attack.value = 0.002; A.limiter.release.value = 0.12;
+  // suma de canales con 3 dB de margen → nivel master → limitador al final (techo −2 dB: la transmisión Opus no recorta)
+  A.master = ctx.createGain(); A.master.gain.value = 0.708;
+  A.masterLvl = ctx.createGain();
+  A.limiter = ctx.createDynamicsCompressor(); A.limiter.threshold.value = -3; A.limiter.knee.value = 2; A.limiter.ratio.value = 20; A.limiter.attack.value = 0.001; A.limiter.release.value = 0.15;
   A.masterOut = ctx.createGain();
-  chain(A.master, A.limiter, A.masterOut);
+  chain(A.master, A.masterLvl, A.limiter, A.masterOut);
   A.masterAn = ctx.createAnalyser(); A.masterAn.fftSize = 512; A.masterOut.connect(A.masterAn);
   A.hostOut = hostOut;             // analizador de la sala: luces, baile y transmisión
   // audífonos: CUE de las bandejas + master, según la perilla MIX
@@ -211,7 +213,7 @@ function applyMaster(){
   const a = (mix + 1) / 2;
   A.hpCue.gain.value = Math.cos(a * Math.PI / 2); A.hpMst.gain.value = Math.sin(a * Math.PI / 2);
   A.hp.gain.value = MW.getValue('[Master]', 'headGain');
-  A.masterOut.gain.value = MW.getValue('[Master]', 'gain');
+  A.masterLvl.gain.value = MW.getValue('[Master]', 'gain');
   for (const d of MW.decks) d.applyFader();
 }
 
@@ -458,7 +460,11 @@ Deck.prototype = {
     const list = dir > 0 ? this.mem.filter(c => c.t > p + 0.05) : this.mem.filter(c => c.t < p - 0.3).reverse();
     const c = list[0] || (dir > 0 ? null : this.mem[0]);
     if (!c) return;
-    this.cuePt = c.t; this.seek(c.t); if (this.playing()) MW.setValue(this.g, 'play', 0); this.indicators();
+    this.cuePt = c.t; this.seek(c.t); if (this.playing()) MW.setValue(this.g, 'play', 0);
+    // memory loop guardado en rekordbox: queda armado y activo (se encienden IN, OUT y RELOOP/EXIT)
+    if (c.type === 4 && c.end > c.t) this.setLoop(c.t, c.end, true, this.grid ? Math.round((MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) * 1000) / 1000 : 0);
+    else if (this.loop.on) this.setLoop(this.loop.a, this.loop.b, false, this.loop.beats);
+    this.indicators();
   },
   addMemory(){ if (!this.L) return; const t = this.q(this.pos()); if (this.mem.some(c => Math.abs(c.t - t) < 0.05)) return; this.mem.push({t, num:-1, name:'', type:0}); this.mem.sort((a, b) => a.t - b.t); this.editCues(); MW.emitDeck(this); },
   delMemory(){ if (!this.L) return; const p = this.pos(); const i = this.mem.findIndex(c => Math.abs(c.t - p) < 0.06); if (i >= 0){ this.mem.splice(i, 1); this.editCues(); MW.emitDeck(this); } },
@@ -509,11 +515,13 @@ MW.syncTick = function(){
         if (m.playing() && d.playing() && m.grid && d.grid){
           const mf = MW.beatAt(m.grid, m.pos()), of = MW.beatAt(d.grid, d.pos());
           let e = (mf - Math.floor(mf)) - (of - Math.floor(of)); if (e > 0.5) e -= 1; if (e < -0.5) e += 1;
-          if (Math.abs(e) > 0.01) bend += clamp(e * 0.6, -0.04, 0.04);
+          // corrección suave de fase (máx. ±0,8 % de velocidad) para que no se note como un tirón
+          if (Math.abs(e) > 0.006) bend += clamp(e * 0.25, -0.008, 0.008);
         }
       }
     }
-    if (Math.abs(bend - (d.bendV || 0)) > 1e-4){ d.bendV = bend; d.post({t:'bend', v: bend}); }
+    const nb = (d.bendV || 0) + (bend - (d.bendV || 0)) * 0.25;   // sin saltos de velocidad entre cuadros
+    if (Math.abs(nb - (d.bendV || 0)) > 2e-5 || (bend === 0 && d.bendV)){ d.bendV = Math.abs(nb) < 2e-5 ? 0 : nb; d.post({t:'bend', v: d.bendV}); }
     d.jogBend = (d.jogBend || 0) * 0.82; if (Math.abs(d.jogBend) < 1e-4) d.jogBend = 0;
   }
 };

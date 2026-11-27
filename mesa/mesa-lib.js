@@ -202,8 +202,8 @@ L.markPlayed = t => { L.history = [t.id, ...L.history.filter(x => x !== t.id)].s
 
 /* ---------- vistas, búsqueda y orden ---------- */
 L.sources = function(){
-  const src = [{id:'all', name:'Colección', n: L.tracks.length, depth:0}];
-  const add = (arr, d, path) => arr.forEach((p, i) => { const id = path + i; if (p.children){ src.push({id:'f' + id, name:p.name, folder:true, depth:d}); add(p.children, d + 1, id + '.'); } else src.push({id:'p' + id, name:p.name, n:p.ids.length, depth:d}); });
+  const src = [{id:'all', name:'Colección', n: avail(L.tracks).length, depth:0}];
+  const add = (arr, d, path) => arr.forEach((p, i) => { const id = path + i; if (p.children){ src.push({id:'f' + id, name:p.name, folder:true, depth:d}); add(p.children, d + 1, id + '.'); } else src.push({id:'p' + id, name:p.name, n: L.files.size ? p.ids.filter(x => L.hasFile(L.byId.get(x))).length : p.ids.length, depth:d}); });
   if (L.playlists.length){ src.push({id:'h-pl', name:'Listas de rekordbox', head:true, depth:0}); add(L.playlists, 1, ''); }
   if (L.history.length) src.push({id:'hist', name:'Historial de hoy', n:L.history.length, depth:0});
   return src;
@@ -214,8 +214,10 @@ function listFor(id){
   if (id[0] === 'p'){ const path = id.slice(1).split('.').map(Number); let arr = L.playlists, p = null; for (const i of path){ p = arr[i]; if (!p) return []; arr = p.children || []; } return p && p.ids ? p.ids.map(x => L.byId.get(x)).filter(Boolean) : []; }
   return [];
 }
+// con la carpeta elegida, solo se muestran las canciones que están en ella
+const avail = list => L.files.size ? list.filter(t => L.hasFile(t)) : list;
 L.refresh = function(){
-  let list = listFor(L.view);
+  let list = avail(listFor(L.view));
   const q = norm(L.query).trim();
   if (q){ const ws = q.split(/\s+/); list = list.filter(t => { const h = norm(t.title + ' ' + t.artist + ' ' + (t.fileName || '') + ' ' + t.album + ' ' + t.genre + ' ' + t.key + ' ' + (t.bpm ? Math.round(t.bpm) : '')); return ws.every(w => h.includes(w)); }); }
   if (L.sortKey){ const k = L.sortKey, d = L.sortDir; list = [...list].sort((a, b) => { const x = a[k], y = b[k]; if (typeof x === 'number' || typeof y === 'number') return ((x || 0) - (y || 0)) * d; return String(x || '').localeCompare(String(y || ''), 'es', {numeric: true, sensitivity: 'base'}) * d; }); }
