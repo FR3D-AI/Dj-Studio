@@ -3357,6 +3357,7 @@ listInputs();
 //  · dj:    quién transmite; cada oyente comprueba la firma y que esa persona tenga el turno
 //  · chat:  mensajes del chat público
 const APP_ID = 'fr3d-ai-dj-studio-v1', ROOM_ID = 'sala-principal';
+const SIGNAL_RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nostr.mom', 'wss://relay.nostr.band', 'wss://offchain.pub', 'wss://relay.snort.social', 'wss://nostr.oxtr.dev'];
 const ADMIN_PUB = {"kty":"EC","crv":"P-256","x":"8Aw3iZhKvA31h_dY9UD385pduBy5Z_8IrgQxEX7w5Cg","y":"Z36uKz-fFRIxZf5lNopu0MuVw2ri95II6Gmq1iutves"};
 const net = {room:null, selfId:null, peers:new Map(), online:false, djPeer:null, dj:null, pending:new Map(), logos:new Map(),
   casting:false, castSince:0, castDest:null, remoteAudio:null, remoteNode:null, remoteStream:null, actions:{}};
@@ -3679,7 +3680,9 @@ async function connect(){
   try { mod = await import('./vendor/trystero-nostr.js'); }
   catch(e){ setNetState('Sin conexión', false); netEl.djNow.textContent = 'No se pudo cargar el módulo de red.'; return; }
   const turnConfig = await turnServers();
-  const roomObj = mod.joinRoom({appId: APP_ID, turnConfig}, ROOM_ID);
+  // relevos Nostr grandes y estables para encontrarse (los que trae Trystero por defecto son chicos y a veces se caen:
+  // si los dos no comparten ninguno vivo, cada uno queda solo en su propia sala)
+  const roomObj = mod.joinRoom({appId: APP_ID, turnConfig, relayConfig:{urls: SIGNAL_RELAYS}}, ROOM_ID);
   net.room = roomObj; net.selfId = mod.selfId; net.online = true;
   const pose = roomObj.makeAction('pose'), look = roomObj.makeAction('look'), dj = roomObj.makeAction('dj');
   const schedA = roomObj.makeAction('sched'), chat = roomObj.makeAction('chat'), logoA = roomObj.makeAction('logo');
