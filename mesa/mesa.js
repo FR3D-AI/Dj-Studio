@@ -26,7 +26,7 @@ MW.powerOff = function(){
   MW.A.fx && MW.A.fx.toggle(false);
   MW.setActive(false);
   MW.host && MW.host.deactivate();
-  document.getElementById('mesa').hidden = true; document.getElementById('mwMini').hidden = true; window.MESA_COVER = false;
+  MW.hideAll();
 };
 MW.isOn = () => !!(MW.A && MW.A.on);
 // lo que necesita la sala: la grilla de la bandeja que manda (para que bailen exacto en el golpe) y el nombre de la pista

@@ -114,6 +114,40 @@ const CSS = `
 .mw-set p{margin:0;color:#9e97b0;font-size:12px;line-height:1.4}
 .mw-mini{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;background:#16141dee;border:1px solid #3a3449;border-radius:12px;padding:7px 10px;box-shadow:0 8px 30px #000a;max-width:94vw}
 .mw-mini[hidden]{display:none}.mw-mini span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;font-size:12.5px}.mw-mini b{font-family:var(--display,Impact);font-weight:400}
+/* ---- Vista mesa: abajo de la pantalla, como la DDJ-400; la sala queda arriba ---- */
+body.mesa-dock .app{height:calc(100% - var(--mesa-dock-h,0px))}
+.mw-st{display:flex;gap:3px;flex:none}.mw-st b{font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;background:#1f1c29;color:#5d576e;letter-spacing:.02em}
+.mw-st b.on{background:#173b2a;color:#7dffb9}.mw-st b.y.on{background:#4a3c12;color:#ffe9a0}.mw-st b.o.on{background:#4a2a10;color:#ffc27a}.mw-st b.b.on{background:#1b3150;color:#a9dcff}
+.mw:not(.dock) .mw-st,.mw:not(.dock) .mw-dk{display:none}
+.mw.dock{inset:auto 0 0 0;max-height:72vh;grid-template-rows:auto auto auto auto;border-top:2px solid #ffb347;box-shadow:0 -12px 30px #000b}
+.dock .mw-top{height:32px;gap:6px;padding:0 6px}.dock .mw-fo{display:none!important}
+.dock .mw-tb{padding:3px 8px;font-size:12px}.dock .mw-logo{font-size:14px}.dock .mw-pill{padding:2px 8px;font-size:11.5px}
+.dock .mw-waves{grid-template-rows:34px 34px}
+.dock .mw-main{grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:4px;padding:4px}
+.dock .mw-deck{grid-template-columns:108px minmax(0,1fr);grid-template-rows:auto 20px auto;grid-template-areas:"head head" "ov ov" "jog pads";padding:5px;gap:5px}
+.dock .mw-deck.r{grid-template-columns:minmax(0,1fr) 108px;grid-template-areas:"head head" "ov ov" "pads jog"}
+.dock .mw-tr,.dock .mw-tempo,.dock .mw-pads .mw-row,.dock .mw-load{display:none}
+.dock .mw-jog canvas{width:108px;height:108px}
+.dock .mw-head{gap:6px}.dock .mw-num{width:24px;height:24px;font-size:15px;border-radius:6px}
+.dock .mw-ti b{font-size:13.5px}.dock .mw-ti span{font-size:11px}
+.dock .mw-bpm b{font-size:19px}.dock .mw-bpm span{font-size:10.5px}.dock .mw-key{font-size:11.5px;padding:1px 6px}
+.dock .mw-time{font-size:10.5px}
+.dock .mw-modes button{height:18px;font-size:9.5px}
+.dock .mw-grid{gap:4px}.dock .mw-pad{height:38px}
+.dock .mw-mix{padding:5px;gap:4px;grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr)}
+.dock .mw-strip{grid-template-columns:26px 6px 1fr;gap:3px}.dock .mw-strip.r{grid-template-columns:1fr 6px 26px}
+.dock .mw-kcol{gap:3px}.dock .mw-k{font-size:0}.dock .mw-knob{width:24px;height:24px}.dock .mw-knob::after{top:2px;height:8px;width:2px;margin-left:-1px;transform-origin:50% 10px}
+.dock .mw-cue{height:18px;font-size:9.5px}.dock .mw-fcol .mw-fd{width:24px}
+.dock .mw-ctr{gap:4px}.dock .mw-box{padding:3px;gap:3px}.dock .mw-box h4{display:none}
+.dock .mw-box.fx{display:grid;grid-template-columns:28px 1fr;align-items:center}.dock .mw-box.fx>*{grid-column:1/-1}.dock .mw-box.fx>.mw-kr{grid-column:1}.dock .mw-box.fx>.mw-ch{grid-column:2}
+.dock .mw-fxn b{font-size:11px}.dock .mw-fxn button{width:18px;height:18px}.dock .mw-ch button{height:18px}.dock .mw-fxon{height:20px;font-size:10.5px}
+.dock .mw-box.hp,.dock .mw-box.ms{flex-direction:row;justify-content:space-around}.dock .mw-box.ms .mw-mvu{flex:1;height:6px}
+.dock .mw-xf{font-size:10px}.dock .mw-xf .mw-fd{height:18px}.dock .mw-xf .mw-fd b{margin-left:-7px;width:14px}
+.dock .mw-lib{grid-template-columns:1fr}.dock .mw-tree{display:none}.dock .mw-list{height:108px;flex:none}
+.dock .mw-bar{padding:4px;gap:4px}.dock .mw-bar .mw-tb{padding:3px 8px;font-size:12px}.dock .mw-bar input[type=search]{padding:3px 8px}
+.mw-bar select{background:#1d1a26;color:#e9e6f0;border:1px solid #3a3449;border-radius:7px;padding:3px 6px;font:inherit;font-size:12px;max-width:200px}
+.dock.nolib .mw-lib{display:none}
+@media (max-height:820px){.dock .mw-jog canvas{width:96px;height:96px}.dock .mw-deck{grid-template-columns:96px minmax(0,1fr)}.dock .mw-deck.r{grid-template-columns:minmax(0,1fr) 96px}.dock .mw-pad{height:33px}.dock .mw-list{height:84px}}
 @media (max-width:1100px){.mw-main{grid-template-columns:1fr 1fr}.mw-mix{grid-column:1/-1;grid-row:2}.mw-deck.r{grid-column:2;grid-row:1}}
 @media (max-width:760px){.mw-main{grid-template-columns:1fr}.mw-deck.r{grid-column:1;grid-row:auto}.mw-mix{grid-row:auto}.mw-lib{grid-template-columns:1fr}.mw-tree{max-height:120px;border-right:0;border-bottom:1px solid #262231}.mw{grid-template-rows:auto auto auto minmax(300px,auto)}}
 `;
@@ -123,6 +157,7 @@ function deckHTML(n){
   return `<div class="mw-deck${r}" data-deck="${n}">
     <div class="mw-head"><span class="mw-num" style="background:${DECK_COL[n - 1]}">${n}</span>
       <div class="mw-ti"><b data-f="title">Sin pista</b><span data-f="artist">Arrastra una canción aquí o usa LOAD en la controladora</span></div>
+      <span class="mw-st" data-f="st"></span>
       <span class="mw-key" data-f="key">—</span>
       <div class="mw-bpm"><b data-f="bpm">—</b><span data-f="pitch">0.00%</span></div>
       <button class="mw-load" data-act="load" title="Cargar la pista seleccionada en la biblioteca">⤓ Cargar</button></div>
@@ -166,7 +201,7 @@ function deckHTML(n){
 }
 function stripHTML(n){
   const g = '[Channel' + n + ']', eq = '[EqualizerRack1_' + g + '_Effect1]', q = '[QuickEffectRack1_' + g + ']';
-  const k = (lab, gg, kk, f) => `<div class="mw-k"><div class="mw-knob${f ? ' f' : ''}" data-g="${gg}" data-k="${kk}" style="--fc:${DECK_COL[n - 1]}"></div>${lab}</div>`;
+  const k = (lab, gg, kk, f) => `<div class="mw-k"><div class="mw-knob${f ? ' f' : ''}" title="${lab}" data-g="${gg}" data-k="${kk}" style="--fc:${DECK_COL[n - 1]}"></div>${lab}</div>`;
   return `<div class="mw-strip${n === 2 ? ' r' : ''}">
     <div class="mw-kcol">${k('TRIM', g, 'pregain')}${k('HI', eq, 'parameter3')}${k('MID', eq, 'parameter2')}${k('LOW', eq, 'parameter1')}${k('FILTER', q, 'super1', true)}</div>
     <div class="mw-vu" data-vu="${n}"><i></i></div>
@@ -178,9 +213,11 @@ const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="M
     <span class="mw-logo">MESA WEB</span>
     <span class="mw-pill" id="mwCtl"><i></i><span>Sin controladora</span></span>
     <span class="mw-pill" id="mwRoom" title="Lo que suena en el master llega a la sala (luces, baile y transmisión)"><i></i><span>La sala escucha el master</span></span>
-    <label class="mw-pill" title="Por dónde sale el master">🔊 <select id="mwOut"><option value="">Salida del sistema</option></select></label>
-    <label class="mw-pill" title="Por dónde salen los audífonos (CUE)">🎧 <select id="mwHp"><option value="">Audífonos…</option></select></label>
+    <label class="mw-pill mw-fo" title="Por dónde sale el master">🔊 <select id="mwOut"><option value="">Salida del sistema</option></select></label>
+    <label class="mw-pill mw-fo" title="Por dónde salen los audífonos (CUE)">🎧 <select id="mwHp"><option value="">Audífonos…</option></select></label>
     <span class="mw-sp"></span>
+    <button class="mw-tb mw-dk" id="mwLibT" title="Mostrar u ocultar la biblioteca">📚 Biblioteca</button>
+    <button class="mw-tb" id="mwView" title="Cambiar entre la mesa en pantalla completa y la mesa abajo con la sala arriba">▭ Vista mesa</button>
     <button class="mw-tb" id="mwSetB" title="Ajustes">⚙︎ Ajustes</button>
     <button class="mw-tb" id="mwMin" title="Ver la sala; la mesa sigue sonando">▾ Ver la sala</button>
     <button class="mw-tb" id="mwOff" title="Detener la Mesa Web y devolver el audio a la sala">⏻ Apagar</button>
@@ -189,14 +226,14 @@ const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="M
   <section class="mw-main">${deckHTML(1)}
     <div class="mw-mix">${stripHTML(1)}
       <div class="mw-ctr">
-        <div class="mw-box"><h4>BEAT FX</h4>
+        <div class="mw-box fx"><h4>BEAT FX</h4>
           <div class="mw-fxn"><button data-fx="prev">◀</button><b id="mwFxN">Echo</b><button data-fx="next">▶</button></div>
           <div class="mw-fxn"><button data-fx="b-">◀</button><b id="mwFxB">1/2</b><button data-fx="b+">▶</button></div>
           <div class="mw-kr"><div class="mw-k"><div class="mw-knob" id="mwFxMix"></div>LEVEL/DEPTH</div></div>
           <div class="mw-ch"><button data-fxt="1">1</button><button data-fxt="2">2</button><button data-fxt="m">M</button></div>
           <button class="mw-fxon" id="mwFxOn">ON / OFF</button></div>
-        <div class="mw-box"><h4>AUDÍFONOS</h4><div class="mw-kr"><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="headMix"></div>MIX</div><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="headGain"></div>LEVEL</div></div></div>
-        <div class="mw-box"><h4>MASTER</h4><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="gain"></div>LEVEL</div><div class="mw-mvu"><div class="mw-vu" data-vu="ml"><i></i></div></div></div>
+        <div class="mw-box hp"><h4>AUDÍFONOS</h4><div class="mw-kr"><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="headMix"></div>MIX</div><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="headGain"></div>LEVEL</div></div></div>
+        <div class="mw-box ms"><h4>MASTER</h4><div class="mw-k"><div class="mw-knob" data-g="[Master]" data-k="gain"></div>LEVEL</div><div class="mw-mvu"><div class="mw-vu" data-vu="ml"><i></i></div></div></div>
       </div>
       ${stripHTML(2)}
       <div class="mw-xf">1<div class="mw-fd h" data-g="[Master]" data-k="crossfader"><i class="c" style="left:50%;right:auto;top:3px;bottom:3px;width:1px;height:auto"></i><b></b></div>2</div>
@@ -209,10 +246,11 @@ const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="M
         <label class="mw-tb pri" title="En rekordbox: Archivo → Exportar colección en formato xml">📥 Importar XML de rekordbox<input type="file" id="mwXml" accept=".xml,text/xml,application/xml" hidden></label>
         <button class="mw-tb" id="mwDir">📁 Carpeta de música</button>
         <button class="mw-tb" id="mwPerm" hidden>🔓 Volver a abrir «<span></span>»</button>
-        <label class="mw-tb" title="Agregar canciones sueltas">＋ Canciones<input type="file" id="mwFiles" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.aiff,.aif,.ogg" multiple hidden></label>
+        <select class="mw-dk" id="mwSrc" aria-label="Lista"></select>
+        <label class="mw-tb mw-fo" title="Agregar canciones sueltas">＋ Canciones<input type="file" id="mwFiles" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.aiff,.aif,.ogg" multiple hidden></label>
         <input type="search" id="mwQ" placeholder="Buscar título, artista, género, BPM o tono" aria-label="Buscar en la biblioteca">
-        <button class="mw-tb" id="mwExp" title="Descarga un XML para importar en rekordbox con los cues y la grilla que hiciste aquí">📤 Exportar XML</button>
-        <small id="mwLibInfo"></small>
+        <button class="mw-tb mw-fo" id="mwExp" title="Descarga un XML para importar en rekordbox con los cues y la grilla que hiciste aquí">📤 Exportar XML</button>
+        <small class="mw-fo" id="mwLibInfo"></small>
       </div>
       <div class="mw-list" id="mwList" tabindex="0"></div>
     </div>
@@ -498,6 +536,7 @@ MW.emitLib = function(scrollOnly){
   if (!scrollOnly){
     const tree = $('#mwTree'); tree.classList.toggle('focus', L.focus === 'tree');
     tree.innerHTML = L.sources().map(s => s.head ? `<div class="hd">${esc(s.name)}</div>` : s.folder ? `<div class="fo" style="padding-left:${10 + s.depth * 12}px">📂 ${esc(s.name)}</div>` : `<div data-v="${s.id}" class="${s.id === L.view ? 'on' : ''}" style="padding-left:${10 + s.depth * 12}px">${s.id === 'all' ? '🎵' : s.id === 'hist' ? '🕘' : '♫'} ${esc(s.name)}<small>${s.n != null ? s.n : ''}</small></div>`).join('');
+    $('#mwSrc').innerHTML = L.sources().filter(x => !x.head && !x.folder).map(x => `<option value="${x.id}"${x.id === L.view ? ' selected' : ''}>${'  '.repeat(Math.max(0, x.depth - 1))}${esc(x.name)}${x.n != null ? ' (' + x.n + ')' : ''}</option>`).join('');
     const xmlN = L.tracks.filter(t => t.src === 'xml').length, have = L.tracks.filter(t => L.hasFile(t)).length;
     $('#mwLibInfo').textContent = (L.xmlName ? L.xmlName + ' · ' : '') + (L.folderName ? '📁 ' + L.folderName + ' · ' : '') + have + ' de ' + L.tracks.length + ' con archivo';
     const pb = $('#mwPerm'); pb.hidden = !L.needPerm; if (L.needPerm) pb.querySelector('span').textContent = L.folderName;
@@ -557,6 +596,10 @@ function setupTop(){
   });
   navigator.mediaDevices && navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener('devicechange', () => { listOutputs(); setTimeout(() => MW.autoOutput(), 800); });
   $('#mwMin').addEventListener('click', () => MW.minimize(true));
+  $('#mwView').addEventListener('click', () => MW.setView(MW.settings.view === 'dock' ? 'full' : 'dock'));
+  $('#mwLibT').addEventListener('click', () => { MW.settings.dockLib = MW.settings.dockLib === false; MW.saveSettings(); MW.setView(MW.settings.view); });
+  $('#mwSrc').addEventListener('change', e => MW.lib.setView(e.target.value));
+  new ResizeObserver(() => dockSize()).observe(root);
   $('#mwMax').addEventListener('click', () => MW.minimize(false));
   $('#mwOff').addEventListener('click', () => MW.powerOff());
   $('#mwZi').addEventListener('click', () => { waveZoom = clamp(waveZoom * 0.75, 2, 40); });
@@ -619,6 +662,8 @@ function frame(){
     const bpm = d.bpm(), pct = (d.tempo() - 1) * 100;
     el.querySelector('[data-f=bpm]').textContent = bpm ? bpm.toFixed(1) : '—';
     el.querySelector('[data-f=pitch]').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%' + (d.baseBpm() ? ' · ' + d.baseBpm().toFixed(1) : '');
+    const st = '<b class="' + (d.playing() ? 'on' : '') + '">' + (d.playing() ? '▶' : '❚❚') + '</b><b class="b' + (MW.getValue(d.g, 'sync_enabled') ? ' on' : '') + '">SYNC</b><b class="y' + (MW.getValue(d.g, 'sync_leader') ? ' on' : '') + '">MASTER</b><b class="o' + (d.loop.on ? ' on' : '') + '">' + (d.loop.on ? 'LOOP ' + (d.loop.beats ? fracTxt(d.loop.beats) : '') : 'LOOP') + '</b><b class="' + (MW.getValue(d.g, 'keylock') ? 'on' : '') + '">MT</b>';
+    if (d.stHtml !== st){ d.stHtml = st; el.querySelector('[data-f=st]').innerHTML = st; }
     el.querySelector('[data-f=tv]').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
     const vu = root.querySelector('[data-vu="' + d.n + '"] i'); if (vu) vu.style.height = Math.round(Math.min(1, d.vuS || 0) * 100) + '%';
     if (d.lastMode !== MW.padModeHw[d.n - 1]){ d.lastMode = MW.padModeHw[d.n - 1]; if (d.lastMode){ padMode[d.n - 1] = d.lastMode; drawPads(d); } }
@@ -635,5 +680,22 @@ function updateMini(){
   const m = $('#mwMini'); if (m.hidden) return;
   MW.decks.forEach((d, i) => { $('#mwMini' + (i + 1)).innerHTML = '<b style="color:' + DECK_COL[i] + '">' + (i + 1) + '</b> ' + (d.track ? esc(d.track.title) + ' · ' + (d.bpm() ? d.bpm().toFixed(1) : '') + (d.playing() ? ' ▶' : ' ❚❚') : '—'); });
 }
-MW.minimize = function(on){ root.hidden = !!on; $('#mwMini').hidden = !on; $('#mwSet').hidden = true; window.MESA_COVER = !on; if (!on) MW.emitLib(); updateMini(); };
+// la sala se achica para quedar justo encima de la mesa (así la cámara encuadra bien)
+function dockSize(){
+  const dock = !root.hidden && root.classList.contains('dock');
+  document.body.classList.toggle('mesa-dock', dock);
+  document.documentElement.style.setProperty('--mesa-dock-h', dock ? root.offsetHeight + 'px' : '0px');
+  window.MESA_COVER = !root.hidden && !dock;
+}
+MW.setView = function(v){
+  MW.settings.view = v === 'dock' ? 'dock' : 'full'; MW.saveSettings();
+  const dock = MW.settings.view === 'dock';
+  root.classList.toggle('dock', dock); root.classList.toggle('nolib', dock && MW.settings.dockLib === false);
+  $('#mwView').textContent = dock ? '⛶ Pantalla completa' : '▭ Vista mesa';
+  $('#mwLibT').classList.toggle('pri', MW.settings.dockLib !== false);
+  for (const d of MW.decks) d.ovImg = null;
+  dockSize(); MW.emitLib();
+};
+MW.minimize = function(on){ root.hidden = !!on; $('#mwMini').hidden = !on; $('#mwSet').hidden = true; if (!on){ MW.setView(MW.settings.view); MW.emitLib(); } dockSize(); updateMini(); };
+MW.hideAll = function(){ root.hidden = true; $('#mwMini').hidden = true; dockSize(); };
 })();
