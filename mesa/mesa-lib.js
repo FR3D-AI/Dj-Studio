@@ -93,6 +93,8 @@ L.importXml = async function(text, name, quiet){
   };
   const root = doc.querySelector('PLAYLISTS > NODE');
   L.playlists = root ? walk(root) : [];
+  // las canciones de la carpeta que están en el XML se quedan solo como pista de rekordbox (con sus cues)
+  if (L.files.size){ folderTracks(); hydrate(); }
   L.xmlName = name || 'rekordbox.xml';
   if (!quiet){ kvSet('xml', {text, name: L.xmlName}); }
   L.view = 'all'; L.sel = 0;

@@ -348,10 +348,12 @@ Deck.prototype = {
       if (an){ track.bpm = an.bpm; }
       this.grid = mkGrid(segs);
       this.hot = new Array(8).fill(null); this.mem = [];
-      const cues = (saved && saved.cues) || track.cues || [];
+      // los cues guardados aquí solo mandan si los editaste en la Mesa Web; si no, los de rekordbox
+      this.cuesEdited = !!(saved && saved.cuesEdited);
+      const cues = (this.cuesEdited && saved.cues) || (track.cues && track.cues.length ? track.cues : (saved && saved.cuesEdited ? saved.cues : null)) || [];
       for (const c of cues){ if (c.num >= 0 && c.num < 8) this.hot[c.num] = {...c}; else this.mem.push({...c}); }
       this.mem.sort((a, b) => a.t - b.t);
-      this.cuePt = saved && saved.cuePt != null ? saved.cuePt : (this.mem.length ? this.mem[0].t : (this.grid ? Math.max(0, MW.timeOfBeat(this.grid, Math.ceil(MW.beatAt(this.grid, 0)))) : 0));
+        this.cuePt = saved && saved.cuePt != null && this.cuesEdited ? saved.cuePt : (this.mem.length ? this.mem[0].t : (this.grid ? Math.max(0, MW.timeOfBeat(this.grid, Math.ceil(MW.beatAt(this.grid, 0)))) : 0));
       this.loop = {on:false, a:0, b:0, beats:0};
       this.seek(this.cuePt);
       this.post({t:'loop', on:false});
@@ -362,6 +364,9 @@ Deck.prototype = {
       this.applyRate(); this.indicators();
       L.markPlayed(track);
       if (an) this.save();
+      const nh = this.hot.filter(Boolean).length, nm = this.mem.length;
+      if (track.src === 'xml') MW.toast('«' + track.title + '»: ' + (nh || nm ? nh + ' hot cues y ' + nm + ' memory cues de rekordbox' : 'esta canción no tiene cues guardados en el XML de rekordbox') + '.');
+      else if (MW.lib.tracks.some(t => t.src === 'xml')) MW.toast('«' + track.title + '» no está en tu XML de rekordbox: por eso no trae cues. Revisa que el nombre del archivo sea el mismo.', true);
       MW.emitDeck(this); MW.lib.changed();
       if (this.afterLoad){ const f = this.afterLoad; this.afterLoad = null; f(); }
     } catch(e){
@@ -380,7 +385,8 @@ Deck.prototype = {
     this.applyRate(); this.save(); MW.emitDeck(this); MW.lib.changed();
     MW.toast('«' + track.title + '»: ' + an.bpm.toFixed(2) + ' BPM' + (an.grid.length > 1 ? ' (grilla dinámica, ' + an.grid.length + ' tramos)' : '') + '.');
   },
-  save(){ if (this.track) MW.lib.save(this.track, {dur: this.dur, regrid: !!this.regrid, grid: this.grid ? this.grid.map(s => ({t:s.t, bpm:s.bpm, bar:s.bar})) : null, cues: [...this.hot.map((c, i) => c && {...c, num:i}).filter(Boolean), ...this.mem.map(c => ({...c, num:-1}))], cuePt: this.cuePt}); },
+  editCues(){ this.cuesEdited = true; this.save(); },
+  save(){ if (this.track) MW.lib.save(this.track, {dur: this.dur, regrid: !!this.regrid, cuesEdited: !!this.cuesEdited, grid: this.grid ? this.grid.map(s => ({t:s.t, bpm:s.bpm, bar:s.bar})) : null, cues: [...this.hot.map((c, i) => c && {...c, num:i}).filter(Boolean), ...this.mem.map(c => ({...c, num:-1}))], cuePt: this.cuePt}); },
   stop(unload){
     MW.setValue(this.g, 'play', 0);
     if (unload){ this.post({t:'unload'}); this.L = null; this.track = null; this.wave = null; this.grid = null; this.dur = 0; MW.setState(this.g, 'track_loaded', 0); MW.emitDeck(this); }
@@ -421,7 +427,7 @@ Deck.prototype = {
       this.cueHeld = true; this.playedDuringCue = false;
       if (this.playing()){ MW.setValue(this.g, 'play', 0); this.seek(this.cuePt); }
       else if (Math.abs(this.pos() - this.cuePt) < 0.02){ this.cuePreview = true; this.setPlay(true); MW.setState(this.g, 'play', 1); }
-      else { this.cuePt = this.q(this.pos()); this.seek(this.cuePt); this.save(); }
+      else { this.cuePt = this.q(this.pos()); this.seek(this.cuePt); this.editCues(); }
     } else {
       this.cueHeld = false;
       if (this.cuePreview){ this.cuePreview = false; if (!this.playedDuringCue){ MW.setValue(this.g, 'play', 0); this.seek(this.cuePt); } }
@@ -431,7 +437,7 @@ Deck.prototype = {
   hotcue(i, down, mode){
     if (!this.L) return;
     const c = this.hot[i];
-    if (mode === 'clear'){ if (down && c){ this.hot[i] = null; MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', 0); this.save(); MW.emitDeck(this); } return; }
+    if (mode === 'clear'){ if (down && c){ this.hot[i] = null; MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', 0); this.editCues(); MW.emitDeck(this); } return; }
     if (!down){
       if (this.hotHeld === i && !this.playedDuringCue && this.hotPreview){ MW.setValue(this.g, 'play', 0); this.seek(c ? c.t : this.pos()); }
       this.hotHeld = -1; this.hotPreview = false; return;
@@ -439,7 +445,7 @@ Deck.prototype = {
     if (!c || mode === 'set'){
       this.hot[i] = {t: this.q(this.pos()), num:i, name:'', color: MW.HOT_COLORS[i], type: this.loop.on ? 4 : 0, end: this.loop.on ? this.loop.b : undefined};
       if (this.loop.on) this.hot[i].t = this.loop.a;
-      MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', 1); this.save(); MW.emitDeck(this); return;
+      MW.setState(this.g, 'hotcue_' + (i + 1) + '_enabled', 1); this.editCues(); MW.emitDeck(this); return;
     }
     this.hotHeld = i; this.playedDuringCue = false;
     if (c.type === 4 && c.end > c.t){ this.seek(c.t); this.setLoop(c.t, c.end, true, this.grid ? Math.round((MW.beatAt(this.grid, c.end) - MW.beatAt(this.grid, c.t)) * 1000) / 1000 : 0); }
@@ -454,8 +460,8 @@ Deck.prototype = {
     if (!c) return;
     this.cuePt = c.t; this.seek(c.t); if (this.playing()) MW.setValue(this.g, 'play', 0); this.indicators();
   },
-  addMemory(){ if (!this.L) return; const t = this.q(this.pos()); if (this.mem.some(c => Math.abs(c.t - t) < 0.05)) return; this.mem.push({t, num:-1, name:'', type:0}); this.mem.sort((a, b) => a.t - b.t); this.save(); MW.emitDeck(this); },
-  delMemory(){ if (!this.L) return; const p = this.pos(); const i = this.mem.findIndex(c => Math.abs(c.t - p) < 0.06); if (i >= 0){ this.mem.splice(i, 1); this.save(); MW.emitDeck(this); } },
+  addMemory(){ if (!this.L) return; const t = this.q(this.pos()); if (this.mem.some(c => Math.abs(c.t - t) < 0.05)) return; this.mem.push({t, num:-1, name:'', type:0}); this.mem.sort((a, b) => a.t - b.t); this.editCues(); MW.emitDeck(this); },
+  delMemory(){ if (!this.L) return; const p = this.pos(); const i = this.mem.findIndex(c => Math.abs(c.t - p) < 0.06); if (i >= 0){ this.mem.splice(i, 1); this.editCues(); MW.emitDeck(this); } },
   beatjump(n){
     if (!this.L) return;
     const bl = this.beatLen(), dt = n * bl, p = this.pos();
