@@ -185,6 +185,16 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
 .livebox select{flex:1;min-width:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font:600 14px var(--body)}
 .badge{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .badge.on{color:var(--live)}
+.fold{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fold > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 12px;font:700 15px var(--body);color:var(--fg);user-select:none}
+.fold > summary::-webkit-details-marker{display:none}
+.fold > summary .ft{flex:1;min-width:0}
+.fold > summary::after{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 4px 4px 2px;opacity:.7;transition:transform .2s}
+.fold[open] > summary::after{transform:rotate(-135deg);margin-bottom:-4px}
+.fold > summary:hover{background:color-mix(in srgb, var(--fg) 5%, transparent)}
+.fold > .fbody{display:flex;flex-direction:column;gap:9px;padding:2px 12px 12px}
+.foldgroup{display:flex;flex-direction:column;gap:12px}
+.foldgroup[hidden]{display:none}
 .online{display:flex;flex-direction:column;gap:9px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px}
 .people{display:flex;flex-wrap:wrap;gap:6px}
 .people:empty{display:none}
@@ -395,8 +405,7 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
   <aside class="panel" id="panel" aria-label="Configuración" inert>
     <div class="head"><h1>Configuración</h1><button class="close" id="closePanel" type="button" aria-label="Cerrar configuración">×</button></div>
 
-    <section class="online" aria-labelledby="onLbl">
-      <div class="mtop"><span class="lbl" id="onLbl">Sala en línea</span><span class="badge" id="netState">Desconectado</span></div>
+    <details class="fold" id="fSala"><summary><span class="ft">🌐 Sala en línea</span><span class="badge" id="netState">Desconectado</span></summary><div class="fbody">
       <div class="now" id="djNow">Nadie está tocando en vivo</div>
       <div class="people" id="people"></div>
       <div class="row">
@@ -405,10 +414,9 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       </div>
       <p class="note" id="castNote">Solo los DJs autorizados por el administrador pueden transmitir.</p>
       <div class="vol"><label class="lbl" for="vol">Volumen</label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"></div>
-    </section>
+    </div></details>
 
-    <section class="online" aria-labelledby="agLbl">
-      <div class="mtop"><span class="lbl" id="agLbl">Agenda de DJs</span></div>
+    <details class="fold" id="fAgenda"><summary><span class="ft">📅 Agenda de DJs</span></summary><div class="fbody">
       <ul class="agenda" id="agendaList"></ul>
       <div id="adminBox" hidden>
         <form class="slotform" id="slotForm" novalidate>
@@ -424,29 +432,27 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
           <p class="note" id="slotNote">La persona debe haber entrado a la sala al menos una vez. Durante su turno nadie más puede transmitir.</p>
         </form>
       </div>
-    </section>
+    </div></details>
 
-    <section class="online" aria-labelledby="adLbl">
-      <div class="mtop"><span class="lbl" id="adLbl">Administrador</span><span class="badge" id="adminState">Inactivo</span></div>
+    <details class="fold" id="fAdmin"><summary><span class="ft">🔑 Administrador</span><span class="badge" id="adminState">Inactivo</span></summary><div class="fbody">
       <div id="adminLoginBox" class="row">
         <input type="password" id="adminKey" class="name" placeholder="Clave de administrador" autocomplete="off" aria-label="Clave de administrador">
         <button class="btn" id="adminLogin" type="button">Activar</button>
       </div>
       <button class="btn" id="adminLogout" type="button" hidden>Salir del modo admin</button>
       <p class="note" id="adminNote">Solo para quien organiza la sala.</p>
-    </section>
+    </div></details>
 
-    <section class="music" id="musicSec" aria-labelledby="musicLbl" hidden>
-      <div class="logobox">
-        <div class="mtop"><span class="lbl">Tu logo de DJ</span></div>
+    <div class="foldgroup" id="musicSec" hidden>
+      <details class="fold" id="fLogo"><summary><span class="ft">🎨 Tu logo de DJ</span></summary><div class="fbody">
         <div class="row">
           <img id="logoPrev" alt="Vista previa de tu logo" hidden>
           <label class="btn file">Subir logo<input type="file" id="logoIn" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label>
           <button class="btn" id="logoDel" type="button" hidden>Quitar</button>
         </div>
         <p class="note" id="logoNote">Opcional. Se estampa en la tapa del computador de la cabina mientras tocas.</p>
-      </div>
-      <div class="mtop"><span class="lbl" id="musicLbl">Música</span><span class="bpm" id="bpm">— BPM</span></div>
+      </div></details>
+      <details class="fold" id="fMusica"><summary><span class="ft">🎵 Música</span><span class="bpm" id="bpm">— BPM</span></summary><div class="fbody">
       <div class="now" id="now">Carga tus pistas para que la sala baile</div>
       <div class="meter" aria-hidden="true"><i id="lvl"></i></div>
       <div class="row">
@@ -456,8 +462,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       </div>
       <ol class="plist" id="plist"></ol>
       <p class="note">Elige los archivos de tus pistas (MP3, WAV, M4A) o arrástralos a la sala. Suenan solo en tu navegador, no se suben a ningún lado.</p>
-      <div class="livebox">
-        <div class="mtop"><span class="lbl">Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></div>
+      </div></details>
+      <details class="fold" id="fLive"><summary><span class="ft">🎚️ Rekordbox en vivo</span><span class="badge" id="liveState">Apagado</span></summary><div class="fbody">
         <div class="row"><button class="btn primary" id="sysBtn" type="button">Capturar audio del computador</button><button class="btn" id="sysAudioBtn" type="button" title="Solo el sonido: la pantalla no se transmite ni se procesa">🎧 Solo audio (sin pantalla)</button></div>
         <p class="note" id="sysNote">Sin instalar nada: abre Rekordbox, toca el botón, elige la <b>Ventana</b> de Rekordbox y activa <b>Compartir audio del sistema</b>. La sala verá esa ventana en el computador de la cabina. Si tu computador va justo, usa <b>Solo audio</b>: elige <b>Pantalla completa</b> y activa <b>Compartir audio del sistema</b>; la imagen se descarta al instante y solo viaja el sonido. Funciona en Chrome o Edge (en Mac, Chrome 141 o más nuevo con macOS 14.2 o más nuevo).</p>
         <details class="adv">
@@ -468,9 +474,8 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
           </div>
           <p class="note" id="liveNote">Para mesas con tarjeta de sonido o un cable de audio virtual (BlackHole, iShowU Audio Capture).</p>
         </details>
-      </div>
-      <div class="cromabox">
-        <div class="mtop"><span class="lbl">Croma: toca tú en el escenario</span><span class="badge" id="cromaState">Apagado</span></div>
+      </div></details>
+      <details class="fold" id="fCroma"><summary><span class="ft">🟩 Croma: toca tú en el escenario</span><span class="badge" id="cromaState">Apagado</span></summary><div class="fbody">
         <p class="note">Ponte con tu mesa frente a un fondo verde (o azul) y conecta tu cámara. En la cabina, en vez de tu personaje y del controlador, la sala te ve a ti tocando.</p>
         <div class="row">
           <select id="cromaDev" aria-label="Cámara"><option value="">Cámara…</option></select>
@@ -505,23 +510,24 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
           <div class="row"><button class="btn primary" id="cromaFit" type="button">📐 Calzar con la mesa</button><button class="btn" id="cromaLook" type="button">👀 Mirar la cabina</button><button class="btn" id="cromaReset" type="button">Valores de fábrica</button></div>
           <p class="note" id="cromaNote">Al activar la cámara tu controladora se ajusta sola al ancho de la mesa de la cabina. Si te mueves o cambias el encuadre, toca Calzar con la mesa. La sala ve tu cámara mientras transmites.</p>
         </div>
-      </div>
-    </section>
+      </div></details>
+    </div>
 
-    <div class="group">
-      <span class="lbl" id="styleLbl">Estilo visual</span>
-      <div class="row" id="styleRow" role="group" aria-labelledby="styleLbl"></div>
+    <details class="fold" id="fEstilo"><summary><span class="ft">✨ Estilo visual</span></summary><div class="fbody">
+      <div class="row" id="styleRow" role="group" aria-label="Estilo visual"></div>
       <p class="note" id="styleNote"></p>
       <p class="note" id="fpsNote" aria-live="off"></p>
-    </div>
+    </div></details>
+    <details class="fold" id="fPersonajes"><summary><span class="ft">👥 Personajes en la sala</span></summary><div class="fbody">
     <div class="group" hidden>
       <span class="lbl" id="countLbl">Personajes en la sala</span>
       <div class="row" id="countRow" role="group" aria-labelledby="countLbl"></div>
     </div>
     <div class="roster" id="roster" role="group" aria-label="Elegir personaje"></div>
     <div class="legend"><span><i></i>En la sala</span><span>Toca uno que no esté y entra en lugar de otro</span></div>
+    </div></details>
 
-    <h2>Personalizar</h2>
+    <details class="fold" id="fPersonalizar"><summary><span class="ft">🧑 Personalizar</span></summary><div class="fbody">
     <button class="btn" id="openCsel" type="button">Cambiar de personaje</button>
     <div class="group"><label for="nameInput">Tu nombre</label><input class="name" id="nameInput" maxlength="14"></div>
     <div class="grid" id="custom"></div>
@@ -529,11 +535,13 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <button class="btn primary" id="rnd" type="button">Estilo aleatorio</button>
       <button class="btn" id="reset" type="button">Restablecer personaje</button>
     </div>
+    </div></details>
 
-    <h2>Objetos de la sala</h2>
+    <details class="fold" id="fObjetos"><summary><span class="ft">🪩 Objetos de la sala</span></summary><div class="fbody">
     <p class="note">Toca un objeto para ponerlo o quitarlo. Ponte detrás de la cabina para pinchar.</p>
     <div class="row items" id="items" role="group" aria-label="Objetos de la sala"></div>
     <p class="note credits">Créditos: el modelo de Nika está basado en <a href="https://sketchfab.com/3d-models/teal-haired-anime-girl-png-to-stl-supavoxel-aec3ed6d87d24586b17ce3d1b9b9c82b" target="_blank" rel="noopener">«Teal-Haired Anime Girl»</a> de Zara Petrov, con licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Cambios: pelo recoloreado, malla reducida, textura rehecha y esqueleto nuevo.</p>
+    </div></details>
   </aside>
 </div>
 
@@ -3171,6 +3179,14 @@ liveBtn.addEventListener('click', async () => {
   }
 });
 
+/* ---------- configuración: secciones plegables (se recuerda cuáles dejaste abiertas) ---------- */
+{
+  let st = {}; try { st = JSON.parse(localStorage.getItem('dj-pliegues') || '{}'); } catch(e){}
+  document.querySelectorAll('#panel details.fold').forEach(d => {
+    d.open = d.id in st ? !!st[d.id] : d.id === 'fSala';
+    d.addEventListener('toggle', () => { st[d.id] = d.open; try { localStorage.setItem('dj-pliegues', JSON.stringify(st)); } catch(e){} });
+  });
+}
 /* ---------- croma: cámara del DJ ---------- */
 const cromaEl = {}; ['State','Dev','Btn','Ctl','Vid','Prev','Key','Mode','ImgReset','Bri','Con','Sat','Tmp','Sha','Cla','Lum','Auto','Fit','Tol','Soft','Spill','Size','Lift','CropX','CropT','CropB','Look','Reset','Note'].forEach(k => cromaEl[k] = document.getElementById('croma' + k));
 const CROMA_SL = [['Tol','tol'],['Soft','soft'],['Spill','spill'],['Size','size'],['Lift','lift'],['CropX','cx'],['CropT','ct'],['CropB','cb'],['Bri','bri'],['Con','con'],['Sat','sat'],['Tmp','tmp'],['Sha','sha'],['Cla','cla'],['Lum','lum']];
