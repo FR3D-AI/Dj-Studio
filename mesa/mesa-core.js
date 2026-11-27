@@ -30,7 +30,7 @@ const deckSpec = {
   volume:{t:'pot', min:0, max:1, def:1}, pregain:{t:'log', max:4, def:1}, rate:{t:'pot', min:-1, max:1, def:0}, rateRange:{t:'num', def:0.10},
   filterLow:{t:'log', max:2, def:1}, filterMid:{t:'log', max:2, def:1}, filterHigh:{t:'log', max:2, def:1},
   filterLowKill:'toggle', filterMidKill:'toggle', filterHighKill:'toggle',
-  orientation:{t:'num', def:1}, quantize:{t:'toggle', def:1}, jog:'rel', wheel:'rel', scratch2:{t:'num', def:0}, scratch2_enable:'toggle',
+  orientation:{t:'num', def:1}, quantize:{t:'toggle', def:1}, keylock:{t:'toggle', def:1}, jog:'rel', wheel:'rel', scratch2:{t:'num', def:0}, scratch2_enable:'toggle',
   beatjump_size:{t:'num', def:4}, beatloop_size:{t:'num', def:4}, loop_scale:{t:'num', def:1},
   playposition:{t:'pot', min:0, max:1, def:0},
 };
@@ -246,6 +246,7 @@ function Deck(ctx, n){
   d.scratching = false; d.bendV = 0; d.jogAcc = 0; d.loading = false;
   d.node.port.onmessage = e => { const m = e.data; if (m.end){ d.onEnd(); return; } d.rep = m; };
   d.applyEq(); d.applyFilter(); d.applyFader();
+  d.post({t:'keylock', on: MW.getValue(d.g, 'keylock') > 0});   // Master Tempo encendido: el tono no cambia al sincronizar
 }
 Deck.prototype = {
   get loaded(){ return !!this.L; },
@@ -468,7 +469,7 @@ MW.syncTick = function(){
   for (const d of MW.decks){
     if (!d.L) continue;
     let bend = d.jogBend || 0;
-    if (MW.getValue(d.g, 'sync_enabled') && !d.scratching){
+    if (MW.getValue(d.g, 'sync_enabled') && !MW.getValue(d.g, 'sync_leader') && !d.scratching){
       const m = MW.leader(d);
       if (m && m.L && m !== d && m.bpm()){
         const want = m.bpm(), base = d.baseBpm();
@@ -541,7 +542,13 @@ MW.onControl((c, v, prev, from) => {
       else if (Math.abs(v) > 20) d.seek(d.pos() + v * 0.004);
       else d.jogBend = clamp((d.jogBend || 0) + v * 0.012, -0.5, 0.5);
       return;
-    case 'sync_enabled': if (v > 0) d.sync(true); return;
+    case 'sync_enabled':
+      if (v > 0){
+        // como rekordbox: si nadie es MASTER, la otra bandeja pasa a serlo
+        if (!MW.decks.some(o => MW.getValue(o.g, 'sync_leader'))){ const o = MW.decks.find(x => x !== d && x.L); if (o) MW.setValue(o.g, 'sync_leader', 1); }
+        d.sync(true);
+      }
+      return;
     case 'sync_leader': case 'sync_master': if (v > 0) for (const o of MW.decks) if (o !== d){ ctl(o.g, 'sync_leader').v = 0; ctl(o.g, 'sync_master').v = 0; emit(ctl(o.g, 'sync_leader')); emit(ctl(o.g, 'sync_master')); } return;
     case 'beatsync': if (press) d.sync(true); return;
     case 'beatsync_tempo': if (press) d.sync(false); return;

@@ -107,6 +107,11 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px
 .djcount b{font-variant-numeric:tabular-nums;color:var(--accent);font-size:18px}
 .djcount .btn{padding:6px 12px;font-size:13px;white-space:nowrap}
 #djTurn .gatebox{max-height:calc(100dvh - 32px);overflow:auto}
+#djTurn .djopt{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 14px;margin:10px 0;text-align:left}
+#djTurn .djopt.rec{border-color:#ffb347;background:rgba(255,179,71,.07)}
+#djTurn .djopt h3{margin:0 0 6px;font-size:17px}#djTurn .djopt h3 small{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#ffb347;color:#2a1a05;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+#djTurn .djopt p{margin:0 0 6px}#djTurn .djopt .btn{width:100%;margin-top:6px}
+#djTurn details.djopt summary{cursor:pointer;font-weight:700}#djTurn details.djopt[open] summary{margin-bottom:6px}
 .djclock{font-size:44px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--accent);margin:4px 0 8px;letter-spacing:1px}
 .gate{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;
   background:radial-gradient(ellipse at 50% 30%, rgba(122,60,255,.35), rgba(15,13,21,.94) 60%)}
@@ -328,7 +333,18 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
   <div class="gatebox">
     <h1 id="djTurnTitle">¡Es tu momento de ser DJ!</h1>
     <div class="djclock" id="djTurnClock"></div>
-    <p id="djTurnLead"><b>Abre tu software de DJ y compártenos el sonido de tu pantalla.</b></p>
+    <p id="djTurnLead"><b>Elige cómo vas a tocar:</b></p>
+    <section class="djopt rec">
+      <h3>🎛️ Mesa Web <small>recomendado</small></h3>
+      <p>Mezcla aquí mismo, con tu controladora (la DDJ-400 se conecta sola) o con el mouse. No compartes pantalla: el sonido llega directo a la sala y el computador trabaja menos.</p>
+      <ol class="steps">
+        <li>Conecta tu controladora por USB y cierra Rekordbox (la controladora solo la puede usar un programa a la vez).</li>
+        <li>Toca <b>Mezclar en la Mesa Web</b>, carga tu primera pista y déjala lista.</li>
+        <li>Cuando llegue tu hora la transmisión parte sola: dale play.</li>
+      </ol>
+      <button class="btn primary" id="djTurnMesa" type="button">🎛️ Mezclar en la Mesa Web</button>
+    </section>
+    <details class="djopt" id="djTurnSoft"><summary>🖥️ Usar mi software de DJ (Rekordbox, Serato, Traktor…) compartiendo pantalla</summary>
     <ol class="steps">
       <li>Abre tu software de DJ (Rekordbox, Serato, Traktor…) y deja lista tu primera pista.</li>
       <li>Toca <b>Preparar mi pantalla</b> aquí abajo.</li>
@@ -337,9 +353,10 @@ h2{margin:6px 0 0;font-family:var(--display);font-weight:400;font-size:15px;lett
       <li>¿Tu computador va justo con Rekordbox y TikTok? Usa <b>Solo audio, sin pantalla</b>: elige <b>Pantalla completa</b>, activa <b>Compartir audio del sistema</b> y la imagen se descarta al instante; a la sala solo le llega el sonido.</li>
       <li>Listo: cuando llegue tu hora la transmisión parte sola. Dale play y todos te escuchan y te ven en la cabina; las luces las manejas con la barra de abajo.</li>
     </ol>
-    <p class="note" id="djTurnNote"></p>
-    <button class="btn primary" id="djTurnGo" type="button">Compartir sonido</button>
+    <button class="btn" id="djTurnGo" type="button">Compartir sonido</button>
     <button class="btn" id="djTurnAudio" type="button">🎧 Solo audio, sin pantalla (para computadores justos)</button>
+    </details>
+    <p class="note" id="djTurnNote"></p>
     <button class="btn" id="djTurnChat" type="button">🎬 Abrir vista flotante: cinemática + chat (queda encima de Rekordbox)</button>
     <button class="btn" id="djTurnLater" type="button">Ahora no</button>
   </div>
@@ -3220,7 +3237,7 @@ let mesaLoading = null;
 function loadMesa(){
   if (mesaLoading) return mesaLoading;
   const files = ['mesa/mesa-core.js', 'mesa/mesa-lib.js', 'mesa/mesa-midi.js', 'mesa/mesa-ui.js', 'mesa/mesa.js'];
-  mesaLoading = files.reduce((p, f) => p.then(() => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = f + '?v=2'; s.onload = ok; s.onerror = () => bad(new Error('No se pudo cargar ' + f)); document.head.appendChild(s); })), Promise.resolve());
+  mesaLoading = files.reduce((p, f) => p.then(() => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = f + '?v=3'; s.onload = ok; s.onerror = () => bad(new Error('No se pudo cargar ' + f)); document.head.appendChild(s); })), Promise.resolve());
   mesaLoading.catch(() => { mesaLoading = null; });
   return mesaLoading;
 }
@@ -3972,7 +3989,7 @@ async function connect(){
 const PREP_MS = 2 * 60 * 1000;
 const djTurn = document.getElementById('djTurn'), djTurnNote = document.getElementById('djTurnNote');
 const djTurnClock = document.getElementById('djTurnClock'), djTurnTitle = document.getElementById('djTurnTitle'), djTurnGo = document.getElementById('djTurnGo');
-const djTurnAudio = document.getElementById('djTurnAudio');
+const djTurnAudio = document.getElementById('djTurnAudio'), djTurnMesa = document.getElementById('djTurnMesa');
 const djCount = document.getElementById('djCount'), djCountText = document.getElementById('djCountText'), djCountBtn = document.getElementById('djCountBtn');
 const shownTurns = new Set();
 let lastSlotAnnounced = null, prepSlot = null, prepBusy = false;
@@ -4005,7 +4022,9 @@ function updateTurnUI(){
   } else djCount.hidden = true;
   const ready = myScreenReady();
   djCountBtn.hidden = !(mine && !net.casting && djTurn.hidden);
-  djCountBtn.textContent = ready ? (sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista') : (now < s?.start ? 'Preparar mi pantalla' : 'Compartir ahora');
+  const readyTxt = music.source === 'mesa' ? '✔ Mesa Web lista' : sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista';
+  djCountBtn.textContent = ready ? readyTxt : (now < s?.start ? 'Prepararme' : 'Tocar ahora');
+  djTurnMesa.textContent = music.source === 'mesa' ? (now < s?.start ? '✔ Mesa Web lista' : '🎛️ Empezar con la Mesa Web') : '🎛️ Mezclar en la Mesa Web';
   djTurnAudio.hidden = ready;
   if (!mine){ if (!djTurn.hidden && !net.casting) djTurn.hidden = true; return; }
   // al DJ: abrir el aviso una vez por turno (2 minutos antes), sin tapar el ingreso ni la selección
@@ -4013,14 +4032,14 @@ function updateTurnUI(){
   if (now < s.start){
     djTurnTitle.textContent = '¡Te toca ser DJ en ' + fmtLeft(s.start - now) + '!';
     djTurnClock.textContent = fmtLeft(s.start - now);
-    djTurnGo.textContent = ready ? (sysAudioOnly ? '✔ Audio listo' : '✔ Pantalla lista') : 'Preparar mi pantalla';
-    djTurnGo.disabled = ready;
+    djTurnGo.textContent = ready && music.source !== 'mesa' ? readyTxt : 'Preparar mi pantalla';
+    djTurnGo.disabled = ready && music.source !== 'mesa';
     djTurnNote.textContent = ready ? 'Todo listo. Tu transmisión parte sola en ' + fmtLeft(s.start - now) + ': deja tu primera pista preparada.'
-      : 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Prepara ahora tu pantalla para partir a la hora. Usa Chrome o Edge en un computador.';
+      : 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Prepárate ahora para partir a la hora. Usa Chrome o Edge en un computador.';
   } else {
     djTurnTitle.textContent = '¡Es tu momento de ser DJ!';
     djTurnClock.textContent = 'EN VIVO';
-    djTurnGo.textContent = ready ? 'Empezar ahora' : 'Compartir sonido'; djTurnGo.disabled = false;
+    djTurnGo.textContent = ready && music.source !== 'mesa' ? 'Empezar ahora' : 'Compartir sonido'; djTurnGo.disabled = false;
     djTurnNote.textContent = 'Tu turno: ' + fmtTime(s.start) + ' – ' + fmtTime(s.end) + '. Usa Chrome o Edge (en Mac, Chrome 141 o más nuevo y macOS 14.2 o más nuevo).';
   }
   // llegó la hora y la pantalla está lista: sale al aire solo
@@ -4031,6 +4050,18 @@ setInterval(updateTurnUI, 1000);
 djTurnGo.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(false); });
 djTurnAudio.addEventListener('click', () => { if (activeSlot() && myScreenReady()) startCast(); else prepareCast(true); });
 djCountBtn.addEventListener('click', () => { djTurn.hidden = false; updateTurnUI(); });
+// tocar con la Mesa Web: se abre abajo (la sala queda arriba) y sale al aire sola a la hora
+djTurnMesa.addEventListener('click', async () => {
+  djTurnMesa.disabled = true;
+  try {
+    await loadMesa();
+    if (!MW.settings.view) MW.settings.view = 'dock';
+    await MW.open(); renderMesa();
+    djTurn.hidden = true;
+    if (activeSlot() && canCast() && !net.casting) startCast();
+  } catch(e){ console.error(e); djTurnNote.textContent = 'No se pudo abrir la Mesa Web: ' + (e && e.message || e); }
+  finally { djTurnMesa.disabled = false; updateTurnUI(); }
+});
 document.getElementById('djTurnLater').addEventListener('click', () => { djTurn.hidden = true; updateTurnUI(); });
 
 /* ---------- barra del DJ: escenas de luces ---------- */

@@ -119,7 +119,9 @@ body.mesa-dock .app{height:calc(100% - var(--mesa-dock-h,0px))}
 .mw-st{display:flex;gap:3px;flex:none}.mw-st b{font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;background:#1f1c29;color:#5d576e;letter-spacing:.02em}
 .mw-st b.on{background:#173b2a;color:#7dffb9}.mw-st b.y.on{background:#4a3c12;color:#ffe9a0}.mw-st b.o.on{background:#4a2a10;color:#ffc27a}.mw-st b.b.on{background:#1b3150;color:#a9dcff}
 .mw:not(.dock) .mw-st,.mw:not(.dock) .mw-dk{display:none}
-.mw.dock{inset:auto 0 0 0;max-height:72vh;grid-template-rows:auto auto auto auto;border-top:2px solid #ffb347;box-shadow:0 -12px 30px #000b}
+.mw-grip{display:none}
+.dock .mw-grip{display:block;height:12px;cursor:ns-resize;touch-action:none;background:#16141d;position:relative}.dock .mw-grip i{position:absolute;left:50%;top:4px;width:56px;height:4px;margin-left:-28px;border-radius:2px;background:#5a5470}.dock .mw-grip:hover i,.dock .mw-grip.drag i{background:#ffb347}
+.mw.dock{inset:auto 0 0 0;max-height:calc(100vh - 90px);grid-template-rows:auto auto auto auto auto;border-top:2px solid #ffb347;box-shadow:0 -12px 30px #000b}
 .dock .mw-top{height:32px;gap:6px;padding:0 6px}.dock .mw-fo{display:none!important}
 .dock .mw-tb{padding:3px 8px;font-size:12px}.dock .mw-logo{font-size:14px}.dock .mw-pill{padding:2px 8px;font-size:11.5px}
 .dock .mw-waves{grid-template-rows:34px 34px}
@@ -143,11 +145,11 @@ body.mesa-dock .app{height:calc(100% - var(--mesa-dock-h,0px))}
 .dock .mw-fxn b{font-size:11px}.dock .mw-fxn button{width:18px;height:18px}.dock .mw-ch button{height:18px}.dock .mw-fxon{height:20px;font-size:10.5px}
 .dock .mw-box.hp,.dock .mw-box.ms{flex-direction:row;justify-content:space-around}.dock .mw-box.ms .mw-mvu{flex:1;height:6px}
 .dock .mw-xf{font-size:10px}.dock .mw-xf .mw-fd{height:18px}.dock .mw-xf .mw-fd b{margin-left:-7px;width:14px}
-.dock .mw-lib{grid-template-columns:1fr}.dock .mw-tree{display:none}.dock .mw-list{height:108px;flex:none}
+.dock .mw-lib{grid-template-columns:1fr}.dock .mw-tree{display:none}.dock .mw-list{height:var(--mw-list-h,108px);flex:none}
 .dock .mw-bar{padding:4px;gap:4px}.dock .mw-bar .mw-tb{padding:3px 8px;font-size:12px}.dock .mw-bar input[type=search]{padding:3px 8px}
 .mw-bar select{background:#1d1a26;color:#e9e6f0;border:1px solid #3a3449;border-radius:7px;padding:3px 6px;font:inherit;font-size:12px;max-width:200px}
 .dock.nolib .mw-lib{display:none}
-@media (max-height:820px){.dock .mw-jog canvas{width:96px;height:96px}.dock .mw-deck{grid-template-columns:96px minmax(0,1fr)}.dock .mw-deck.r{grid-template-columns:minmax(0,1fr) 96px}.dock .mw-pad{height:33px}.dock .mw-list{height:84px}}
+@media (max-height:820px){.dock .mw-jog canvas{width:96px;height:96px}.dock .mw-deck{grid-template-columns:96px minmax(0,1fr)}.dock .mw-deck.r{grid-template-columns:minmax(0,1fr) 96px}.dock .mw-pad{height:33px}}
 @media (max-width:1100px){.mw-main{grid-template-columns:1fr 1fr}.mw-mix{grid-column:1/-1;grid-row:2}.mw-deck.r{grid-column:2;grid-row:1}}
 @media (max-width:760px){.mw-main{grid-template-columns:1fr}.mw-deck.r{grid-column:1;grid-row:auto}.mw-mix{grid-row:auto}.mw-lib{grid-template-columns:1fr}.mw-tree{max-height:120px;border-right:0;border-bottom:1px solid #262231}.mw{grid-template-rows:auto auto auto minmax(300px,auto)}}
 `;
@@ -166,7 +168,7 @@ function deckHTML(n){
     <div class="mw-tr">
       <button class="mw-big cue" data-g="${g}" data-k="cue_default" data-mode="push" data-led="cue_indicator">CUE</button>
       <button class="mw-big play" data-g="${g}" data-k="play" data-mode="toggle" data-led="play_indicator">▶︎❚❚</button>
-      <button class="mw-sm g" data-g="${g}" data-k="beatsync" data-mode="push" data-led="sync_enabled" data-long="sync_enabled" title="Toca: sincroniza una vez. Mantén apretado: sincronía continua">SYNC</button>
+      <button class="mw-sm g" data-g="${g}" data-k="sync_enabled" data-mode="toggle" title="Sincroniza tempo y golpe con la bandeja MASTER y se queda así (el tono no cambia con MT)">SYNC</button>
       <button class="mw-sm y" data-g="${g}" data-k="sync_leader" data-mode="toggle" title="Esta bandeja manda el tempo">MASTER</button>
       <button class="mw-sm" data-g="${g}" data-k="quantize" data-mode="toggle" title="Cues y loops caen justo en el golpe">Q</button>
       <button class="mw-sm" data-g="${g}" data-k="slip_enabled" data-mode="toggle" title="Slip: al soltar un loop o un scratch, la pista sigue donde iba" hidden>SLIP</button>
@@ -209,6 +211,7 @@ function stripHTML(n){
   </div>`;
 }
 const HTML = () => `<div class="mw" id="mesa" hidden role="dialog" aria-label="Mesa Web">
+  <div class="mw-grip" id="mwGrip" title="Arrastra hacia arriba para ver más canciones, o hacia abajo para ver más público"><i></i></div>
   <header class="mw-top">
     <span class="mw-logo">MESA WEB</span>
     <span class="mw-pill" id="mwCtl"><i></i><span>Sin controladora</span></span>
@@ -434,7 +437,8 @@ function drawWave(i){
   const cv = $('#mwW' + (i + 1)), [W, H, dpr] = fitCanvas(cv), c = cv.getContext('2d'), d = MW.decks[i], col = DECK_COL[i];
   c.fillStyle = '#050507'; c.fillRect(0, 0, W, H);
   if (!d.L || !d.wave){ c.fillStyle = '#3a3449'; c.font = (12 * dpr) + 'px system-ui'; c.fillText('Bandeja ' + d.n + ' · sin pista', 10 * dpr, H / 2 + 4 * dpr); return; }
-  const wv = d.wave, p = d.pos(), sec = waveZoom * (W / dpr) / 1400 * 1.0, spp = sec / W, mid = H / 2;
+  // la onda corre en tiempo real: con el pitch cambiado, los golpes de las dos bandejas quedan alineados
+  const wv = d.wave, p = d.pos(), sec = waveZoom * (W / dpr) / 1400 * Math.max(0.05, d.tempo()), spp = sec / W, mid = H / 2;
   const t0 = p - W / 2 * spp;
   // loop activo
   if (d.loop.on || d.loop.b > d.loop.a){ const xa = (d.loop.a - t0) / spp, xb = (d.loop.b - t0) / spp; if (xb > 0 && xa < W){ c.fillStyle = d.loop.on ? 'rgba(255,170,0,.2)' : 'rgba(255,170,0,.07)'; c.fillRect(xa, 0, xb - xa, H); } }
@@ -600,6 +604,20 @@ function setupTop(){
   $('#mwLibT').addEventListener('click', () => { MW.settings.dockLib = MW.settings.dockLib === false; MW.saveSettings(); MW.setView(MW.settings.view); });
   $('#mwSrc').addEventListener('change', e => MW.lib.setView(e.target.value));
   new ResizeObserver(() => dockSize()).observe(root);
+  // divisor entre la sala y la mesa: arriba = más canciones, abajo = más público
+  const grip = $('#mwGrip'); let gy = null, gh = 0;
+  grip.addEventListener('pointerdown', e => { grip.setPointerCapture(e.pointerId); grip.classList.add('drag'); gy = e.clientY; gh = MW.settings.dockLib === false ? 0 : $('#mwList').offsetHeight; e.preventDefault(); });
+  grip.addEventListener('pointermove', e => {
+    if (gy == null) return;
+    const h = gh + (gy - e.clientY), rest = root.offsetHeight - (MW.settings.dockLib === false ? 0 : $('#mwList').offsetHeight + $('.mw-bar').offsetHeight);
+    if (h < 36){ if (MW.settings.dockLib !== false){ MW.settings.dockLib = false; MW.setView('dock'); } return; }
+    if (MW.settings.dockLib === false){ MW.settings.dockLib = true; MW.setView('dock'); }
+    MW.settings.dockListH = Math.round(Math.max(56, Math.min(h, window.innerHeight - 110 - rest - 40)));
+    root.style.setProperty('--mw-list-h', MW.settings.dockListH + 'px');
+  });
+  const gup = () => { if (gy == null) return; gy = null; grip.classList.remove('drag'); MW.saveSettings(); MW.emitLib(); };
+  grip.addEventListener('pointerup', gup); grip.addEventListener('pointercancel', gup);
+  if (MW.settings.dockListH) root.style.setProperty('--mw-list-h', MW.settings.dockListH + 'px');
   $('#mwMax').addEventListener('click', () => MW.minimize(false));
   $('#mwOff').addEventListener('click', () => MW.powerOff());
   $('#mwZi').addEventListener('click', () => { waveZoom = clamp(waveZoom * 0.75, 2, 40); });

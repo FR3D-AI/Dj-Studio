@@ -238,6 +238,13 @@ const OVERRIDES = {
         const side = st <= 0x98 ? 0 : 1, m = d1 < 0x08 ? 'hot' : d1 >= 0x60 && d1 < 0x68 ? 'loop' : d1 >= 0x20 && d1 < 0x28 ? 'jump' : d1 >= 0x30 && d1 < 0x38 ? 'smp' : null;
         if (m) MW.padModeHw[side] = m;
       }
+      // BEAT SYNC como en rekordbox: un toque deja la bandeja sincronizada (y la apaga si ya estaba); mantenerlo la hace MASTER
+      if ((st === 0x90 || st === 0x91) && (d1 === 0x58 || d1 === 0x5C)){
+        const d = MW.decks[st & 0x0F]; if (!d || !d2) return true;
+        if (d1 === 0x58) MW.setValue(d.g, 'sync_enabled', MW.getValue(d.g, 'sync_enabled') ? 0 : 1, 'midi');
+        else { MW.setValue(d.g, 'sync_leader', 1, 'midi'); MW.setValue(d.g, 'sync_enabled', 1, 'midi'); }
+        return true;
+      }
       if (st === 0x94){
         if (d1 === 0x63 || d1 === 0x64){ if (d2) fx().next(d1 === 0x63 ? 1 : -1); return true; }
         if (d1 === 0x4A || d1 === 0x4B){ if (d2) fx().beat(d1 === 0x4B ? 1 : -1); return true; }
